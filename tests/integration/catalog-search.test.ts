@@ -82,6 +82,16 @@ describe('listado del catálogo', () => {
     expect(codes(await listProducts(supabase, filters({ search: 'LÁSER' })))).toEqual(['IMP-001'])
   })
 
+  it('busca sin tildes en el nombre, en el código y en lo escrito', async () => {
+    await insertProduct('IMP-001', 'Impresión láser', printers)
+    await insertProduct('LAP-001', 'Laptop de oficina', laptops)
+    expect(codes(await listProducts(supabase, filters({ search: 'impresion' })))).toEqual([
+      'IMP-001',
+    ])
+    expect(codes(await listProducts(supabase, filters({ search: 'LASER' })))).toEqual(['IMP-001'])
+    expect(codes(await listProducts(supabase, filters({ search: 'ofícina' })))).toEqual(['LAP-001'])
+  })
+
   it('combina búsqueda y categoría', async () => {
     await insertProduct('LAP-001', 'Equipo A', laptops)
     await insertProduct('IMP-001', 'Equipo B', printers)
