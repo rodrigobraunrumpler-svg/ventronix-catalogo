@@ -177,7 +177,7 @@ function FilterRow({ label, count, active, icon, tile, onSelect, actions }: Filt
       data-active={active}
       className={cn(
         'group flex min-h-11.5 items-center rounded-[10px]',
-        active ? 'bg-accent' : 'hover:bg-[#f6f8fc]',
+        active ? 'bg-accent' : 'hover:bg-muted/70',
       )}
     >
       <button

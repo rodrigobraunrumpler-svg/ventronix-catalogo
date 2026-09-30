@@ -1,4 +1,5 @@
-// Paleta fija sin el azul de acciones; cada texto cumple 4.5:1 sobre su fondo (spec §7).
+// Paleta fija sin tonos cercanos al verde de marca de las acciones; cada texto cumple 4.5:1 sobre
+// su fondo (spec §7).
 export const CATEGORY_PALETTE = [
   { bg: '#e3f5ec', fg: '#047857' },
   { bg: '#fef3e2', fg: '#a0550b' },
@@ -7,7 +8,7 @@ export const CATEGORY_PALETTE = [
   { bg: '#fdecf1', fg: '#be185d' },
   { bg: '#fdeee6', fg: '#c2410c' },
   { bg: '#eef2f7', fg: '#475569' },
-  { bg: '#eef7df', fg: '#3f6212' },
+  { bg: '#e7eefc', fg: '#1d4ed8' },
 ] as const
 
 // Color estable derivado del ID: sin columnas de color en la base de datos.

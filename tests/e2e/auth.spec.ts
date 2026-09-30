@@ -95,7 +95,7 @@ test('con sesión, una ruta inexistente muestra la página 404 y lleva a Product
   await expect(page).toHaveURL(/\/products$/)
   const response = await page.goto('/ruta-que-no-existe')
   expect(response?.status()).toBe(404)
-  await expect(page).toHaveTitle('Página no encontrada · Catálogo')
+  await expect(page).toHaveTitle('Página no encontrada · Ventronix')
   await expect(page.getByRole('heading', { name: 'No encontramos esta página' })).toBeVisible()
   await page.getByRole('link', { name: 'Ir a Productos' }).click()
   await expect(page).toHaveURL(/\/products$/)

@@ -18,7 +18,7 @@ const buttonVariants = cva(
           'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
         destructive:
           'bg-destructive text-white hover:bg-[color-mix(in_oklch,var(--destructive),black_15%)] focus-visible:border-destructive/40 focus-visible:ring-destructive/20',
-        link: 'text-primary underline-offset-4 hover:underline',
+        link: 'text-foreground underline decoration-primary decoration-2 underline-offset-4',
       },
       size: {
         default:

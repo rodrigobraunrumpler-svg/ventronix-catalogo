@@ -44,35 +44,37 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Dirección visual (spec §7): azul solo para acciones y selección; el resto en neutros fríos. */
+/* Dirección visual (spec §7): marca Ventronix. El verde lima solo rellena acciones, siempre con
+   texto oscuro (9.6:1); como texto o foco sobre blanco no se lee, así que el foco usa un verde
+   oscuro (5:1). El resto, neutros. */
 :root {
-  --background: #f3f5fa;
-  --foreground: #0f1b33;
+  --background: #f4f5f2;
+  --foreground: #121511;
   --card: #ffffff;
-  --card-foreground: #0f1b33;
+  --card-foreground: #121511;
   --popover: #ffffff;
-  --popover-foreground: #0f1b33;
-  --primary: #2451b8;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f4f9;
-  --secondary-foreground: #26344d;
-  --muted: #f1f4f9;
-  --muted-foreground: #5b6b85;
-  --accent: #eef1f6;
-  --accent-foreground: #0f1b33;
+  --popover-foreground: #121511;
+  --primary: #72ce0b;
+  --primary-foreground: #0c0f0a;
+  --secondary: #f1f3ee;
+  --secondary-foreground: #2a3027;
+  --muted: #f1f3ee;
+  --muted-foreground: #5d6559;
+  --accent: #edf0e8;
+  --accent-foreground: #121511;
   --destructive: #d92d20;
-  --border: #e3e8f1;
-  --input: #d5dcea;
-  --ring: #2451b8;
+  --border: #e3e7de;
+  --input: #d3d9cc;
+  --ring: #3f7d0a;
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #26344d;
-  --sidebar-primary: #0e1a33;
+  --sidebar-foreground: #2a3027;
+  --sidebar-primary: #000000;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef1f6;
-  --sidebar-accent-foreground: #0f1b33;
-  --sidebar-border: #e3e8f1;
-  --sidebar-ring: #2451b8;
+  --sidebar-accent: #edf0e8;
+  --sidebar-accent-foreground: #121511;
+  --sidebar-border: #e3e7de;
+  --sidebar-ring: #3f7d0a;
 }
 
 @layer base {

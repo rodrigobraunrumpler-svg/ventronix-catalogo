@@ -156,9 +156,10 @@ Cada pantalla contempla carga, vacío inicial, ningún resultado para filtros, e
 Referencia: [prototipo en el lienzo de diseño](https://claude.ai/artifact/7KjkXAw98vwSPa8hGesjfh) (privado; se comparte desde su menú Share).
 
 - **Tipografía:** Plus Jakarta Sans para la interfaz y JetBrains Mono para códigos, cargadas con `next/font`. Ningún texto por debajo de 12 px; tabla y formularios a 14 px.
-- **Color:** azul `#2451B8` reservado para acciones (botones principales, enlaces) y selección (casillas, filas marcadas, barra «Generar proforma»). El resto va en neutros fríos: `#F3F5FA` de fondo, `#E3E8F1` en bordes y texto `#0F1B33`. Menú lateral claro; el navy `#0E1A33` queda para el logotipo. Se definen como variables del tema de shadcn/ui en `globals.css`.
+- **Marca:** Ventronix. El isotipo (V en círculo) aparece en el menú, los íconos y la 404, y el logotipo en el panel negro del acceso. Todos se generan a partir de `public/logo.png` y `public/portada.png`, que tienen fondo negro.
+- **Color:** verde lima de marca `#72CE0B`, reservado para rellenar acciones (botones principales) siempre con texto oscuro `#0C0F0A` (9.6:1). No se usa como texto ni como foco sobre blanco (2:1); el foco usa el verde oscuro `#3F7D0A` (5:1) y los enlaces van en texto oscuro con subrayado lima. El resto va en neutros: `#F4F5F2` de fondo, `#E3E7DE` en bordes y texto `#121511`. Menú lateral claro; el negro queda para la marca. Se definen como variables del tema de shadcn/ui en `globals.css`.
 - **Íconos:** lucide-react, que ya incluye shadcn/ui.
-- **Categorías con color:** cada una recibe un color de una paleta fija sin el azul de las acciones, derivado de forma determinista de su ID. El color aparece solo en la etiqueta de la tabla y en la tarjeta Categorías; las filas no llevan miniatura. No se añaden columnas de color ni de ícono; el prototipo elige los íconos por nombre solo para ilustrar. El nombre siempre aparece en texto.
+- **Categorías con color:** cada una recibe un color de una paleta fija sin tonos cercanos al verde de las acciones, derivado de forma determinista de su ID. El color aparece solo en la etiqueta de la tabla y en la tarjeta Categorías; las filas no llevan miniatura. No se añaden columnas de color ni de ícono; el prototipo elige los íconos por nombre solo para ilustrar. El nombre siempre aparece en texto.
 - **Accesibilidad:** contraste de texto de al menos 4.5:1 (etiquetas de categoría incluidas), controles de 36 px o más, foco visible y errores junto a cada campo.
 
 ## 8. Caché y consistencia

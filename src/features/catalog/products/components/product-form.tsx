@@ -183,7 +183,7 @@ export function ProductForm({
                 <button
                   type="button"
                   onClick={onCreateCategory}
-                  className="font-semibold text-primary underline underline-offset-2"
+                  className="font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-2"
                 >
                   Crear una categoría
                 </button>

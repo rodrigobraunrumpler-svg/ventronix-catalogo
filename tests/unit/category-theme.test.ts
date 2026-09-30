@@ -19,6 +19,17 @@ function contrast(a: string, b: string) {
   return (light + 0.05) / (dark + 0.05)
 }
 
+// Tono (0–360°) de un color #rrggbb.
+function hue(hex: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const max = Math.max(r, g, b)
+  const delta = max - Math.min(r, g, b)
+  if (delta === 0) return 0
+  const h =
+    max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4
+  return (h * 60 + 360) % 360
+}
+
 describe('color de categoría', () => {
   it('da siempre el mismo color al mismo ID', () => {
     expect(categoryColor(ids[7])).toEqual(categoryColor(ids[7]))
@@ -30,8 +41,12 @@ describe('color de categoría', () => {
     for (const id of ids) expect(CATEGORY_PALETTE).toContainEqual(categoryColor(id))
   })
 
-  it('no usa el azul reservado para acciones y selección', () => {
-    expect(CATEGORY_PALETTE.map((color) => color.fg)).not.toContain('#2451b8')
+  it('no usa tonos cercanos al verde de marca, reservado para acciones', () => {
+    const brandHue = hue('#72ce0b')
+    for (const { fg } of CATEGORY_PALETTE) {
+      const distance = Math.abs(hue(fg) - brandHue)
+      expect(Math.min(distance, 360 - distance)).toBeGreaterThan(30)
+    }
   })
 
   it('cada texto tiene un contraste de al menos 4.5:1 sobre su fondo', () => {

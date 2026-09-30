@@ -1,4 +1,4 @@
-import { Brand } from '@/components/brand'
+import Image from 'next/image'
 import { CATEGORY_PALETTE } from '@/features/catalog/categories/theme'
 
 // Ilustración: una hoja de precios como la que gestiona la app. Datos de ejemplo, no del catálogo.
@@ -28,10 +28,17 @@ const rows = [
 
 export function LoginShowcase() {
   return (
-    <div className="hidden bg-sidebar-primary text-white lg:flex lg:flex-col lg:p-12 xl:p-16">
-      <div className="-ml-2">
-        <Brand inverted />
-      </div>
+    <div className="hidden bg-black text-white lg:flex lg:flex-col lg:p-12 xl:p-16">
+      {/* El logotipo trae fondo negro puro: sobre el panel negro no se ve el recuadro. */}
+      <Image
+        src="/brand/ventronix-wordmark.png"
+        alt="Ventronix, soluciones tecnológicas"
+        width={473}
+        height={253}
+        unoptimized
+        priority
+        className="-ml-4 h-auto w-[300px] xl:w-[340px]"
+      />
 
       <div className="my-auto grid gap-12 py-12">
         <div className="grid max-w-[460px] gap-4">
@@ -45,7 +52,7 @@ export function LoginShowcase() {
 
         <div
           aria-hidden
-          className="w-full max-w-[520px] overflow-hidden rounded-2xl bg-card text-foreground shadow-[0_28px_70px_-24px_rgba(0,0,0,0.6)]"
+          className="w-full max-w-[520px] overflow-hidden rounded-2xl bg-card text-foreground ring-1 ring-white/10"
         >
           <div className="flex items-center gap-2.5 border-b px-5 py-3.5">
             <span className="text-sm font-bold">Lista de precios</span>

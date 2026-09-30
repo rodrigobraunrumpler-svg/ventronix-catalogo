@@ -1,37 +1,22 @@
-import { Package } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
-// `inverted`: versión para fondos oscuros (panel de marca del acceso).
-export function Brand({ inverted = false }: { inverted?: boolean }) {
+export function Brand() {
   return (
     <div className="flex items-center gap-3 px-2">
-      <span
-        className={cn(
-          'grid size-9.5 place-items-center rounded-[11px]',
-          inverted
-            ? 'bg-white text-sidebar-primary'
-            : 'bg-sidebar-primary text-sidebar-primary-foreground',
-        )}
-      >
-        <Package className="size-5" aria-hidden />
-      </span>
+      {/* Recurso estático pequeño: se sirve tal cual, sin pasar por el optimizador de imágenes. */}
+      <Image
+        src="/brand/ventronix-mark.png"
+        alt=""
+        width={38}
+        height={38}
+        unoptimized
+        className="size-9.5 rounded-[11px]"
+      />
       <span className="grid leading-tight">
-        <span
-          className={cn(
-            'text-[17px] font-extrabold tracking-[-0.02em]',
-            inverted ? 'text-white' : 'text-foreground',
-          )}
-        >
-          Catálogo
+        <span className="text-[17px] font-extrabold tracking-[-0.02em] text-foreground">
+          Ventronix
         </span>
-        <span
-          className={cn(
-            'text-xs font-medium',
-            inverted ? 'text-white/65' : 'text-muted-foreground',
-          )}
-        >
-          Gestión comercial
-        </span>
+        <span className="text-xs font-medium text-muted-foreground">Catálogo comercial</span>
       </span>
     </div>
   )

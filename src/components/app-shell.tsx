@@ -18,7 +18,7 @@ export function AppShell({ email, children }: { email: string; children: ReactNo
     <div className="min-h-dvh lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
       <a
         href="#main"
-        className="sr-only z-50 rounded-lg bg-card px-4 py-3 font-semibold text-primary focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        className="sr-only z-50 rounded-lg bg-card px-4 py-3 font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-4 focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
       >
         Ir al contenido
       </a>
