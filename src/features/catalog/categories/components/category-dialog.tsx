@@ -25,7 +25,7 @@ export function CategoryDialog({
   onClose: () => void
 }) {
   const { create, rename } = useCategoryMutations()
-  const returnFocus = useReturnFocus()
+  const returnFocus = useReturnFocus(state !== null)
 
   return (
     <Dialog open={state !== null} onOpenChange={(open) => !open && onClose()}>

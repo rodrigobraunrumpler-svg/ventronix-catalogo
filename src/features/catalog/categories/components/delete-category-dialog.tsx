@@ -22,7 +22,7 @@ type DeleteCategoryDialogProps = {
 
 export function DeleteCategoryDialog({ category, onConfirm, onClose }: DeleteCategoryDialogProps) {
   const [pending, setPending] = useState(false)
-  const returnFocus = useReturnFocus()
+  const returnFocus = useReturnFocus(category !== null)
 
   async function confirm() {
     if (!category) return

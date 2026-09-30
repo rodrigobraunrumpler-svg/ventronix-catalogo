@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ProductForm } from '@/features/catalog/products/components/product-form'
@@ -64,7 +64,7 @@ describe('ProductForm', () => {
     await fillValid(user)
     await user.type(field('Descripción'), '   ')
     await user.click(screen.getByRole('button', { name: 'Crear producto' }))
-    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved, { another: false }))
     expect(onSubmit).toHaveBeenCalledWith({
       code: 'LAP-004',
       name: 'Laptop de 13 pulgadas',
@@ -133,6 +133,69 @@ describe('ProductForm', () => {
     expect(field('Categoría')).toHaveValue(categories[1].id)
     expect(field('Precio unitario')).toHaveValue('1299.50')
     expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeVisible()
+  })
+
+  it('si se cierra sin guardar, al volver a abrir recupera lo escrito', async () => {
+    const { user } = renderForm()
+    await fillValid(user)
+    cleanup()
+    renderForm()
+    expect(screen.getByRole('status')).toHaveTextContent('Recuperamos lo que estabas escribiendo.')
+    expect(field('Código')).toHaveValue(' lap-004 ')
+    expect(field('Nombre del producto')).toHaveValue('Laptop de 13 pulgadas')
+    expect(field('Categoría')).toHaveValue(categories[1].id)
+    expect(field('Precio unitario')).toHaveValue('1299,5')
+  })
+
+  it('Descartar deja el formulario vacío y borra el borrador', async () => {
+    const first = renderForm()
+    await fillValid(first.user)
+    cleanup()
+    const { user } = renderForm()
+    await user.click(screen.getByRole('button', { name: 'Descartar' }))
+    expect(field('Nombre del producto')).toHaveValue('')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    cleanup()
+    renderForm()
+    expect(field('Nombre del producto')).toHaveValue('')
+  })
+
+  it('al guardar se borra el borrador', async () => {
+    const { onSaved, user } = renderForm()
+    await fillValid(user)
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled())
+    cleanup()
+    renderForm()
+    expect(field('Código')).toHaveValue('')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('Crear y añadir otro guarda, deja la categoría y vuelve a Código', async () => {
+    const { onSubmit, onSaved, user } = renderForm()
+    await fillValid(user)
+    await user.click(screen.getByRole('button', { name: 'Crear y añadir otro' }))
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved, { another: true }))
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(field('Código')).toHaveValue('')
+    expect(field('Nombre del producto')).toHaveValue('')
+    expect(field('Precio unitario')).toHaveValue('')
+    expect(field('Categoría')).toHaveValue(categories[1].id)
+    expect(field('Código')).toHaveFocus()
+  })
+
+  it('al editar recupera los cambios sin guardar de esa misma versión del producto', async () => {
+    const product: ProductListItem = { ...saved, category_name: 'Laptops' }
+    const { user } = renderForm({ product })
+    await user.clear(field('Nombre del producto'))
+    await user.type(field('Nombre del producto'), 'Laptop renovada')
+    cleanup()
+    renderForm({ product })
+    expect(field('Nombre del producto')).toHaveValue('Laptop renovada')
+    cleanup()
+    renderForm({ product: { ...product, updated_at: '2026-09-30T10:00:00Z' } })
+    expect(field('Nombre del producto')).toHaveValue('Laptop de 13 pulgadas')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('bloquea el guardado mientras se envía', async () => {

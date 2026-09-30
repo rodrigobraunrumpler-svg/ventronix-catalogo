@@ -7,6 +7,7 @@ import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { settle } from '@/lib/action-result'
+import { clearAllDrafts } from '@/lib/drafts'
 import { signOut } from '../actions'
 
 export function SignOutButton({ compact = false }: { compact?: boolean }) {
@@ -21,7 +22,9 @@ export function SignOutButton({ compact = false }: { compact?: boolean }) {
         toast.error(result.error.message)
         return
       }
+      // Al salir no quedan datos del catálogo en el navegador: ni caché ni borradores.
       queryClient.clear()
+      clearAllDrafts()
       router.replace('/login')
       router.refresh()
     })

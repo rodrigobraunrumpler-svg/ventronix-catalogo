@@ -345,3 +345,68 @@ test('sin conexión, guardar avisa y conserva lo escrito', async ({ page }) => {
   await expect(dialog.getByRole('alert')).toContainText('Revisa tu conexión')
   await expect(dialog.getByLabel('Nombre de la categoría')).toHaveValue('Impresoras')
 })
+
+test('la ventana conserva lo escrito al cerrarla y al recargar; Descartar lo borra', async ({
+  page,
+}) => {
+  await seed(['Laptops'])
+  await login(page)
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await dialog.getByLabel('Código').fill('lap-020')
+  await dialog.getByLabel('Nombre del producto').fill('Laptop de 16 pulgadas')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+
+  await page.reload()
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  await expect(dialog.getByRole('status')).toContainText('Recuperamos lo que estabas escribiendo')
+  // El foco va al primer campo, no a «Descartar»: Enter no borra el borrador por accidente.
+  await expect(dialog.getByLabel('Código')).toBeFocused()
+  await expect(dialog.getByLabel('Código')).toHaveValue('lap-020')
+  await expect(dialog.getByLabel('Nombre del producto')).toHaveValue('Laptop de 16 pulgadas')
+  await dialog.getByRole('button', { name: 'Descartar' }).click()
+  await expect(dialog.getByLabel('Código')).toHaveValue('')
+})
+
+test('cerrar sesión borra los borradores del navegador', async ({ page }) => {
+  await seed(['Laptops'])
+  await login(page)
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await dialog.getByLabel('Código').fill('lap-021')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+
+  await login(page)
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  await expect(dialog.getByLabel('Código')).toHaveValue('')
+  await expect(dialog.getByRole('status')).toHaveCount(0)
+})
+
+test('Crear y añadir otro permite cargar varios productos seguidos', async ({ page }) => {
+  await seed(['Laptops'])
+  await login(page)
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await dialog.getByLabel('Código').fill('lap-030')
+  await dialog.getByLabel('Nombre del producto').fill('Laptop A')
+  await dialog.getByLabel('Categoría').selectOption({ label: 'Laptops' })
+  await dialog.getByLabel('Precio unitario').fill('1000')
+  await dialog.getByRole('button', { name: 'Crear y añadir otro' }).click()
+
+  await expect(page.getByText('Producto creado')).toBeVisible()
+  await expect(dialog.getByLabel('Código')).toBeFocused()
+  await expect(dialog.getByLabel('Código')).toHaveValue('')
+  await expect(dialog.getByLabel('Categoría').locator('option:checked')).toHaveText('Laptops')
+  await dialog.getByLabel('Código').fill('lap-031')
+  await dialog.getByLabel('Nombre del producto').fill('Laptop B')
+  await dialog.getByLabel('Precio unitario').fill('2000')
+  await dialog.getByRole('button', { name: 'Crear producto' }).click()
+
+  await expect(dialog).toHaveCount(0)
+  const list = page.getByRole('region', { name: 'Lista de productos' })
+  await expect(list.getByText('Laptop A').filter({ visible: true })).toBeVisible()
+  await expect(list.getByText('Laptop B').filter({ visible: true })).toBeVisible()
+})

@@ -23,7 +23,7 @@ type DeleteProductDialogProps = {
 // Confirmación con código y nombre (plan, tarea 5).
 export function DeleteProductDialog({ product, onConfirm, onClose }: DeleteProductDialogProps) {
   const [pending, setPending] = useState(false)
-  const returnFocus = useReturnFocus()
+  const returnFocus = useReturnFocus(product !== null)
 
   async function confirm() {
     if (!product) return

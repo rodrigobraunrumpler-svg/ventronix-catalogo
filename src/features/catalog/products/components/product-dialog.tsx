@@ -2,35 +2,36 @@
 
 import { toast } from 'sonner'
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useReturnFocus } from '@/lib/use-return-focus'
 import { useCategoryOptions } from '../../categories/hooks'
 import type { ProductListItem } from '../../types'
 import { useCatalogFilters, useProduct, useProductMutations } from '../hooks'
 import { ProductForm } from './product-form'
-import { useReturnFocus } from '@/lib/use-return-focus'
 
-export type ProductSheetState =
+export type ProductDialogState =
   { mode: 'create' } | { mode: 'edit'; product: ProductListItem } | null
 
-type ProductSheetProps = {
-  state: ProductSheetState
+type ProductDialogProps = {
+  state: ProductDialogState
   onClose: () => void
   onCreateCategory: () => void
 }
 
-// Alta y edición sin salir de la lista (spec §7); el estado del panel no va en la URL.
-export function ProductSheet({ state, onClose, onCreateCategory }: ProductSheetProps) {
+// Alta y edición en una ventana centrada, sin salir de la lista (spec §7). Lo escrito queda como
+// borrador: cerrar la ventana no lo pierde.
+export function ProductDialog({ state, onClose, onCreateCategory }: ProductDialogProps) {
   const editing = state?.mode === 'edit'
   const options = useCategoryOptions()
   const current = useProduct(editing ? state.product.id : null)
   const [{ category: selectedCategory }] = useCatalogFilters()
   const { create, update } = useProductMutations()
-  const returnFocus = useReturnFocus()
+  const returnFocus = useReturnFocus(state !== null)
 
   const categories = options.data ?? []
   const defaultCategoryId = categories.some((c) => c.id === selectedCategory)
@@ -42,24 +43,25 @@ export function ProductSheet({ state, onClose, onCreateCategory }: ProductSheetP
   const gone = editing && current.isSuccess && current.data === null
 
   return (
-    <Sheet open={state !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent {...returnFocus} side="right" className="w-full gap-0 p-0 sm:max-w-[540px]">
-        <SheetHeader className="border-b px-6 py-5">
-          <SheetTitle className="text-lg font-bold">
+    <Dialog open={state !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        {...returnFocus}
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[680px]"
+      >
+        <DialogHeader className="border-b px-6 pt-5 pr-12 pb-4">
+          <DialogTitle className="text-lg font-bold">
             {editing ? 'Editar producto' : 'Nuevo producto'}
-          </SheetTitle>
-          <SheetDescription>
-            {editing
-              ? 'Actualiza los datos de tu catálogo.'
-              : 'Añade los datos que necesitas para trabajar.'}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogTitle>
+          <DialogDescription>
+            Si cierras sin guardar, conservamos lo que escribiste.
+          </DialogDescription>
+        </DialogHeader>
 
         {state === null ? null : loading ? (
           <p className="px-6 py-5 text-sm text-muted-foreground">Cargando…</p>
         ) : failed ? (
           <p role="alert" className="px-6 py-5 text-sm text-destructive">
-            No pudimos cargar los datos. Cierra el panel e inténtalo de nuevo.
+            No pudimos cargar los datos. Cierra la ventana e inténtalo de nuevo.
           </p>
         ) : gone ? (
           <p role="alert" className="px-6 py-5 text-sm text-destructive">
@@ -72,15 +74,15 @@ export function ProductSheet({ state, onClose, onCreateCategory }: ProductSheetP
             categories={categories}
             defaultCategoryId={defaultCategoryId}
             onSubmit={(values) => (editing ? update(state.product.id, values) : create(values))}
-            onSaved={() => {
+            onSaved={(_, { another }) => {
               toast.success(editing ? 'Cambios guardados' : 'Producto creado')
-              onClose()
+              if (!another) onClose()
             }}
             onCancel={onClose}
             onCreateCategory={onCreateCategory}
           />
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
