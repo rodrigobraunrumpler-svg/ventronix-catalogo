@@ -69,8 +69,9 @@ Crea la cuenta con `pnpm owner:create`, usando la URL de producción y la clave 
    | `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto de producción        |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave publicable (`sb_publishable_…`) |
    | `DECOLECTA_TOKEN`                      | Clave de api.decolecta.com (RUC)      |
+   | `WHATSAPP_SESSION_KEY`                 | Clave de la sesión de WhatsApp        |
 
-   No añadas la clave secreta de Supabase ni ninguna otra variable. `DECOLECTA_TOKEN` es opcional y solo la lee el servidor: sin ella, el RUC del cliente se escribe a mano.
+   No añadas la clave secreta de Supabase ni ninguna otra variable. `DECOLECTA_TOKEN` y `WHATSAPP_SESSION_KEY` son opcionales y solo las lee el servidor: sin la primera, el RUC del cliente se escribe a mano; sin la segunda, «Enviar por WhatsApp» abre el chat. `WHATSAPP_SESSION_KEY` debe ser la misma con la que se vinculó el número (si vinculas desde tu equipo con `pnpm start`, la de tu `.env.local`); si cambia, hay que volver a vincular.
 
 3. Despliega la rama `main`. A partir de ahí, cada merge a `main` se publica en producción.
 4. Opcional: añade tu dominio en Settings → Domains y actualiza la Site URL en Supabase.
@@ -93,6 +94,7 @@ Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba de
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.
 - [ ] En una proforma generada, «Descargar PDF» baja el documento con el logotipo y los datos de la empresa, y «Enviar por WhatsApp» abre el chat del cliente con el mensaje.
+- [ ] Con WhatsApp vinculado en «Empresa», «Enviar por WhatsApp» manda la proforma a un celular tuyo y llega con el PDF y el mensaje. Vincular espera hasta 2 minutos (`maxDuration` de 150 s en «Empresa») y enviar, hasta 1 (60 s en Productos): entra en el plan Pro.
 - [ ] El código del navegador no contiene ninguna clave secreta. Con las variables de producción en `.env.local`, ejecuta:
       `pnpm build && (grep -rEo 'sb_secret_[A-Za-z0-9_-]{20,}' .next/static || echo "sin claves secretas")`
 
@@ -142,6 +144,7 @@ Con Supabase Pro, las copias diarias se restauran desde la sección Backups del 
 - **Pausa por inactividad (Supabase Free):** si nadie usa el catálogo durante una semana, Supabase pausa el proyecto y la app deja de cargar. Reactívalo desde el panel de Supabase; tarda unos minutos.
 - **Variables:** las `NEXT_PUBLIC_` se incrustan al compilar. Si cambias una en Vercel, vuelve a desplegar para que el cambio surta efecto.
 - **Rotar claves:** si la clave secreta pudo filtrarse, crea una nueva y revoca la anterior en Project Settings → API Keys. Si rotas la publicable, actualiza la variable en Vercel y vuelve a desplegar.
+- **WhatsApp desvinculado:** si el teléfono pasa unos 14 días sin internet o cierras el dispositivo desde WhatsApp, «Enviar por WhatsApp» avisa y hay que volver a vincular en «Empresa». Mientras tanto, «Abrir el chat» sigue funcionando.
 - **Contraseña olvidada o acceso a revocar:** sigue [setup.md](setup.md#cuenta-de-acceso).
 
 ## 7. Moneda

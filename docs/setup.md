@@ -36,6 +36,15 @@ Las pruebas e2e no usan el servicio real: Playwright arranca la app con `RUC_PRO
 
 «Descargar PDF» genera la proforma en el servidor con `@react-pdf/renderer`, con la plantilla del prototipo. Usa las fuentes de `src/features/proforma/document/fonts` (Plus Jakarta Sans y JetBrains Mono, licencia OFL incluida) y el logotipo de `public/brand/ventronix-wordmark.png`. El PDF no se guarda en ningún sitio.
 
+## WhatsApp automático
+
+Con el WhatsApp de la empresa vinculado, «Enviar por WhatsApp» manda la proforma sola desde ese número ([spec](superpowers/specs/2026-09-30-whatsapp-automatico-design.md)). Usa [Baileys](https://github.com/WhiskeySockets/Baileys), una conexión no oficial: la app queda como un dispositivo vinculado, igual que WhatsApp Web.
+
+1. Genera una clave con `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` y guárdala como `WHATSAPP_SESSION_KEY` en `.env.local` (solo servidor, nunca con `NEXT_PUBLIC_`). Cifra la sesión en la base: si la cambias, hay que volver a vincular.
+2. En «Empresa» → WhatsApp → «Vincular WhatsApp», escribe el celular de la empresa y, en el teléfono, el código que aparece (WhatsApp → Dispositivos vinculados → Vincular con el número de teléfono).
+
+Sin clave, «Enviar por WhatsApp» abre el chat con el mensaje, como antes. Las pruebas e2e usan `WHATSAPP_PROVIDER=stub`, que vincula y «envía» sin salir a WhatsApp (el 911111111 hace de celular sin WhatsApp); también borran la vinculación de la base local.
+
 ## Arranque
 
 ```bash
