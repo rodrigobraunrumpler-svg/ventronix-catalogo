@@ -32,6 +32,10 @@ La ventana «Completar proforma» consulta SUNAT con [Decolecta](https://decolec
 
 Las pruebas e2e no usan el servicio real: Playwright arranca la app con `RUC_PROVIDER=stub`, que responde con datos de prueba (`20000000001` activo, `20000000010` de baja y no habido, `20000000036` sin servicio; cualquier otro RUC válido, no encontrado). Ese proveedor nunca se usa en producción.
 
+## Documento PDF
+
+«Descargar PDF» genera la proforma en el servidor con `@react-pdf/renderer`, con la plantilla del prototipo. Usa las fuentes de `src/features/proforma/document/fonts` (Plus Jakarta Sans y JetBrains Mono, licencia OFL incluida) y el logotipo de `public/brand/ventronix-wordmark.png`. El PDF no se guarda en ningún sitio.
+
 ## Arranque
 
 ```bash

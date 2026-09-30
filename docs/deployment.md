@@ -92,6 +92,7 @@ Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba de
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.
+- [ ] En una proforma generada, «Descargar PDF» baja el documento con el logotipo y los datos de la empresa, y «Enviar por WhatsApp» abre el chat del cliente con el mensaje.
 - [ ] El código del navegador no contiene ninguna clave secreta. Con las variables de producción en `.env.local`, ejecuta:
       `pnpm build && (grep -rEo 'sb_secret_[A-Za-z0-9_-]{20,}' .next/static || echo "sin claves secretas")`
 

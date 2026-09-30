@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { connect, fillCompanyProfile, resetCatalog, resetCompanyProfile } from '../integration/db'
 import { login } from './session'
@@ -123,4 +124,38 @@ test('sin los datos de la empresa, «Generar» lleva a completarlos y luego deja
   await bar(page).getByRole('button', { name: 'Completar proforma' }).click()
   await expect(dialog(page).getByLabel('Razón social o nombre')).toHaveValue('Cliente de prueba')
   await expect(dialog(page).getByRole('button', { name: 'Generar proforma' })).toBeEnabled()
+})
+
+test('descarga el PDF y abre WhatsApp con el mensaje escrito', async ({ page }) => {
+  await seed()
+  // wa.me responde con una página de prueba: las e2e nunca salen a WhatsApp.
+  await page
+    .context()
+    .route('https://wa.me/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<title>WhatsApp</title>' }),
+    )
+  await login(page)
+  await addLaptop14(page)
+  await bar(page).getByRole('button', { name: 'Completar proforma' }).click()
+  const panel = dialog(page)
+  await panel.getByLabel('Razón social o nombre').fill('Cliente de ejemplo S.A.C.')
+  await panel.getByLabel('Celular').fill('987 654 321')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
+
+  const download = page.waitForEvent('download')
+  await panel.getByRole('button', { name: 'Descargar PDF' }).click()
+  const file = await download
+  expect(file.suggestedFilename()).toBe('Proforma-0001-Cliente-de-ejemplo-SAC.pdf')
+  expect(
+    readFileSync(await file.path())
+      .subarray(0, 5)
+      .toString(),
+  ).toBe('%PDF-')
+
+  const chat = page.context().waitForEvent('page')
+  await panel.getByRole('button', { name: 'Enviar por WhatsApp' }).click()
+  expect((await chat).url()).toContain(
+    'https://wa.me/51987654321?text=Hola%2C%20Cliente%20de%20ejemplo%20S.A.C.%20Le%20env',
+  )
 })
