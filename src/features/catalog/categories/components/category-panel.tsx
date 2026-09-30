@@ -5,22 +5,13 @@ import { useQueryState } from 'nuqs'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { CategoryListItem } from '../../types'
 import { useCategories, useCategoryMutations } from '../hooks'
 import { categoryColor } from '../theme'
-import { CategoryForm } from './category-form'
+import { CategoryDialog, type CategoryDialogState } from './category-dialog'
 import { DeleteCategoryDialog } from './delete-category-dialog'
-
-type FormState = { mode: 'create' } | { mode: 'rename'; category: CategoryListItem } | null
 
 function inUseMessage({ name, product_count: count }: CategoryListItem) {
   return count === 1
@@ -38,9 +29,9 @@ function CountPill({ children }: { children: ReactNode }) {
 
 export function CategoryPanel() {
   const { data: categories, isPending, isError, refetch } = useCategories()
-  const { create, rename, remove } = useCategoryMutations()
+  const { remove } = useCategoryMutations()
   const [selectedId, setSelectedId] = useQueryState('category')
-  const [form, setForm] = useState<FormState>(null)
+  const [form, setForm] = useState<CategoryDialogState>(null)
   const [toDelete, setToDelete] = useState<CategoryListItem | null>(null)
 
   const activeId = categories?.some((category) => category.id === selectedId) ? selectedId : null
@@ -157,32 +148,7 @@ export function CategoryPanel() {
         Solo se pueden eliminar categorías sin productos.
       </p>
 
-      <Dialog open={form !== null} onOpenChange={(open) => !open && setForm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {form?.mode === 'rename' ? 'Renombrar categoría' : 'Nueva categoría'}
-            </DialogTitle>
-            <DialogDescription>
-              Agrupa tus productos para encontrarlos más fácilmente.
-            </DialogDescription>
-          </DialogHeader>
-          {form ? (
-            <CategoryForm
-              key={form.mode === 'rename' ? form.category.id : 'create'}
-              defaultName={form.mode === 'rename' ? form.category.name : undefined}
-              onSubmit={(values) =>
-                form.mode === 'rename' ? rename(form.category.id, values) : create(values)
-              }
-              onSaved={() => {
-                toast.success(form.mode === 'rename' ? 'Categoría actualizada' : 'Categoría creada')
-                setForm(null)
-              }}
-              onCancel={() => setForm(null)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <CategoryDialog state={form} onClose={() => setForm(null)} />
 
       <DeleteCategoryDialog
         category={toDelete}

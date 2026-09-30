@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { unitPriceSchema } from '@/features/catalog/money'
+import { formatPrice, unitPriceSchema } from '@/features/catalog/money'
 
 describe('precio unitario', () => {
   it.each([
@@ -18,4 +18,14 @@ describe('precio unitario', () => {
       expect(unitPriceSchema.safeParse(input).success).toBe(false)
     },
   )
+})
+
+describe('presentación del precio', () => {
+  it.each([
+    ['890.00', '890.00'],
+    ['12490.00', '12,490.00'],
+    ['9999999999.99', '9,999,999,999.99'],
+  ])('muestra %s como %s sin pasar por coma flotante', (value, expected) => {
+    expect(formatPrice(value)).toBe(expected)
+  })
 })

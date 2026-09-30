@@ -7,6 +7,13 @@ import {
   deleteCategoryRow,
   updateCategoryRow,
 } from '@/features/catalog/categories/repository'
+import { getProduct } from '@/features/catalog/products/queries'
+import {
+  createProductRow,
+  deleteProductRow,
+  updateProductRow,
+} from '@/features/catalog/products/repository'
+import type { ProductInput } from '@/features/catalog/types'
 import { ensureUser, signedInClient } from '../support/local-supabase'
 import { connect, resetCatalog } from './db'
 
@@ -117,5 +124,106 @@ describe('categorías con la sesión de la cuenta autorizada', () => {
       { id: expect.any(String), name: 'Impresoras' },
       { id: laptops, name: 'Laptops' },
     ])
+  })
+})
+
+describe('productos con la sesión de la cuenta autorizada', () => {
+  let laptops: string
+
+  const input = (overrides: Partial<ProductInput> = {}): ProductInput => ({
+    code: 'LAP-001',
+    name: 'Laptop de 14 pulgadas',
+    description: null,
+    category_id: laptops,
+    unit_price: '2590.00',
+    ...overrides,
+  })
+
+  beforeEach(async () => {
+    laptops = await categoryId('Laptops')
+  })
+
+  it('crea un producto y devuelve el precio exacto como texto', async () => {
+    const result = await createProductRow(supabase, input({ unit_price: '9999999999.99' }))
+    expect(result).toMatchObject({
+      ok: true,
+      data: { code: 'LAP-001', unit_price: '9999999999.99' },
+    })
+  })
+
+  it('rechaza un código repetido sin tocar el producto existente', async () => {
+    await createProductRow(supabase, input())
+    const result = await createProductRow(supabase, input({ name: 'Otro nombre' }))
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'CONFLICT',
+        fieldErrors: { code: ['Ese código ya está en uso. Elige otro.'] },
+      },
+    })
+    const { rows } = await db.query('select name from public.products')
+    expect(rows).toEqual([{ name: 'Laptop de 14 pulgadas' }])
+  })
+
+  it('avisa en el campo si la categoría se eliminó antes de guardar', async () => {
+    const result = await createProductRow(supabase, input({ category_id: missingId }))
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION', fieldErrors: { category_id: [expect.any(String)] } },
+    })
+  })
+
+  it('edita un producto', async () => {
+    const created = await createProductRow(supabase, input())
+    if (!created.ok) throw new Error(created.error.message)
+    const result = await updateProductRow(
+      supabase,
+      created.data.id,
+      input({ name: 'Laptop ligera', unit_price: '2490.50' }),
+    )
+    expect(result).toMatchObject({
+      ok: true,
+      data: { name: 'Laptop ligera', unit_price: '2490.50' },
+    })
+  })
+
+  it('no informa éxito al editar un producto que ya no existe', async () => {
+    const result = await updateProductRow(supabase, missingId, input())
+    expect(result).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+  })
+
+  it('no sobrescribe otro producto al editar con un código repetido', async () => {
+    await createProductRow(supabase, input())
+    const other = await createProductRow(supabase, input({ code: 'LAP-002', name: 'Otra laptop' }))
+    if (!other.ok) throw new Error(other.error.message)
+    const result = await updateProductRow(supabase, other.data.id, input({ code: 'LAP-001' }))
+    expect(result).toMatchObject({ ok: false, error: { code: 'CONFLICT' } })
+    const { rows } = await db.query('select code, name from public.products order by code')
+    expect(rows).toEqual([
+      { code: 'LAP-001', name: 'Laptop de 14 pulgadas' },
+      { code: 'LAP-002', name: 'Otra laptop' },
+    ])
+  })
+
+  it('elimina un producto y no informa éxito si ya no existe', async () => {
+    const created = await createProductRow(supabase, input())
+    if (!created.ok) throw new Error(created.error.message)
+    expect(await deleteProductRow(supabase, created.data.id)).toEqual({ ok: true, data: null })
+    const again = await deleteProductRow(supabase, created.data.id)
+    expect(again).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+  })
+
+  it('lee un producto con su categoría y el precio normalizado a dos decimales', async () => {
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.products (code, name, category_id, unit_price)
+       values ('LAP-009', 'Laptop de 16 pulgadas', $1, 4590) returning id`,
+      [laptops],
+    )
+    expect(await getProduct(supabase, rows[0].id)).toMatchObject({
+      code: 'LAP-009',
+      unit_price: '4590.00',
+      category_name: 'Laptops',
+    })
+    expect(await getProduct(supabase, missingId)).toBeNull()
   })
 })

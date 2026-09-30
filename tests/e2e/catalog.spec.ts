@@ -88,3 +88,38 @@ test('elegir una categoría la guarda en la URL y «Todos los productos» la qui
   await card.getByRole('button', { name: /^Todos los productos/ }).click()
   await expect(page).not.toHaveURL(/category=/)
 })
+
+test('crea un producto desde el panel lateral y guarda el precio exacto', async ({ page }) => {
+  await seed(['Laptops'])
+  await login(page)
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await sheet.getByLabel('Código').fill('lap-010')
+  await sheet.getByLabel('Nombre del producto').fill('Laptop de 13 pulgadas')
+  await sheet.getByLabel('Categoría').selectOption({ label: 'Laptops' })
+  await sheet.getByLabel('Precio unitario').fill('1299,5')
+  await sheet.getByRole('button', { name: 'Crear producto' }).click()
+
+  await expect(page.getByText('Producto creado')).toBeVisible()
+  await expect(sheet).toHaveCount(0)
+  await expect(categoriesCard(page).getByRole('button', { name: /^Laptops/ })).toContainText('1')
+
+  const db = await connect()
+  try {
+    const { rows } = await db.query('select code, unit_price::text as price from public.products')
+    expect(rows).toEqual([{ code: 'LAP-010', price: '1299.50' }])
+  } finally {
+    await db.end()
+  }
+})
+
+test('sin categorías, el formulario de producto permite crear una', async ({ page }) => {
+  await seed([])
+  await login(page)
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await sheet.getByRole('button', { name: 'Crear una categoría' }).click()
+  await page.getByLabel('Nombre de la categoría').fill('Plotters')
+  await page.getByRole('button', { name: 'Crear categoría' }).click()
+  await expect(sheet.getByLabel('Categoría')).toContainText('Plotters')
+})
