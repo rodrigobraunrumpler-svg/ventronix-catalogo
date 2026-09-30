@@ -171,4 +171,13 @@ describe('documentProblem', () => {
       'Revisa las cantidades, los precios y los totales.',
     )
   })
+
+  it('también el borrador necesita una validez de 1 a 365 días', () => {
+    const draft = { ...e1, draft: true, number: null }
+    const problem = 'Revisa la validez de la oferta: de 1 a 365 días.'
+    expect(documentProblem({ ...draft, validityDays: 'abc' }, company)).toBe(problem)
+    expect(documentProblem({ ...draft, validityDays: '0' }, company)).toBe(problem)
+    expect(documentProblem({ ...e1, validityDays: '400' }, company)).toBe(problem)
+    expect(documentProblem({ ...draft, validityDays: '' }, company)).toBeNull()
+  })
 })

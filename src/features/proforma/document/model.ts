@@ -52,18 +52,19 @@ function phoneLabel(value: string) {
 const percentLabel = (text: string) => `${(parsePercent(text) ?? 0) / 100}%`
 
 // Por qué no se puede generar el documento; null si se puede (spec del documento §8). El borrador
-// solo necesita cifras válidas: sirve para ver cómo va quedando.
+// solo necesita cifras válidas (importes y validez): sirve para ver cómo va quedando.
 export function documentProblem(input: DocumentInput, company: CompanyProfile) {
   const totals = totalsFromText(input)
   if (!totals || totals.total <= ZERO || !totals.withinLimit) {
     return 'Revisa las cantidades, los precios y los totales.'
   }
+  if (validityError(input.validityDays)) return 'Revisa la validez de la oferta: de 1 a 365 días.'
   if (input.draft) return null
   if (missingCompanyFields(company).length > 0) {
     return 'Completa los datos de tu empresa antes de generar el documento.'
   }
   const client = clientErrors(input.client)
-  if (client.name || client.document || client.phone || validityError(input.validityDays)) {
+  if (client.name || client.document || client.phone) {
     return 'Completa los datos del cliente.'
   }
   if (input.number === null) return 'Genera la proforma para asignarle su número.'
