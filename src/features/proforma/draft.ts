@@ -27,6 +27,8 @@ export const draftSchema = z.object({
   discountPercent: z.string(),
   shipping: z.string(),
   number: z.number().int().positive().nullable(), // asignado al generar
+  // Fecha al generar (ISO). Los borradores anteriores no la tienen: se lee como null.
+  issuedAt: z.string().nullable().default(null),
   updatedAt: z.string(),
 })
 
@@ -43,6 +45,7 @@ export const EMPTY_DRAFT: ProformaDraft = {
   discountPercent: '',
   shipping: '',
   number: null,
+  issuedAt: null,
   updatedAt: '',
 }
 
@@ -126,10 +129,12 @@ export const patchConditions = (
   ...patch,
 })
 
-export const setNumber = (draft: ProformaDraft, number: number): ProformaDraft => ({
-  ...draft,
-  number,
-})
+// El número y la fecha se fijan juntos al generar: «Corregir» conserva ambos (spec §6.3).
+export const setNumber = (
+  draft: ProformaDraft,
+  number: number,
+  issuedAt: string,
+): ProformaDraft => ({ ...draft, number, issuedAt })
 
 export const unitCount = (draft: ProformaDraft) =>
   draft.lines.reduce((sum, line) => sum + line.quantity, 0)

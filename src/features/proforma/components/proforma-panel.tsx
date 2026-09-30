@@ -37,7 +37,11 @@ export function ProformaPanel({ reserveNumber, onFinish, ...editor }: ProformaPa
         setError(result.error.message)
         return
       }
-      update((current) => setNumber(current, result.data))
+      update((current) => setNumber(current, result.data, new Date().toISOString()))
+    } else if (draft.issuedAt === null) {
+      // Proformas numeradas antes de guardar la fecha: se fija ahora.
+      const number = draft.number
+      update((current) => setNumber(current, number, new Date().toISOString()))
     }
     setView('ready')
   }

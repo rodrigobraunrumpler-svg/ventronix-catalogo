@@ -8,6 +8,7 @@ import {
   removeLine,
   restoreLine,
   restorePrice,
+  setNumber,
   setQuantity,
   setUnitPrice,
   unitCount,
@@ -80,5 +81,16 @@ describe('proforma en curso', () => {
   it('el esquema acepta la proforma vacía y rechaza datos incompletos', () => {
     expect(draftSchema.safeParse(EMPTY_DRAFT).success).toBe(true)
     expect(draftSchema.safeParse({ lines: [{ precio: 1 }] }).success).toBe(false)
+  })
+
+  it('al generar guarda el número y fija la fecha', () => {
+    const draft = setNumber(EMPTY_DRAFT, 7, '2026-09-30T15:00:00.000Z')
+    expect(draft).toMatchObject({ number: 7, issuedAt: '2026-09-30T15:00:00.000Z' })
+  })
+
+  it('lee borradores guardados antes de que existiera la fecha', () => {
+    const { issuedAt, ...older } = { ...EMPTY_DRAFT, number: 3 }
+    expect(issuedAt).toBeNull()
+    expect(draftSchema.parse(older)).toMatchObject({ number: 3, issuedAt: null })
   })
 })
