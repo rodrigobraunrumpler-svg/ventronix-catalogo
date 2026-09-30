@@ -191,6 +191,14 @@ describe('ProformaEditor', () => {
     expect(generate()).toBeDisabled()
   })
 
+  it('«Generar» solo se describe con un motivo cuando lo hay', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor()
+    expect(generate()).toHaveAccessibleDescription('Completa los datos del cliente.')
+    await user.type(screen.getByLabelText('Razón social o nombre'), 'Cliente de prueba')
+    expect(generate()).not.toHaveAttribute('aria-describedby')
+  })
+
   it('«Seguir eligiendo productos» vuelve a la lista', async () => {
     seedProforma({ lines: [line()] })
     const { onContinue, user } = renderEditor()

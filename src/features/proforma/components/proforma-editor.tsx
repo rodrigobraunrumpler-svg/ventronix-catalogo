@@ -49,7 +49,7 @@ export function ProformaEditor({
         <Button
           id="generate-proforma"
           disabled={blocker !== null || generating}
-          aria-describedby="generate-reason"
+          aria-describedby={error || blocker ? 'generate-reason' : undefined}
           onClick={onGenerate}
         >
           {generating ? 'Generando…' : 'Generar proforma'}
@@ -58,10 +58,10 @@ export function ProformaEditor({
           <p id="generate-reason" role="alert" className="text-sm text-destructive sm:text-right">
             {error}
           </p>
-        ) : (
+        ) : blocker ? (
           <p id="generate-reason" className="text-sm text-muted-foreground sm:text-right">
-            {blocker?.message}
-            {blocker?.companyLink ? (
+            {blocker.message}
+            {blocker.companyLink ? (
               <>
                 {' '}
                 <Link
@@ -73,7 +73,7 @@ export function ProformaEditor({
               </>
             ) : null}
           </p>
-        )}
+        ) : null}
       </div>
     </>
   )
