@@ -3,6 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import makeWASocket, {
   DisconnectReason,
   generateMessageIDV2,
+  isJidBroadcast,
+  isJidGroup,
+  isJidNewsletter,
   proto,
   type AuthenticationState,
   type WAMessageUpdate,
@@ -46,6 +49,12 @@ const logger = {
   error: (detail: unknown, message?: string) => console.error('[whatsapp]', message ?? '', detail),
 }
 
+// El dispositivo vinculado recibe copia de todo lo que llega al número. Estados, difusiones, grupos
+// y canales no se procesan (Baileys los rechaza sin descifrarlos): la sesión no crece con sus claves
+// y conectar sigue siendo rápido. Los chats uno a uno se procesan como siempre.
+export const ignoredChat = (jid: string) =>
+  Boolean(isJidBroadcast(jid) || isJidGroup(jid) || isJidNewsletter(jid))
+
 // Solo lo necesario para enviar: sin historial, sin aparecer «en línea» y sin consultas iniciales.
 const connect: MakeSocket = (state) =>
   makeWASocket({
@@ -54,6 +63,7 @@ const connect: MakeSocket = (state) =>
     markOnlineOnConnect: false,
     syncFullHistory: false,
     shouldSyncHistoryMessage: () => false,
+    shouldIgnoreJid: ignoredChat,
     fireInitQueries: false,
   })
 
@@ -91,6 +101,15 @@ export function baileysWhatsAppProvider(
   key: Buffer,
   makeSocket: MakeSocket = connect,
 ): WhatsAppProvider {
+  // Con otra clave (se cambió WHATSAPP_SESSION_KEY) la sesión guardada ya no se puede abrir.
+  function restore(state: string) {
+    try {
+      return createAuthState(openState(state, key))
+    } catch {
+      return null
+    }
+  }
+
   async function reserved<T>(ms: number, busy: T, run: () => Promise<T>) {
     if (!(await lockSession(supabase, ms))) return busy
     try {
@@ -138,7 +157,11 @@ export function baileysWhatsAppProvider(
       const session = await readSession(supabase)
       if (!session) return { ok: false, reason: 'not-linked' }
       return reserved<SendDocumentResult>(SEND_MS, { ok: false, reason: 'busy' }, async () => {
-        const auth = createAuthState(openState(session.state, key))
+        const auth = restore(session.state)
+        if (!auth) {
+          await clearSession(supabase)
+          return { ok: false, reason: 'logged-out' }
+        }
         const socket = makeSocket(auth.state)
         let connected = false
         try {
@@ -177,7 +200,9 @@ export function baileysWhatsAppProvider(
       const session = await readSession(supabase)
       if (session) {
         await reserved(60_000, undefined, async () => {
-          const socket = makeSocket(createAuthState(openState(session.state, key)).state)
+          const auth = restore(session.state)
+          if (!auth) return
+          const socket = makeSocket(auth.state)
           try {
             await socket.waitForConnectionUpdate(
               async ({ connection }) => connection === 'open',

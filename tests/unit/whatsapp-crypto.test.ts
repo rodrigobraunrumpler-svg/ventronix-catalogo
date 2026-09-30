@@ -19,6 +19,13 @@ describe('cifrado de la sesión', () => {
     expect(() => openState(bytes.toString('base64'), key)).toThrow()
   })
 
+  it('comprime antes de cifrar: la sesión guardada ocupa menos', () => {
+    const plain = JSON.stringify({
+      keys: Array.from({ length: 200 }, (_, id) => ({ id, type: 'Buffer' })),
+    })
+    expect(sealState(plain, key).length).toBeLessThan(plain.length / 2)
+  })
+
   it('lee la clave del entorno: 32 bytes en base64', () => {
     expect(sessionKey({ WHATSAPP_SESSION_KEY: key.toString('base64') })).toEqual(key)
     expect(sessionKey({})).toBeNull()

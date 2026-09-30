@@ -181,6 +181,16 @@ describe('proveedor de WhatsApp con Baileys', () => {
     expect(await readSession(supabase)).toBeNull()
   })
 
+  it('si la clave del servidor cambió, la sesión ya no sirve: la borra y pide vincular', async () => {
+    await linked()
+    const { calls, makeSocket } = fakeWhatsApp()
+    const provider = baileysWhatsAppProvider(supabase, randomBytes(32), makeSocket)
+    expect(await provider.sendDocument(document)).toEqual({ ok: false, reason: 'logged-out' })
+    expect(calls.sockets).toBe(0)
+    expect(await readSession(supabase)).toBeNull()
+    expect(await lockSession(supabase, 1000)).toBe(true)
+  })
+
   it('desvincular cierra la sesión en WhatsApp y la borra', async () => {
     await linked()
     const { calls, makeSocket } = fakeWhatsApp()
