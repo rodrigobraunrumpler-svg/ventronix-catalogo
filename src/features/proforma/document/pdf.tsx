@@ -1,5 +1,6 @@
 import 'server-only'
 import path from 'node:path'
+import type { ComponentProps } from 'react'
 import {
   Document,
   Font,
@@ -10,7 +11,7 @@ import {
   Text,
   View,
 } from '@react-pdf/renderer'
-import { wrapCode } from './format'
+import { flowPieces, wrapCode } from './format'
 import type { DocumentModel } from './model'
 
 const fonts = path.join(process.cwd(), 'src/features/proforma/document/fonts')
@@ -55,6 +56,9 @@ const s = StyleSheet.create({
     fontSize: 9.75,
     color: color.ink,
     lineHeight: 1.5,
+    // Sin alternativas contextuales: Jakarta cambia «1-2» por un signo menos y «1x2» por «×» (al
+    // copiar del PDF salen así), y las ligaduras de JetBrains Mono («--», «->», «..») rompen fontkit.
+    fontFeatureSettings: { calt: false },
     paddingTop: TOP,
     paddingBottom: 40,
   },
@@ -193,6 +197,7 @@ const s = StyleSheet.create({
   term: { flexDirection: 'row' },
   termNumber: { width: 11.25, marginRight: 2.25, textAlign: 'right' },
   termText: { flex: 1 },
+  flow: { flexDirection: 'row', flexWrap: 'wrap' },
   // Los textos que dependen de la página van dentro de un contenedor fijo: react-pdf 4.9 no dibuja
   // un texto dinámico (render) que sea él mismo absoluto.
   footer: { position: 'absolute', bottom: 15, left: SIDE, right: SIDE, height: 16 },
@@ -223,6 +228,26 @@ const s = StyleSheet.create({
     backgroundColor: color.lime,
   },
 })
+
+type TextStyle = ComponentProps<typeof View>['style']
+
+// Texto escrito por el usuario. Si trae una palabra más larga que su columna (ver flowPieces), sus
+// trozos van en filas que saltan de línea; la caja ocupa el lugar del texto y le pasa su estilo.
+function Words({ children, style }: { children: string; style?: TextStyle }) {
+  const paragraphs = flowPieces(children)
+  if (!paragraphs) return <Text style={style}>{children}</Text>
+  return (
+    <View style={style}>
+      {paragraphs.map((pieces, index) => (
+        <View key={index} style={s.flow}>
+          {pieces.map((piece, key) => (
+            <Text key={key}>{piece}</Text>
+          ))}
+        </View>
+      ))}
+    </View>
+  )
+}
 
 function TableHead() {
   return (
@@ -262,7 +287,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           {model.company.map((item) => (
             <View key={item.label} style={s.companyItem}>
               <Text style={s.label}>{item.label}</Text>
-              <Text style={s.semibold}>{item.value}</Text>
+              <Words style={s.semibold}>{item.value}</Words>
             </View>
           ))}
         </View>
@@ -271,7 +296,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           {model.client.map((item, index) => (
             <View key={item.label} style={index % 2 === 0 ? s.clientLeft : s.clientRight}>
               <Text style={s.label}>{item.label}</Text>
-              <Text style={[s.clientValue, { fontWeight: item.weight }]}>{item.value}</Text>
+              <Words style={[s.clientValue, { fontWeight: item.weight }]}>{item.value}</Words>
             </View>
           ))}
         </View>
@@ -283,8 +308,8 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
               <Text style={[s.td, s.quantity]}>{row.quantity}</Text>
               <Text style={[s.td, s.code, s.mono]}>{wrapCode(row.code, CODE_CHARS)}</Text>
               <View style={[s.td, s.description]}>
-                <Text style={s.semibold}>{row.name}</Text>
-                {row.description ? <Text style={s.detail}>{row.description}</Text> : null}
+                <Words style={s.semibold}>{row.name}</Words>
+                {row.description ? <Words style={s.detail}>{row.description}</Words> : null}
               </View>
               <Text style={[s.td, s.unit]}>{row.unitPrice}</Text>
               <Text style={[s.td, s.lineTotal, s.semibold]}>{row.total}</Text>
@@ -318,7 +343,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
             {model.terms.map((term, index) => (
               <View key={index} style={s.term}>
                 <Text style={[s.item, s.termNumber]}>{index + 1}.</Text>
-                <Text style={[s.item, s.termText]}>{term}</Text>
+                <Words style={[s.item, s.termText]}>{term}</Words>
               </View>
             ))}
           </View>
@@ -326,9 +351,9 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
             <View style={s.payments}>
               <Text style={s.heading}>Cuentas para el pago</Text>
               {model.payments.map((line, index) => (
-                <Text key={index} style={s.item}>
+                <Words key={index} style={s.item}>
                   {line}
-                </Text>
+                </Words>
               ))}
             </View>
           ) : null}

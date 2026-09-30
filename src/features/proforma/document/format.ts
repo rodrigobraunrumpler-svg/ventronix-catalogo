@@ -84,3 +84,31 @@ export function wrapCode(code: string, width: number) {
   if (line.trimEnd()) lines.push(line.trimEnd())
   return lines.join('\n')
 }
+
+const NBSP = ' '
+
+// Una palabra de más de 20 caracteres (un correo, una URL) se parte tras «/», «.», «-», «_», «?»,
+// «&», «=» y antes de «@»; un tramo de más de 24 sin separadores (ya no es una palabra), cada 20.
+function splitWord(word: string) {
+  if (word.length <= 20) return [word]
+  return word
+    .split(/(?<=[/.\-_?&=])|(?=@)/)
+    .filter(Boolean)
+    .flatMap((part) => (part.length > 24 ? (part.match(/.{1,20}/gu) ?? []) : [part]))
+}
+
+// react-pdf solo parte las líneas en los espacios: una palabra más larga que su columna se sale. Si
+// hay alguna, el texto se reparte en trozos (por párrafos) que el PDF coloca uno tras otro y pasa a
+// la línea siguiente cuando no caben; el espacio va pegado al final del trozo, sin partir, para que
+// ninguna línea empiece con él. null si ninguna palabra se parte: el texto va entero, como siempre.
+export function flowPieces(text: string) {
+  const paragraphs = text.split('\n').map((line) => line.split(' ').filter(Boolean).map(splitWord))
+  if (paragraphs.every((words) => words.every((pieces) => pieces.length === 1))) return null
+  return paragraphs.map((words) =>
+    words.length === 0
+      ? [NBSP]
+      : words.flatMap((pieces, index) =>
+          index < words.length - 1 ? [...pieces.slice(0, -1), pieces.at(-1) + NBSP] : pieces,
+        ),
+  )
+}

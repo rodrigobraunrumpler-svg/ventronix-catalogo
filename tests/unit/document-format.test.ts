@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   documentDates,
   documentFileName,
+  flowPieces,
   whatsappLink,
   whatsappMessage,
   wrapCode,
@@ -71,5 +72,38 @@ describe('wrapCode', () => {
 
   it('un tramo sin separadores se corta cada tantos caracteres', () => {
     expect(wrapCode('ABCDEFGHIJKLMNOPQRS', 9)).toBe('ABCDEFGHI\nJKLMNOPQR\nS')
+  })
+})
+
+describe('flowPieces', () => {
+  const nb = '\u00a0'
+
+  it('sin palabras largas deja el texto entero', () => {
+    expect(flowPieces('Jr. Asamblea 245, Huamanga')).toBeNull()
+    expect(flowPieces('Cambios dentro de los 7 días. Electroencefalografista')).toBeNull()
+  })
+
+  it('parte un correo largo en sus puntos y antes de la arroba', () => {
+    expect(flowPieces('ventronix.solucionestecnologicas@gmail.com')).toEqual([
+      ['ventronix.', 'solucionestecnologicas', '@gmail.', 'com'],
+    ])
+  })
+
+  it('reparte palabra a palabra, con el espacio pegado al final de cada una', () => {
+    expect(flowPieces('Ficha: https://www.ejemplo.com/productos/i5-16gb')).toEqual([
+      [`Ficha:${nb}`, 'https:/', '/', 'www.', 'ejemplo.', 'com/', 'productos/', 'i5-', '16gb'],
+    ])
+  })
+
+  it('un tramo de más de 24 caracteres sin separadores se corta cada 20', () => {
+    expect(flowPieces('A'.repeat(30))).toEqual([['A'.repeat(20), 'A'.repeat(10)]])
+  })
+
+  it('respeta los saltos de línea y las líneas vacías', () => {
+    expect(flowPieces('Uno dos\n\nhttps://www.ejemplo.com/productos/computadoras')).toEqual([
+      [`Uno${nb}`, 'dos'],
+      [nb],
+      ['https:/', '/', 'www.', 'ejemplo.', 'com/', 'productos/', 'computadoras'],
+    ])
   })
 })

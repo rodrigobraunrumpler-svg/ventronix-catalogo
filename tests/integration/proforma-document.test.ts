@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { DocumentInput } from '@/features/proforma/document/input'
 import { createProformaDocument } from '@/features/proforma/document/service'
 import { ensureUser, signedInClient } from '../support/local-supabase'
+import { pdfText } from '../support/pdf-text'
 import { connect, fillCompanyProfile, resetCompanyProfile } from './db'
 
 const password = 'documento-clave-123'
@@ -84,6 +85,26 @@ describe('documento PDF de la proforma', () => {
       client: { name: '', document: '', phone: '', address: '', deliveryTime: '' },
     })
     expect((await generate(draft)).fileName).toBe('Proforma-borrador.pdf')
+  })
+
+  it('se copia tal cual: los guiones de una cuenta no salen como signos menos', async () => {
+    const account = { bank: 'BCP', account: '191-1234567-0-12', cci: '00219100123456701254' }
+    await db.query('update public.company_profile set bank_accounts = $1', [
+      JSON.stringify([{ ...account, holder: null }]),
+    ])
+    const text = pdfText((await generate(input({ discountPercent: '5' }))).pdf)
+    expect(text).toContain('BCP · Cta. 191-1234567-0-12')
+    expect(text).toContain('− ') // el descuento sí lleva el signo menos
+  })
+
+  it('genera el PDF con códigos que la fuente monoespaciada uniría en ligaduras', async () => {
+    const lines = ['HP--M404', 'A->B', 'CAB_USB..C'].map((code, index) => ({
+      ...line(index + 1),
+      code,
+    }))
+    const text = pdfText((await generate(input({ lines }))).pdf)
+    expect(text).toContain('HP--M404')
+    expect(text).toContain('A->B')
   })
 
   it('rechaza el documento final si la empresa está incompleta', async () => {
