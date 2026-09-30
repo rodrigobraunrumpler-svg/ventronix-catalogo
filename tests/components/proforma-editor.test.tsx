@@ -1,0 +1,200 @@
+import { act, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Toaster } from 'sonner'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  ProformaEditor,
+  type ProformaEditorProps,
+} from '@/features/proforma/components/proforma-editor'
+import { EMPTY_DRAFT } from '@/features/proforma/draft'
+import type { RucLookupResult } from '@/features/proforma/ruc'
+import { ProformaProvider } from '@/features/proforma/store'
+import { completeCompany, e1Lines, line, seedProforma } from '../support/proforma'
+
+type Lookup = (ruc: string) => Promise<RucLookupResult>
+
+function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
+  const props: ProformaEditorProps = {
+    company: { status: 'ready', profile: completeCompany },
+    prices: undefined,
+    lookupRuc: vi.fn<Lookup>(async () => ({ kind: 'not-found' })),
+    onContinue: vi.fn(),
+    onGenerate: vi.fn(),
+    ...overrides,
+  }
+  render(
+    <ProformaProvider>
+      <ProformaEditor {...props} />
+      <Toaster />
+    </ProformaProvider>,
+  )
+  return { ...props, user: userEvent.setup() }
+}
+
+const generate = () => screen.getByRole('button', { name: 'Generar proforma' })
+const price = (name: string) => screen.getByLabelText(`Precio unitario de ${name}`)
+const withClient = { ...EMPTY_DRAFT.client, name: 'Cliente de prueba' }
+const found = (legalName: string, status = 'ACTIVO', condition = 'HABIDO'): RucLookupResult => ({
+  kind: 'found',
+  company: {
+    ruc: '20000000001',
+    legalName,
+    address: 'AV. PRUEBA 123, HUAMANGA',
+    status,
+    condition,
+  },
+})
+
+describe('ProformaEditor', () => {
+  it('calcula el resumen con el IGV incluido (ejemplo E1)', () => {
+    seedProforma({ lines: e1Lines, discountPercent: '5', shipping: '20' })
+    renderEditor()
+    const summary = within(screen.getByRole('region', { name: 'Resumen' }))
+    expect(summary.getByText('S/ 8,520.00')).toBeVisible()
+    expect(summary.getByText('− S/ 426.00')).toBeVisible()
+    expect(summary.getByText('S/ 8,094.00')).toBeVisible()
+    expect(summary.getByText('S/ 8,114.00')).toBeVisible()
+    expect(
+      summary.getByText(/Op\. gravada S\/ 6,876\.27 · IGV \(18%\) S\/ 1,237\.73/),
+    ).toBeVisible()
+    expect(screen.getByText('S/ 5,180.00')).toBeVisible()
+  })
+
+  it('«Generar» pide el nombre del cliente y se habilita al escribirlo', async () => {
+    seedProforma({ lines: [line()] })
+    const { onGenerate, user } = renderEditor()
+    expect(generate()).toBeDisabled()
+    expect(screen.getByText('Completa los datos del cliente.')).toBeVisible()
+    await user.type(screen.getByLabelText('Razón social o nombre'), 'Cliente de prueba')
+    expect(generate()).toBeEnabled()
+    await user.click(generate())
+    expect(onGenerate).toHaveBeenCalledTimes(1)
+  })
+
+  it('un precio no válido se marca y bloquea «Generar»', async () => {
+    seedProforma({ lines: [line()], client: withClient })
+    const { user } = renderEditor()
+    await user.clear(price('Laptop de 14 pulgadas'))
+    await user.type(price('Laptop de 14 pulgadas'), '12.345')
+    expect(price('Laptop de 14 pulgadas')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText('Revisa las cantidades y los precios.')).toBeVisible()
+    expect(generate()).toBeDisabled()
+  })
+
+  it('con otro precio muestra el del catálogo y «Restaurar» lo recupera', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor()
+    await user.clear(price('Laptop de 14 pulgadas'))
+    await user.type(price('Laptop de 14 pulgadas'), '2400')
+    expect(screen.getByText(/Catálogo S\/ 2,590\.00/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Restaurar' }))
+    expect(price('Laptop de 14 pulgadas')).toHaveValue('2590.00')
+  })
+
+  it('avisa si el precio del catálogo cambió y «Actualizar» lo aplica', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor({ prices: new Map([[line().productId, '2490.00']]) })
+    expect(screen.getByText(/El precio del catálogo cambió a S\/ 2,490\.00/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Actualizar' }))
+    expect(price('Laptop de 14 pulgadas')).toHaveValue('2490.00')
+    expect(screen.queryByText(/El precio del catálogo cambió/)).not.toBeInTheDocument()
+  })
+
+  it('avisa si el producto ya no está en el catálogo', () => {
+    seedProforma({ lines: [line()] })
+    renderEditor({ prices: new Map() })
+    expect(screen.getByText(/Ya no está en el catálogo/)).toBeVisible()
+  })
+
+  it('quitar una línea se puede deshacer', async () => {
+    seedProforma({ lines: e1Lines })
+    const { user } = renderEditor()
+    await user.click(screen.getByRole('button', { name: 'Quitar Impresora láser' }))
+    expect(screen.queryByLabelText('Precio unitario de Impresora láser')).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Deshacer' }))
+    expect(price('Impresora láser')).toHaveValue('850')
+  })
+
+  it('con 11 dígitos consulta el RUC una vez y completa razón social y dirección', async () => {
+    seedProforma({ lines: [line()] })
+    const lookupRuc = vi.fn<Lookup>(async () => found('EMPRESA DE PRUEBA S.A.C.'))
+    const { user } = renderEditor({ lookupRuc })
+    await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+    expect(await screen.findByDisplayValue('EMPRESA DE PRUEBA S.A.C.')).toBeVisible()
+    expect(lookupRuc).toHaveBeenCalledTimes(1)
+    expect(lookupRuc).toHaveBeenCalledWith('20000000001')
+    await user.click(screen.getByRole('button', { name: /Más datos/ }))
+    expect(screen.getByLabelText('Dirección')).toHaveValue('AV. PRUEBA 123, HUAMANGA')
+  })
+
+  it('avisa sin bloquear si SUNAT no lo tiene activo y habido', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor({
+      lookupRuc: vi.fn<Lookup>(async () =>
+        found('EMPRESA INACTIVA S.R.L.', 'BAJA DE OFICIO', 'NO HABIDO'),
+      ),
+    })
+    await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+    expect(
+      await screen.findByText(/SUNAT lo registra como BAJA DE OFICIO · NO HABIDO/),
+    ).toBeVisible()
+    expect(generate()).toBeEnabled()
+  })
+
+  it('si SUNAT no responde, deja escribir a mano', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor({
+      lookupRuc: vi.fn<Lookup>(async () => ({ kind: 'unavailable' })),
+    })
+    await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+    expect(await screen.findByText(/No pudimos consultar SUNAT/)).toBeVisible()
+    await user.type(screen.getByLabelText('Razón social o nombre'), 'Cliente escrito a mano')
+    expect(generate()).toBeEnabled()
+  })
+
+  it('una respuesta tardía de SUNAT no pisa un documento que ya cambió', async () => {
+    seedProforma({ lines: [line()] })
+    let answer: (result: RucLookupResult) => void = () => {}
+    const lookupRuc = vi.fn<Lookup>(
+      () => new Promise<RucLookupResult>((resolve) => (answer = resolve)),
+    )
+    const { user } = renderEditor({ lookupRuc })
+    const document = screen.getByLabelText('RUC o DNI')
+    await user.type(document, '20000000001')
+    await user.clear(document)
+    await user.type(document, '12345678')
+    await act(async () => answer(found('EMPRESA DE PRUEBA S.A.C.')))
+    expect(screen.getByLabelText('Razón social o nombre')).toHaveValue('')
+  })
+
+  it('un documento que no es DNI ni RUC se marca al salir del campo', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor()
+    await user.type(screen.getByLabelText('RUC o DNI'), '123')
+    await user.tab()
+    expect(screen.getByText('Escribe 8 dígitos para DNI u 11 para RUC.')).toBeVisible()
+  })
+
+  it('«Más datos» resume la validez y se abre solo si tiene un error', () => {
+    seedProforma({ lines: [line()], validityDays: '0' })
+    renderEditor()
+    const more = screen.getByRole('button', { name: /Más datos/ })
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('De 1 a 365 días.')).toBeVisible()
+  })
+
+  it('sin los datos obligatorios de la empresa, lo dice y enlaza a «Empresa»', () => {
+    seedProforma({ lines: [line()], client: withClient })
+    renderEditor({ company: { status: 'ready', profile: { ...completeCompany, ruc: null } } })
+    expect(screen.getByText(/Completa los datos de tu empresa: RUC\./)).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Ir a Empresa' })).toHaveAttribute('href', '/company')
+    expect(generate()).toBeDisabled()
+  })
+
+  it('«Seguir eligiendo productos» vuelve a la lista', async () => {
+    seedProforma({ lines: [line()] })
+    const { onContinue, user } = renderEditor()
+    await user.click(screen.getByRole('button', { name: 'Seguir eligiendo productos' }))
+    expect(onContinue).toHaveBeenCalledTimes(1)
+  })
+})
