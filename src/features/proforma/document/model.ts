@@ -22,7 +22,8 @@ export type DocumentModel = {
   date: string
   validUntil: string
   company: Pair[]
-  client: (Pair & { strong: boolean })[]
+  // Pesos de la pizarra: el cliente en negrita, su RUC o DNI seminegrita, lo demás normal.
+  client: (Pair & { weight: 400 | 600 | 700 })[]
   rows: {
     quantity: string
     code: string
@@ -36,7 +37,7 @@ export type DocumentModel = {
   taxNote: string | null
   amountInWords: string
   terms: string[]
-  payments: { text: string; strong: boolean }[]
+  payments: string[]
 }
 
 const money = (cents: bigint) => `S/ ${formatCents(cents)}`
@@ -104,17 +105,19 @@ export function buildDocumentModel(
       { label: 'Teléfono', value: company.phones.map(phoneLabel).join(' / ') },
       { label: 'Correo', value: company.email ?? '' },
     ].filter((item) => item.value),
-    client: [
-      { label: 'Cliente', value: input.client.name.trim(), strong: true },
-      {
-        label: documentKind(input.client.document) === 'dni' ? 'DNI' : 'RUC',
-        value: input.client.document,
-        strong: false,
-      },
-      { label: 'Dirección', value: input.client.address.trim(), strong: false },
-      { label: 'Celular', value: phoneLabel(input.client.phone), strong: false },
-      { label: 'Tiempo de entrega', value: input.client.deliveryTime.trim(), strong: false },
-    ].filter((item) => item.value),
+    client: (
+      [
+        { label: 'Cliente', value: input.client.name.trim(), weight: 700 },
+        {
+          label: documentKind(input.client.document) === 'dni' ? 'DNI' : 'RUC',
+          value: input.client.document,
+          weight: 600,
+        },
+        { label: 'Dirección', value: input.client.address.trim(), weight: 400 },
+        { label: 'Celular', value: phoneLabel(input.client.phone), weight: 400 },
+        { label: 'Tiempo de entrega', value: input.client.deliveryTime.trim(), weight: 400 },
+      ] satisfies DocumentModel['client']
+    ).filter((item) => item.value),
     rows: input.lines.map((line, index) => ({
       quantity: String(line.quantity),
       code: line.code,
@@ -147,14 +150,17 @@ export function buildDocumentModel(
       company.return_policy,
     ].filter((term): term is string => Boolean(term)),
     payments: [
-      ...company.bank_accounts.map((account) => ({
-        text: `${account.bank} · Cta. ${account.account} · CCI ${account.cci} · ${account.holder ?? company.legal_name ?? ''}`,
-        strong: false,
-      })),
-      ...company.wallets.map((wallet) => ({
-        text: `${walletLabel(wallet.kind)}: ${formatMobile(wallet.number)}`,
-        strong: true,
-      })),
+      // Como la pizarra: «Banco · Cta. …» y debajo «CCI …»; el titular solo si no es la empresa.
+      ...company.bank_accounts.flatMap((account) => [
+        `${account.bank} · Cta. ${account.account}`,
+        `CCI ${account.cci}`,
+        ...(account.holder && account.holder !== company.legal_name
+          ? [`Titular: ${account.holder}`]
+          : []),
+      ]),
+      ...company.wallets.map(
+        (wallet) => `${walletLabel(wallet.kind)}: ${formatMobile(wallet.number)}`,
+      ),
     ],
   }
 }

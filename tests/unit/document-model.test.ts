@@ -58,11 +58,11 @@ describe('buildDocumentModel', () => {
         { label: 'Correo', value: 'ventas@ventronix.pe' },
       ],
       client: [
-        { label: 'Cliente', value: 'Cliente de ejemplo S.A.C.', strong: true },
-        { label: 'RUC', value: '20000000001', strong: false },
-        { label: 'Dirección', value: 'Av. Ejemplo 123, Huamanga', strong: false },
-        { label: 'Celular', value: '900 000 000', strong: false },
-        { label: 'Tiempo de entrega', value: '3 días hábiles', strong: false },
+        { label: 'Cliente', value: 'Cliente de ejemplo S.A.C.', weight: 700 },
+        { label: 'RUC', value: '20000000001', weight: 600 },
+        { label: 'Dirección', value: 'Av. Ejemplo 123, Huamanga', weight: 400 },
+        { label: 'Celular', value: '900 000 000', weight: 400 },
+        { label: 'Tiempo de entrega', value: '3 días hábiles', weight: 400 },
       ],
       rows: [
         {
@@ -105,13 +105,23 @@ describe('buildDocumentModel', () => {
         'Cambios dentro de los 7 días.',
       ],
       payments: [
-        {
-          text: 'BCP · Cta. 191-1234567-0-12 · CCI 00219100123456701254 · Empresa de Pruebas S.A.C.',
-          strong: false,
-        },
-        { text: 'Yape / Plin: 987 654 321', strong: true },
+        'BCP · Cta. 191-1234567-0-12',
+        'CCI 00219100123456701254',
+        'Yape / Plin: 987 654 321',
       ],
     })
+  })
+
+  it('muestra el titular de una cuenta solo si no es la propia empresa', () => {
+    const withHolder = {
+      ...company,
+      bank_accounts: [{ ...company.bank_accounts[0], holder: 'Juan Pérez' }],
+    }
+    expect(buildDocumentModel(e1, withHolder, now).payments.slice(0, 3)).toEqual([
+      'BCP · Cta. 191-1234567-0-12',
+      'CCI 00219100123456701254',
+      'Titular: Juan Pérez',
+    ])
   })
 
   it('sin descuento ni envío solo muestra el total; con DNI lo nombra', () => {
@@ -121,7 +131,7 @@ describe('buildDocumentModel', () => {
       now,
     )
     expect(model.adjustments).toEqual([])
-    expect(model.client[1]).toEqual({ label: 'DNI', value: '12345678', strong: false })
+    expect(model.client[1]).toEqual({ label: 'DNI', value: '12345678', weight: 600 })
   })
 
   it('el borrador lleva marca, sin número de archivo y con la fecha de hoy', () => {

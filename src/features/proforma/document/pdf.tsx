@@ -42,9 +42,9 @@ const color = {
   soft: '#d6dbd2',
 }
 const SIDE = 30
-// Hueco arriba de cada página para repetir la cabecera de la tabla desde la segunda página. La
-// franja negra de la primera página lo ocupa con un margen negativo.
-const REPEAT = 36
+// Margen superior de las páginas siguientes; la franja negra de la primera lo cubre con un margen
+// negativo para quedar pegada al borde, como en la pizarra.
+const TOP = 24
 
 const s = StyleSheet.create({
   page: {
@@ -52,22 +52,24 @@ const s = StyleSheet.create({
     fontSize: 9.75,
     color: color.ink,
     lineHeight: 1.5,
-    paddingTop: REPEAT,
-    paddingBottom: 48,
+    paddingTop: TOP,
+    paddingBottom: 40,
   },
   watermark: {
     position: 'absolute',
     top: 360,
-    left: 40,
-    fontSize: 110,
+    left: -30,
+    width: 655,
+    height: 120,
+    textAlign: 'center',
+    fontSize: 96,
     fontWeight: 800,
     color: color.lime,
     opacity: 0.12,
     transform: 'rotate(-30deg)',
   },
-  repeatHead: { position: 'absolute', top: 12, left: SIDE, right: SIDE },
   header: {
-    marginTop: -REPEAT,
+    marginTop: -TOP,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -77,9 +79,26 @@ const s = StyleSheet.create({
   },
   logo: { width: 174 },
   headerRight: { alignItems: 'flex-end' },
-  headerTitle: { color: '#ffffff', fontSize: 19.5, fontWeight: 800, letterSpacing: 1.56 },
-  headerNumber: { color: color.lime, fontFamily: 'JetBrainsMono', fontSize: 13.5, fontWeight: 700 },
-  headerDate: { color: color.soft, fontSize: 9 },
+  // react-pdf monta «PROFORMA» y el número con interlineado 1.5: se dibujan a 1.2 y el resto del
+  // interlineado de la pizarra va en márgenes (más su gap de 2 px), para que las líneas caigan igual.
+  headerTitle: {
+    marginVertical: 2.9,
+    color: '#ffffff',
+    fontSize: 19.5,
+    fontWeight: 800,
+    letterSpacing: 1.56,
+    lineHeight: 1.2,
+  },
+  headerNumber: {
+    marginTop: 3.5,
+    marginBottom: 2,
+    color: color.lime,
+    fontFamily: 'JetBrainsMono',
+    fontSize: 13.5,
+    fontWeight: 700,
+    lineHeight: 1.2,
+  },
+  headerDate: { marginTop: 1.5, color: color.soft, fontSize: 9 },
   companyRow: {
     flexDirection: 'row',
     paddingVertical: 10.5,
@@ -90,7 +109,6 @@ const s = StyleSheet.create({
   companyItem: { flex: 1, paddingRight: 9 },
   label: { fontSize: 8.25, color: color.muted },
   semibold: { fontWeight: 600 },
-  bold: { fontWeight: 700 },
   client: {
     marginTop: 15,
     marginHorizontal: SIDE,
@@ -125,7 +143,13 @@ const s = StyleSheet.create({
   unit: { width: 78, textAlign: 'right' },
   lineTotal: { width: 84, textAlign: 'right' },
   detail: { fontSize: 9, color: color.muted },
-  totals: { marginTop: 13.5, marginHorizontal: SIDE, alignItems: 'flex-end' },
+  totals: {
+    marginTop: 13.5,
+    marginHorizontal: SIDE,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
   totalsBox: { width: 225 },
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4.5 },
   totalsLabel: { color: color.text },
@@ -141,14 +165,14 @@ const s = StyleSheet.create({
   },
   totalLabel: { color: '#ffffff', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.42 },
   totalValue: { color: color.lime, fontSize: 13.5, fontWeight: 800 },
-  taxNote: { marginTop: 1.5, fontSize: 8.25, color: color.muted, textAlign: 'right' },
+  taxNote: { marginTop: 6, fontSize: 8.25, color: color.muted, textAlign: 'right' },
   words: {
-    width: 300,
-    marginTop: 4.5,
+    flex: 1,
+    paddingRight: 18,
+    paddingBottom: 3,
     fontSize: 8.25,
     fontWeight: 600,
     color: color.text,
-    textAlign: 'right',
   },
   bottom: {
     marginTop: 19.5,
@@ -162,9 +186,16 @@ const s = StyleSheet.create({
   payments: { flex: 1 },
   heading: { fontSize: 9.75, fontWeight: 700, marginBottom: 6 },
   item: { fontSize: 9, color: color.text, marginBottom: 2.25 },
+  // Lista numerada con sangría francesa, como el <ol> de la pizarra (18 px).
+  term: { flexDirection: 'row' },
+  termNumber: { width: 11.25, marginRight: 2.25, textAlign: 'right' },
+  termText: { flex: 1 },
+  // Los textos que dependen de la página van dentro de un contenedor fijo: react-pdf 4.9 no dibuja
+  // un texto dinámico (render) que sea él mismo absoluto.
+  footer: { position: 'absolute', bottom: 15, left: SIDE, right: SIDE, height: 16 },
   thanks: {
     position: 'absolute',
-    bottom: 18,
+    top: 0,
     left: 0,
     right: 0,
     textAlign: 'center',
@@ -172,7 +203,14 @@ const s = StyleSheet.create({
     fontWeight: 600,
     color: color.text,
   },
-  pageNumber: { position: 'absolute', bottom: 18, right: SIDE, fontSize: 8.25, color: color.muted },
+  pageNumber: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    textAlign: 'right',
+    fontSize: 8.25,
+    color: color.muted,
+  },
   limeBar: {
     position: 'absolute',
     bottom: 0,
@@ -185,7 +223,7 @@ const s = StyleSheet.create({
 
 function TableHead() {
   return (
-    <View style={s.thead}>
+    <View fixed style={s.thead}>
       <Text style={[s.th, s.quantity]}>CANT.</Text>
       <Text style={[s.th, s.code]}>CÓDIGO</Text>
       <Text style={[s.th, s.description]}>DESCRIPCIÓN</Text>
@@ -205,11 +243,6 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
             BORRADOR
           </Text>
         ) : null}
-        <View
-          fixed
-          style={s.repeatHead}
-          render={({ pageNumber }) => (pageNumber > 1 ? <TableHead /> : null)}
-        />
 
         <View style={s.header}>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf, no es un <img> */}
@@ -217,7 +250,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           <View style={s.headerRight}>
             <Text style={s.headerTitle}>PROFORMA</Text>
             <Text style={s.headerNumber}>{model.numberLabel ?? 'BORRADOR'}</Text>
-            <Text style={[s.headerDate, { marginTop: 4.5 }]}>Fecha: {model.date}</Text>
+            <Text style={[s.headerDate, { marginTop: 6 }]}>Fecha: {model.date}</Text>
             <Text style={s.headerDate}>Válida hasta: {model.validUntil}</Text>
           </View>
         </View>
@@ -235,9 +268,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           {model.client.map((item, index) => (
             <View key={item.label} style={index % 2 === 0 ? s.clientLeft : s.clientRight}>
               <Text style={s.label}>{item.label}</Text>
-              <Text style={item.strong ? [s.clientValue, s.bold] : s.clientValue}>
-                {item.value}
-              </Text>
+              <Text style={[s.clientValue, { fontWeight: item.weight }]}>{item.value}</Text>
             </View>
           ))}
         </View>
@@ -259,6 +290,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
         </View>
 
         <View style={s.totals} wrap={false}>
+          <Text style={s.words}>{model.amountInWords}</Text>
           <View style={s.totalsBox}>
             {model.adjustments.map((item) => (
               <View key={item.label} style={s.totalsRow}>
@@ -270,46 +302,49 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
               <Text style={s.totalLabel}>TOTAL</Text>
               <Text style={s.totalValue}>{model.total}</Text>
             </View>
-            {model.taxNote ? <Text style={s.taxNote}>{model.taxNote}</Text> : null}
+            {model.taxNote ? (
+              // Los importes no se parten entre líneas: «S/» queda unido a su cifra.
+              <Text style={s.taxNote}>{model.taxNote.replace(/S\/ /g, 'S/\u00a0')}</Text>
+            ) : null}
           </View>
-          <Text style={s.words}>{model.amountInWords}</Text>
         </View>
 
         <View style={s.bottom} wrap={false}>
           <View style={s.terms}>
             <Text style={s.heading}>Términos y condiciones</Text>
             {model.terms.map((term, index) => (
-              <Text key={index} style={s.item}>
-                {index + 1}. {term}
-              </Text>
+              <View key={index} style={s.term}>
+                <Text style={[s.item, s.termNumber]}>{index + 1}.</Text>
+                <Text style={[s.item, s.termText]}>{term}</Text>
+              </View>
             ))}
           </View>
           {model.payments.length > 0 ? (
             <View style={s.payments}>
               <Text style={s.heading}>Cuentas para el pago</Text>
-              {model.payments.map((payment, index) => (
-                <Text key={index} style={payment.strong ? [s.item, s.semibold] : s.item}>
-                  {payment.text}
+              {model.payments.map((line, index) => (
+                <Text key={index} style={s.item}>
+                  {line}
                 </Text>
               ))}
             </View>
           ) : null}
         </View>
 
-        <Text
-          fixed
-          style={s.thanks}
-          render={({ pageNumber, totalPages }) =>
-            pageNumber === totalPages ? 'Gracias por su preferencia' : ''
-          }
-        />
-        <Text
-          fixed
-          style={s.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            totalPages > 1 ? `Página ${pageNumber} de ${totalPages}` : ''
-          }
-        />
+        <View fixed style={s.footer}>
+          <Text
+            style={s.thanks}
+            render={({ pageNumber, totalPages }) =>
+              pageNumber === totalPages ? 'Gracias por su preferencia' : ''
+            }
+          />
+          <Text
+            style={s.pageNumber}
+            render={({ pageNumber, totalPages }) =>
+              totalPages > 1 ? `Página ${pageNumber} de ${totalPages}` : ''
+            }
+          />
+        </View>
         <View fixed style={s.limeBar} />
       </Page>
     </Document>
