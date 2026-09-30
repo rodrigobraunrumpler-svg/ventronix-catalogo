@@ -87,7 +87,7 @@ OWNER_EMAIL=<correo> OWNER_PASSWORD=<contraseña> \
 pnpm owner:create
 ```
 
-La clave secreta se escribe solo en ese comando: nunca en archivos del repositorio ni en variables `NEXT_PUBLIC_`. `OWNER_PASSWORD` es obligatorio al crear la cuenta; si la cuenta ya existe y lo omites, solo se reasigna la marca.
+Las variables también pueden ir en `.env.local`; las que escribas en el comando tienen prioridad. La clave secreta nunca va en archivos del repositorio ni en variables `NEXT_PUBLIC_`: si la pusiste en `.env.local`, bórrala al terminar. `OWNER_PASSWORD` es obligatorio al crear la cuenta; si la cuenta ya existe y lo omites, solo se reasigna la marca.
 
 En el proyecto de producción, además:
 

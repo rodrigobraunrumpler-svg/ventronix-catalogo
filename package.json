@@ -18,7 +18,7 @@
     "test:e2e": "playwright test",
     "validate": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm build",
     "prepare": "husky",
-    "owner:create": "node scripts/create-owner.mjs",
+    "owner:create": "node --env-file-if-exists=.env.local scripts/create-owner.mjs",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "db:push": "node --env-file-if-exists=.env.local scripts/db-push.mjs"
   },

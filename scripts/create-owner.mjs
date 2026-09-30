@@ -6,8 +6,10 @@
 //   OWNER_EMAIL=<correo> OWNER_PASSWORD=<contraseña> \
 //   pnpm owner:create
 //
+// Las variables también pueden ir en .env.local; las de la línea de comandos tienen prioridad.
 // OWNER_PASSWORD es obligatorio al crear la cuenta; en una cuenta existente fija esa contraseña
-// (recuperación). La clave secreta nunca se guarda en el repositorio ni en variables NEXT_PUBLIC_.
+// (recuperación). La clave secreta nunca se guarda en el repositorio ni en variables NEXT_PUBLIC_:
+// si la pusiste en .env.local, bórrala al terminar.
 import { createClient } from '@supabase/supabase-js'
 
 const { SUPABASE_URL, SUPABASE_SECRET_KEY, OWNER_EMAIL, OWNER_PASSWORD } = process.env
@@ -25,6 +27,7 @@ const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 })
 if (error) throw error
 
 const email = OWNER_EMAIL.trim().toLowerCase()
+const project = new URL(SUPABASE_URL).host
 const existing = data.users.find((user) => user.email?.toLowerCase() === email)
 
 if (existing) {
@@ -35,8 +38,8 @@ if (existing) {
   if (updateError) throw updateError
   console.log(
     OWNER_PASSWORD
-      ? `Marca de acceso y contraseña nueva asignadas a ${email}.`
-      : `Marca de acceso asignada a ${email}.`,
+      ? `Marca de acceso y contraseña nueva asignadas a ${email} en ${project}.`
+      : `Marca de acceso asignada a ${email} en ${project}.`,
   )
 } else {
   if (!OWNER_PASSWORD) {
@@ -50,5 +53,5 @@ if (existing) {
     app_metadata: { catalog_access: 'owner' },
   })
   if (createError) throw createError
-  console.log(`Cuenta ${email} creada con acceso al catálogo.`)
+  console.log(`Cuenta ${email} creada con acceso al catálogo en ${project}.`)
 }
