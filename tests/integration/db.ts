@@ -46,3 +46,10 @@ export async function fillCompanyProfile(client: Client) {
             address = 'Av. Prueba 123, Huamanga', phones = array['066 312345']`,
   )
 }
+
+// Deja la fila única de whatsapp_session como la crea la migración: sin vincular ni reservar.
+export async function resetWhatsAppSession(client: Client) {
+  await client.query(
+    'update public.whatsapp_session set phone = null, state = null, linked_at = null, locked_until = null',
+  )
+}

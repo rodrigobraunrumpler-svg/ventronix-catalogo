@@ -133,6 +133,33 @@ export type Database = {
           },
         ]
       }
+      whatsapp_session: {
+        Row: {
+          id: boolean
+          linked_at: string | null
+          locked_until: string | null
+          phone: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          linked_at?: string | null
+          locked_until?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          linked_at?: string | null
+          locked_until?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
