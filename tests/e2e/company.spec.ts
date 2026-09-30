@@ -18,11 +18,13 @@ test('completa los datos de la empresa con cuentas, teléfonos y Yape o Plin', a
 
   await page.getByLabel('Razón social', { exact: true }).fill('Empresa de Pruebas S.A.C.')
   await page.getByLabel('RUC', { exact: true }).fill('20000000001')
+  await page.getByRole('tab', { name: /Contacto/ }).click()
   await page.getByLabel('Dirección', { exact: true }).fill('Av. Prueba 123, Huamanga')
   await page.getByLabel('Teléfono 1', { exact: true }).fill('066 312345')
   await page.getByRole('button', { name: 'Añadir teléfono' }).click()
   await page.getByLabel('Teléfono 2', { exact: true }).fill('987 654 321')
 
+  await page.getByRole('tab', { name: /Pagos/ }).click()
   await page.getByRole('button', { name: 'Añadir cuenta' }).click()
   await page.getByLabel('Banco de la cuenta 1').fill('BCP')
   await page.getByLabel('Número de cuenta 1').fill('191-1234567-0-12')
@@ -41,7 +43,9 @@ test('completa los datos de la empresa con cuentas, teléfonos y Yape o Plin', a
   await expect(page.getByLabel('Razón social', { exact: true })).toHaveValue(
     'Empresa de Pruebas S.A.C.',
   )
+  await page.getByRole('tab', { name: /Contacto/ }).click()
   await expect(page.getByLabel('Teléfono 2', { exact: true })).toHaveValue('987 654 321')
+  await page.getByRole('tab', { name: /Pagos/ }).click()
   await expect(page.getByLabel('CCI de la cuenta 1')).toHaveValue('00219100123456701254')
   await expect(page.getByLabel('Banco de la cuenta 2')).toHaveCount(0)
   await expect(
@@ -49,7 +53,7 @@ test('completa los datos de la empresa con cuentas, teléfonos y Yape o Plin', a
       .getByRole('radiogroup', { name: 'Tipo del número 1' })
       .getByRole('radio', { name: 'Plin' }),
   ).toBeChecked()
-  await expect(page.getByRole('complementary', { name: 'Vista previa' })).toContainText(
-    'Plin: 987 654 321',
-  )
+  await expect(
+    page.getByRole('complementary', { name: 'Así saldrá en tus proformas' }),
+  ).toContainText('Plin: 987 654 321')
 })

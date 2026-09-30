@@ -1,43 +1,46 @@
 'use client'
 
 import { RefreshCw } from 'lucide-react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useRucLookup } from '@/features/proforma/hooks'
 import { cn } from '@/lib/utils'
 import { useCompanyProfile, useSaveCompanyProfile } from '../hooks'
-import { CompanyForm } from './company-form'
+import { CompanyForm, CompanyHeader } from './company-form'
 
-// Campos por sección (Datos, Contacto, Condiciones y Pagos): el esqueleto tiene la forma del
-// formulario, así la pantalla no salta al cargar.
-const SKELETON_SECTIONS = [3, 3, 3, 2]
+// Campos del esqueleto: la forma de la pestaña Datos y de la vista previa, así la pantalla no
+// salta al cargar.
+const SKELETON_FIELDS = [true, false, false]
 
 function CompanySkeleton() {
   return (
-    <div aria-busy className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div aria-busy className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <p className="sr-only">Cargando los datos de tu empresa…</p>
-      <div className="grid gap-5">
-        {SKELETON_SECTIONS.map((fields, section) => (
-          <div key={section} className="grid gap-4 rounded-[14px] border bg-card p-5">
-            <Skeleton className="h-4 w-28" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {Array.from({ length: fields }, (_, field) => (
-                <div key={field} className={cn('grid gap-2', field === 0 && 'sm:col-span-2')}>
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-10.5 rounded-lg" />
-                </div>
-              ))}
+      <div className="overflow-hidden rounded-[14px] border bg-card">
+        <div className="flex gap-6 border-b px-5 py-4">
+          {[64, 80, 96, 60].map((width) => (
+            <Skeleton key={width} className="h-4" style={{ width }} />
+          ))}
+        </div>
+        <div className="grid gap-4 p-5 sm:grid-cols-2">
+          {SKELETON_FIELDS.map((wide, field) => (
+            <div key={field} className={cn('grid gap-2', wide && 'sm:col-span-2')}>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-10.5 rounded-lg" />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       <div className="grid overflow-hidden rounded-[14px] border bg-card">
-        <div className="grid gap-2 bg-foreground px-5 py-4">
-          <Skeleton className="h-4 w-40 bg-white/15" />
-          <Skeleton className="h-3 w-28 bg-white/10" />
+        <div className="border-b px-4.5 py-3.5">
+          <Skeleton className="h-3 w-40" />
         </div>
-        <div className="grid gap-3 px-5 py-4">
-          {[70, 55, 85, 60, 75].map((width) => (
+        <div className="flex items-center justify-between bg-black px-4.5 py-3.5">
+          <Skeleton className="h-8 w-33 bg-white/15" />
+          <Skeleton className="h-3 w-18 bg-white/15" />
+        </div>
+        <div className="grid gap-2.5 px-4.5 py-3.5">
+          {[70, 45, 85, 60, 75].map((width) => (
             <Skeleton key={width} className="h-3" style={{ width: `${width}%` }} />
           ))}
         </div>
@@ -49,18 +52,18 @@ function CompanySkeleton() {
 export function CompanyScreen() {
   const profile = useCompanyProfile()
   const save = useSaveCompanyProfile()
+  const lookupRuc = useRucLookup()
+
+  if (profile.isSuccess && profile.data) {
+    return <CompanyForm profile={profile.data} onSubmit={save} lookupRuc={lookupRuc} />
+  }
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-1.5">
-        <h1 className="text-[28px] leading-tight font-extrabold tracking-[-0.02em]">Empresa</h1>
-        <p className="text-sm text-muted-foreground">
-          Los datos de tu empresa que salen en cada proforma.
-        </p>
-      </div>
+      <CompanyHeader />
       {profile.isPending ? (
         <CompanySkeleton />
-      ) : profile.isError || !profile.data ? (
+      ) : (
         <div
           role="alert"
           className="grid justify-items-start gap-3 rounded-[14px] border bg-card p-5"
@@ -73,12 +76,6 @@ export function CompanyScreen() {
             Reintentar
           </Button>
         </div>
-      ) : (
-        <CompanyForm
-          profile={profile.data}
-          onSubmit={save}
-          onSaved={() => toast.success('Cambios guardados')}
-        />
       )}
     </div>
   )

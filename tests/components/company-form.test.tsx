@@ -3,31 +3,63 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { CompanyForm } from '@/features/company/components/company-form'
 import type { CompanyInput, CompanyProfile } from '@/features/company/schemas'
+import type { RucLookupResult } from '@/features/proforma/ruc'
 import type { ActionResult } from '@/lib/action-result'
 import { completeCompany, emptyCompany } from '../support/company'
+
+type Lookup = (ruc: string) => Promise<RucLookupResult>
 
 function renderForm(
   profile: CompanyProfile = emptyCompany,
   result: ActionResult<CompanyProfile> = { ok: true, data: profile },
+  lookupRuc?: Lookup,
 ) {
   const onSubmit = vi.fn<(values: CompanyInput) => Promise<ActionResult<CompanyProfile>>>(
     async () => result,
   )
   const onSaved = vi.fn()
-  render(<CompanyForm profile={profile} onSubmit={onSubmit} onSaved={onSaved} />)
+  render(
+    <CompanyForm profile={profile} onSubmit={onSubmit} onSaved={onSaved} lookupRuc={lookupRuc} />,
+  )
   return { onSubmit, onSaved, user: userEvent.setup() }
 }
 
 const save = () => screen.getByRole('button', { name: 'Guardar cambios' })
+const tab = (name: RegExp) => screen.getByRole('tab', { name })
+const sunat: RucLookupResult = {
+  kind: 'found',
+  company: {
+    ruc: '20000000001',
+    legalName: 'EMPRESA DE PRUEBA S.A.C.',
+    address: 'AV. PRUEBA 123, HUAMANGA',
+    status: 'ACTIVO',
+    condition: 'HABIDO',
+  },
+}
 
 describe('CompanyForm', () => {
-  it('marca lo obligatorio y no guarda', async () => {
+  it('muestra una sección a la vez, con la vista previa al lado', async () => {
+    const { user } = renderForm()
+    expect(tab(/Datos/)).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Razón social')).toBeVisible()
+    expect(screen.queryByLabelText('Dirección')).not.toBeInTheDocument()
+    await user.click(tab(/Contacto/))
+    expect(screen.getByLabelText('Dirección')).toBeVisible()
+    expect(
+      screen.getByRole('complementary', { name: 'Así saldrá en tus proformas' }),
+    ).toHaveTextContent('[Razón social]')
+  })
+
+  it('al guardar con datos pendientes lleva al primer error y marca las secciones', async () => {
     const { onSubmit, user } = renderForm()
+    await user.click(tab(/Pagos/))
     await user.click(save())
     expect(await screen.findByText('Escribe la razón social.')).toBeVisible()
-    expect(
-      screen.getByText('Escribe un RUC válido: 11 dígitos con su dígito verificador.'),
-    ).toBeVisible()
+    expect(tab(/Datos/)).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByLabelText('Razón social')).toHaveFocus()
+    expect(screen.getByRole('alert')).toHaveTextContent('Revisa los campos marcados.')
+    expect(tab(/Contacto/)).toHaveAccessibleName(/2 campos por revisar/)
+    await user.click(tab(/Contacto/))
     expect(screen.getByText('Escribe la dirección.')).toBeVisible()
     expect(screen.getByLabelText('Teléfono 1')).toHaveAttribute('aria-invalid', 'true')
     expect(onSubmit).not.toHaveBeenCalled()
@@ -37,8 +69,10 @@ describe('CompanyForm', () => {
     const { onSubmit, onSaved, user } = renderForm()
     await user.type(screen.getByLabelText('Razón social'), 'Empresa de Pruebas S.A.C.')
     await user.type(screen.getByLabelText('RUC'), '20000000001')
+    await user.click(tab(/Contacto/))
     await user.type(screen.getByLabelText('Dirección'), 'Av. Prueba 123')
     await user.type(screen.getByLabelText('Teléfono 1'), '066 312345')
+    await user.click(tab(/Pagos/))
     await user.click(screen.getByRole('button', { name: 'Añadir cuenta' }))
     await user.type(screen.getByLabelText('Banco de la cuenta 1'), 'BCP')
     await user.type(screen.getByLabelText('Número de cuenta 1'), '191-1234567-0-12')
@@ -62,6 +96,7 @@ describe('CompanyForm', () => {
         wallets: [{ kind: 'plin', number: '987654321' }],
       }),
     )
+    expect(screen.getByRole('status')).toHaveTextContent('Cambios guardados')
   })
 
   it('Subir y Bajar cambian el orden de las cuentas', async () => {
@@ -72,6 +107,7 @@ describe('CompanyForm', () => {
         { bank: 'Interbank', account: '2003001234567', cci: '00320000300123456722', holder: null },
       ],
     })
+    await user.click(tab(/Pagos/))
     await user.click(screen.getByRole('button', { name: 'Bajar cuenta 1' }))
     await user.click(save())
     await vi.waitFor(() => expect(onSubmit).toHaveBeenCalled())
@@ -81,12 +117,12 @@ describe('CompanyForm', () => {
     ])
   })
 
-  it('pide al menos un teléfono', async () => {
-    const { onSubmit, user } = renderForm(completeCompany)
-    await user.click(screen.getByRole('button', { name: 'Quitar teléfono 1' }))
-    await user.click(save())
-    expect(await screen.findByText('Añade al menos un teléfono.')).toBeVisible()
-    expect(onSubmit).not.toHaveBeenCalled()
+  it('no deja quitar el único teléfono', async () => {
+    const { user } = renderForm(completeCompany)
+    await user.click(tab(/Contacto/))
+    expect(screen.getByRole('button', { name: 'Quitar teléfono 1' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Añadir teléfono' }))
+    expect(screen.getByRole('button', { name: 'Quitar teléfono 1' })).toBeEnabled()
   })
 
   it('muestra el error del servidor sin perder lo escrito', async () => {
@@ -100,16 +136,37 @@ describe('CompanyForm', () => {
     expect(onSaved).not.toHaveBeenCalled()
   })
 
+  it('con el RUC completa desde SUNAT la razón social y la dirección vacías', async () => {
+    const lookupRuc = vi.fn<Lookup>(async () => sunat)
+    const { user } = renderForm(emptyCompany, undefined, lookupRuc)
+    await user.type(screen.getByLabelText('RUC'), '20000000001')
+    expect(await screen.findByDisplayValue('EMPRESA DE PRUEBA S.A.C.')).toBeVisible()
+    expect(lookupRuc).toHaveBeenCalledTimes(1)
+    await user.click(tab(/Contacto/))
+    expect(screen.getByLabelText('Dirección')).toHaveValue('AV. PRUEBA 123, HUAMANGA')
+  })
+
+  it('no pisa una razón social ya escrita', async () => {
+    const lookupRuc = vi.fn<Lookup>(async () => sunat)
+    const { user } = renderForm(emptyCompany, undefined, lookupRuc)
+    await user.type(screen.getByLabelText('Razón social'), 'Mi empresa')
+    await user.type(screen.getByLabelText('RUC'), '20000000001')
+    await vi.waitFor(() => expect(lookupRuc).toHaveBeenCalledTimes(1))
+    expect(screen.getByLabelText('Razón social')).toHaveValue('Mi empresa')
+  })
+
   it('la vista previa muestra los datos como saldrán en la proforma', () => {
     renderForm({
       ...completeCompany,
       trade_name: 'Pruebas',
       wallets: [{ kind: 'ambos', number: '987654321' }],
     })
-    const preview = screen.getByRole('complementary', { name: 'Vista previa' })
-    expect(preview).toHaveTextContent('Pruebas')
-    expect(preview).toHaveTextContent(/RUC\s*20000000001/)
+    const preview = screen.getByRole('complementary', { name: 'Así saldrá en tus proformas' })
+    expect(preview).toHaveTextContent('Empresa de Pruebas S.A.C. · Pruebas')
+    expect(preview).toHaveTextContent('RUC 20000000001')
+    expect(preview).toHaveTextContent('Tel. 066 312 345')
     expect(preview).toHaveTextContent('Yape / Plin: 987 654 321')
-    expect(preview).toHaveTextContent('Validez de la oferta: 7 días.')
+    expect(preview).toHaveTextContent('1. Validez de la oferta: 7 días.')
+    expect(preview).toHaveTextContent('2. [Condición de pago]')
   })
 })

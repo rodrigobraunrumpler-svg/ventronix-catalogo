@@ -113,6 +113,7 @@ test('sin los datos de la empresa, «Generar» lleva a completarlos y luego deja
   await expect(page).toHaveURL(/\/company$/)
   await page.getByLabel('Razón social', { exact: true }).fill('Empresa de Pruebas S.A.C.')
   await page.getByLabel('RUC', { exact: true }).fill('20000000001')
+  await page.getByRole('tab', { name: /Contacto/ }).click()
   await page.getByLabel('Dirección', { exact: true }).fill('Av. Prueba 123, Huamanga')
   await page.getByLabel('Teléfono 1', { exact: true }).fill('066 312345')
   await page.getByRole('button', { name: 'Guardar cambios' }).click()

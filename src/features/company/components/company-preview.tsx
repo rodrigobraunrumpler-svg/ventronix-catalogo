@@ -1,3 +1,5 @@
+import { Eye } from 'lucide-react'
+import Image from 'next/image'
 import { digitsOnly } from '@/lib/peru'
 import { formatMobile, walletLabel } from '../format'
 import type { WalletKind } from '../schemas'
@@ -19,80 +21,84 @@ type PreviewValues = {
 
 const text = (value: string | null | undefined) => value?.trim() ?? ''
 
-function Item({ label, children, wide }: { label: string; children: string; wide?: boolean }) {
-  return (
-    <div className={wide ? 'col-span-2' : undefined}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-semibold wrap-break-word">{children || '—'}</dd>
-    </div>
-  )
+// 987654321 → 987 654 321; lo demás, tal como se escribió.
+function groupPhone(value: string) {
+  const digits = digitsOnly(value)
+  return digits.length === 9 ? formatMobile(digits) : value
 }
 
-// Cómo saldrán estos datos en la proforma (spec §6.2).
+const block = 'grid gap-1 border-b border-[#edf0e8] px-4.5 py-3.5 text-xs text-secondary-foreground'
+
+// Cómo saldrán estos datos en la proforma (spec §6.2 y prototipo). Lo que falta se ve entre
+// corchetes, para saber qué completar.
 export function CompanyPreview({ values }: { values: PreviewValues }) {
   const legal = text(values.legal_name)
   const trade = text(values.trade_name)
   const phones = (values.phones ?? []).map((phone) => text(phone.number)).filter(Boolean)
   const days = Number(values.default_validity_days)
   const validity = Number.isInteger(days) && days >= 1 && days <= 365 ? days : '—'
-  const accounts = values.bank_accounts ?? []
-  const wallets = values.wallets ?? []
+  const holder = legal || '[Razón social]'
+  const accounts = (values.bank_accounts ?? []).filter((account) =>
+    [account.bank, account.account, account.cci].some((value) => text(value)),
+  )
+  const wallets = (values.wallets ?? []).filter((wallet) => text(wallet.number))
 
   return (
     <aside
-      aria-label="Vista previa"
-      className="grid overflow-hidden rounded-[14px] border bg-card text-sm xl:sticky xl:top-8"
+      aria-labelledby="company-preview-title"
+      className="overflow-hidden rounded-[14px] border bg-card xl:sticky xl:top-8"
     >
-      <div className="bg-black px-5 py-4 text-white">
-        <p className="text-base font-bold">{trade || legal || 'Nombre de tu empresa'}</p>
-        {trade && legal ? <p className="text-xs text-white/70">{legal}</p> : null}
+      <h2
+        id="company-preview-title"
+        className="flex items-center gap-2 border-b px-4.5 py-3.5 text-[13px] font-semibold text-muted-foreground"
+      >
+        <Eye className="size-3.75" aria-hidden />
+        Así saldrá en tus proformas
+      </h2>
+      <div className="flex items-center justify-between gap-3 bg-black px-4.5 py-3.5">
+        <Image
+          src="/brand/ventronix-wordmark.png"
+          alt="Ventronix"
+          width={132}
+          height={71}
+          unoptimized
+          className="h-auto w-33"
+        />
+        <span className="text-[13px] font-extrabold tracking-[0.08em] text-white">PROFORMA</span>
       </div>
-      <dl className="grid grid-cols-2 gap-3 border-b px-5 py-4">
-        <Item label="RUC">{text(values.ruc)}</Item>
-        <Item label="Teléfono">{phones.join(' / ')}</Item>
-        <Item label="Dirección" wide>
-          {text(values.address)}
-        </Item>
-        <Item label="Correo" wide>
-          {text(values.email)}
-        </Item>
-      </dl>
-      <div className="grid gap-4 px-5 py-4">
-        <div>
-          <h3 className="mb-1.5 text-[13px] font-bold">Términos y condiciones</h3>
-          <ol className="grid list-decimal gap-0.5 pl-5 text-[13px] text-secondary-foreground">
-            <li>Validez de la oferta: {validity} días.</li>
-            {text(values.payment_terms) ? <li>{text(values.payment_terms)}</li> : null}
-            {text(values.return_policy) ? <li>{text(values.return_policy)}</li> : null}
-          </ol>
-        </div>
-        <div className="grid gap-2 text-[13px]">
-          <h3 className="font-bold">Cuentas para el pago</h3>
-          {accounts.length === 0 && wallets.length === 0 ? (
-            <p className="text-muted-foreground">Aún no hay cuentas ni números.</p>
-          ) : null}
-          {accounts.map((account, index) => (
-            <div key={index}>
-              <p className="font-semibold">
-                {text(account.bank) || 'Banco'} · Cta. {text(account.account) || '—'}
-              </p>
-              <p>CCI {digitsOnly(account.cci ?? '') || '—'}</p>
-              <p className="text-muted-foreground">
-                Titular: {text(account.holder) || legal || 'la razón social'}
-              </p>
-            </div>
-          ))}
-          {wallets.map((wallet, index) => (
-            <p key={index}>
-              {walletLabel(wallet.kind ?? 'yape')}:{' '}
-              {formatMobile(digitsOnly(wallet.number ?? '')) || '—'}
-            </p>
-          ))}
-        </div>
+      <div className={block}>
+        <p className="text-sm font-bold text-foreground">
+          {[legal || '[Razón social]', trade].filter(Boolean).join(' · ')}
+        </p>
+        <p>RUC {digitsOnly(values.ruc ?? '') || '[RUC]'}</p>
+        <p>{text(values.address) || '[Dirección]'}</p>
+        <p>{phones.length > 0 ? `Tel. ${phones.map(groupPhone).join(' / ')}` : '[Teléfonos]'}</p>
+        {text(values.email) ? <p>{text(values.email)}</p> : null}
       </div>
-      <p className="border-t px-5 py-2 text-xs text-muted-foreground">
-        Así saldrán estos datos en cada proforma.
-      </p>
+      <div className={block}>
+        <p className="mb-0.5 font-bold text-foreground">Términos y condiciones</p>
+        <p>1. Validez de la oferta: {validity} días.</p>
+        <p>2. {text(values.payment_terms) || '[Condición de pago]'}</p>
+        <p>3. {text(values.return_policy) || '[Política de devoluciones]'}</p>
+      </div>
+      <div className="grid gap-1 px-4.5 pt-3.5 pb-4.5 text-xs text-secondary-foreground">
+        <p className="mb-0.5 font-bold text-foreground">Cuentas para el pago</p>
+        {accounts.map((account, index) => (
+          <p key={index}>
+            {text(account.bank) || '[Banco]'} · Cta. {text(account.account) || '[número]'}
+            {text(account.cci) ? ` · CCI ${digitsOnly(account.cci ?? '')}` : ''} ·{' '}
+            {text(account.holder) || holder}
+          </p>
+        ))}
+        {wallets.map((wallet, index) => (
+          <p key={index} className="font-semibold text-foreground">
+            {walletLabel(wallet.kind ?? 'yape')}: {groupPhone(text(wallet.number))}
+          </p>
+        ))}
+        {accounts.length === 0 && wallets.length === 0 ? (
+          <p className="text-muted-foreground">[Añade una cuenta o un número de Yape o Plin]</p>
+        ) : null}
+      </div>
     </aside>
   )
 }
