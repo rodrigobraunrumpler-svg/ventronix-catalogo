@@ -138,6 +138,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      next_proforma_number: { Args: Record<PropertyKey, never>; Returns: number }
       search_products: {
         Args: { category?: string; page?: number; page_size?: number; search?: string }
         Returns: Json
