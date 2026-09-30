@@ -32,6 +32,19 @@ describe('LoginForm', () => {
     expect(action).not.toHaveBeenCalled()
   })
 
+  it('muestra y oculta la contraseña sin enviar el formulario', async () => {
+    const action = vi.fn()
+    render(<LoginForm action={action} />)
+    const user = userEvent.setup()
+    const password = screen.getByLabelText('Contraseña')
+    expect(password).toHaveAttribute('type', 'password')
+    await user.click(screen.getByRole('button', { name: 'Mostrar contraseña' }))
+    expect(password).toHaveAttribute('type', 'text')
+    await user.click(screen.getByRole('button', { name: 'Ocultar contraseña' }))
+    expect(password).toHaveAttribute('type', 'password')
+    expect(action).not.toHaveBeenCalled()
+  })
+
   it('avisa si no se puede contactar con el servidor', async () => {
     const action = vi.fn(async (): Promise<ActionResult<null>> => {
       throw new TypeError('Failed to fetch')
