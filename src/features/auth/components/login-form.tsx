@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { ActionResult } from '@/lib/action-result'
+import { settle, type ActionResult } from '@/lib/action-result'
 import { signInSchema } from '../schemas'
 
 type LoginFormProps = { action: (input: unknown) => Promise<ActionResult<null>> }
@@ -27,7 +27,7 @@ export function LoginForm({ action }: LoginFormProps) {
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null)
-    const result = await action(values)
+    const result = await settle(action(values))
     if (!result.ok) {
       setServerError(result.error.message)
       return

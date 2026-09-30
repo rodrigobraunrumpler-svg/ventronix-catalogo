@@ -32,6 +32,17 @@ describe('LoginForm', () => {
     expect(action).not.toHaveBeenCalled()
   })
 
+  it('avisa si no se puede contactar con el servidor', async () => {
+    const action = vi.fn(async (): Promise<ActionResult<null>> => {
+      throw new TypeError('Failed to fetch')
+    })
+    render(<LoginForm action={action} />)
+    const user = await fill('dueno@catalogo.test', 'clave-123')
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Revisa tu conexión')
+    expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeEnabled()
+  })
+
   it('muestra un error genérico del servidor y conserva el correo', async () => {
     const action = vi.fn(async (): Promise<ActionResult<null>> => ({
       ok: false,

@@ -4,7 +4,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { settle } from '@/lib/action-result'
 import { signOut } from '../actions'
 
 export function SignOutButton({ compact = false }: { compact?: boolean }) {
@@ -14,7 +16,11 @@ export function SignOutButton({ compact = false }: { compact?: boolean }) {
 
   function handleClick() {
     startTransition(async () => {
-      await signOut()
+      const result = await settle(signOut())
+      if (!result.ok) {
+        toast.error(result.error.message)
+        return
+      }
       queryClient.clear()
       router.replace('/login')
       router.refresh()

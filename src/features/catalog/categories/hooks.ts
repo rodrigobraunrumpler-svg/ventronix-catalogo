@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import type { ActionResult } from '@/lib/action-result'
+import { settle, type ActionResult } from '@/lib/action-result'
 import { catalogKeys } from '../query-keys'
 import type { CategoryInput } from '../types'
 import { createCategory, deleteCategory, updateCategory } from './actions'
@@ -38,9 +38,9 @@ export function useCategoryMutations() {
   }
 
   return {
-    create: async (input: CategoryInput) => afterSuccess(await createCategory(input)),
+    create: async (input: CategoryInput) => afterSuccess(await settle(createCategory(input))),
     rename: async (id: string, input: CategoryInput) =>
-      afterSuccess(await updateCategory(id, input)),
-    remove: async (id: string) => afterSuccess(await deleteCategory(id)),
+      afterSuccess(await settle(updateCategory(id, input))),
+    remove: async (id: string) => afterSuccess(await settle(deleteCategory(id))),
   }
 }

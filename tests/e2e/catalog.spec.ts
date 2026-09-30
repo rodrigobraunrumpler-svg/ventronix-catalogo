@@ -312,3 +312,36 @@ test('se puede usar con el teclado', async ({ page }) => {
   await page.keyboard.press('Escape')
   await expect(card.getByRole('button', { name: 'Renombrar Laptops' })).toBeFocused()
 })
+
+// Las Server Actions de la pantalla se envían por POST a /products; cortarlas simula perder la red.
+async function goOffline(page: Page) {
+  await page.route(
+    (url) => url.pathname === '/products',
+    (route) =>
+      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue(),
+  )
+}
+
+test('sin conexión, guardar avisa y conserva lo escrito', async ({ page }) => {
+  await seed(['Laptops'])
+  await login(page)
+  await goOffline(page)
+
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await sheet.getByLabel('Código').fill('lap-010')
+  await sheet.getByLabel('Nombre del producto').fill('Laptop de 13 pulgadas')
+  await sheet.getByLabel('Categoría').selectOption({ label: 'Laptops' })
+  await sheet.getByLabel('Precio unitario').fill('1299.50')
+  await sheet.getByRole('button', { name: 'Crear producto' }).click()
+  await expect(sheet.getByRole('alert')).toContainText('Revisa tu conexión')
+  await expect(sheet.getByLabel('Nombre del producto')).toHaveValue('Laptop de 13 pulgadas')
+  await sheet.getByRole('button', { name: 'Cancelar' }).click()
+
+  await categoriesCard(page).getByRole('button', { name: 'Nueva categoría' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nueva categoría' })
+  await dialog.getByLabel('Nombre de la categoría').fill('Impresoras')
+  await dialog.getByRole('button', { name: 'Crear categoría' }).click()
+  await expect(dialog.getByRole('alert')).toContainText('Revisa tu conexión')
+  await expect(dialog.getByLabel('Nombre de la categoría')).toHaveValue('Impresoras')
+})

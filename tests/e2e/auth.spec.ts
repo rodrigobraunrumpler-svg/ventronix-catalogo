@@ -58,3 +58,16 @@ test('una sesión inválida vuelve al acceso', async ({ page, context }) => {
   await page.goto('/products')
   await expect(page).toHaveURL(/\/login$/)
 })
+
+test('sin conexión, cerrar sesión avisa y sigue en el catálogo', async ({ page }) => {
+  await login(page, e2eUsers.owner.email, e2eUsers.owner.password)
+  await expect(page).toHaveURL(/\/products$/)
+  await page.route(
+    (url) => url.pathname === '/products',
+    (route) =>
+      route.request().method() === 'POST' ? route.abort('internetdisconnected') : route.continue(),
+  )
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await expect(page.getByText('Revisa tu conexión')).toBeVisible()
+  await expect(page).toHaveURL(/\/products$/)
+})

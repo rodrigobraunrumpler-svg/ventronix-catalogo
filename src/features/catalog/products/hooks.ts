@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryStates } from 'nuqs'
 import { useEffect, useState } from 'react'
-import type { ActionResult } from '@/lib/action-result'
+import { settle, type ActionResult } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
 import { catalogKeys } from '../query-keys'
 import { searchParsers } from '../search-params'
@@ -26,9 +26,10 @@ export function useProductMutations() {
   }
 
   return {
-    create: async (input: ProductInput) => afterSuccess(await createProduct(input)),
-    update: async (id: string, input: ProductInput) => afterSuccess(await updateProduct(id, input)),
-    remove: async (id: string) => afterSuccess(await deleteProduct(id)),
+    create: async (input: ProductInput) => afterSuccess(await settle(createProduct(input))),
+    update: async (id: string, input: ProductInput) =>
+      afterSuccess(await settle(updateProduct(id, input))),
+    remove: async (id: string) => afterSuccess(await settle(deleteProduct(id))),
   }
 }
 
