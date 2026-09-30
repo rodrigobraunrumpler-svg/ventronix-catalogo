@@ -4,6 +4,8 @@ import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { ProformaBar } from '@/features/proforma/components/proforma-bar'
+import { ProformaDialog } from '@/features/proforma/components/proforma-dialog'
 import { ProformaProvider } from '@/features/proforma/store'
 import { clearDraft } from '@/lib/drafts'
 import { CategoryDialog, type CategoryDialogState } from '../categories/components/category-dialog'
@@ -42,6 +44,7 @@ export function CatalogScreen() {
   const [productDialog, setProductDialog] = useState<ProductDialogState>(null)
   const [categoryDialog, setCategoryDialog] = useState<CategoryDialogState>(null)
   const [toDelete, setToDelete] = useState<ProductListItem | null>(null)
+  const [proformaOpen, setProformaOpen] = useState(false)
   const { remove } = useProductMutations()
   useSearchShortcut()
 
@@ -92,6 +95,8 @@ export function CatalogScreen() {
           onConfirm={confirmDelete}
           onClose={() => setToDelete(null)}
         />
+        <ProformaBar onComplete={() => setProformaOpen(true)} />
+        <ProformaDialog open={proformaOpen} onClose={() => setProformaOpen(false)} />
       </div>
     </ProformaProvider>
   )
