@@ -27,3 +27,15 @@ export async function requireOwner(): Promise<AuthorizedContext> {
   if (error || !isOwner(data.user)) throw new UnauthorizedError()
   return { user: data.user, supabase }
 }
+
+// Para páginas públicas (acceso, 404): saber si hay una cuenta autorizada sin lanzar. Cualquier otro
+// error se relanza, incluidos los internos de Next que marcan la ruta como dinámica.
+export async function hasOwnerSession(): Promise<boolean> {
+  try {
+    await requireOwner()
+    return true
+  } catch (error) {
+    if (error instanceof UnauthorizedError) return false
+    throw error
+  }
+}

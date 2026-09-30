@@ -31,7 +31,8 @@ export async function updateSession(request: NextRequest) {
 
   // No quitar: getClaims() renueva el token; sin ello la sesión puede cerrarse al azar.
   const { data } = await supabase.auth.getClaims()
-  const isPublic = PUBLIC_PATHS.some((path) => request.nextUrl.pathname.startsWith(path))
+  // Ruta exacta: /login/otra o /loginx también exigen sesión.
+  const isPublic = PUBLIC_PATHS.includes(request.nextUrl.pathname)
 
   if (!data?.claims && !isPublic) {
     const url = request.nextUrl.clone()

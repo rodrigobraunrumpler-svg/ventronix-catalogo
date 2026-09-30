@@ -71,3 +71,41 @@ test('sin conexión, cerrar sesión avisa y sigue en el catálogo', async ({ pag
   await expect(page.getByText('Revisa tu conexión')).toBeVisible()
   await expect(page).toHaveURL(/\/products$/)
 })
+
+test('con sesión, el acceso y la raíz llevan a Productos', async ({ page }) => {
+  await login(page, e2eUsers.owner.email, e2eUsers.owner.password)
+  await expect(page).toHaveURL(/\/products$/)
+  for (const path of ['/login', '/']) {
+    await page.goto(path)
+    await expect(page).toHaveURL(/\/products$/)
+  }
+})
+
+test('sin sesión, la raíz y cualquier otra ruta llevan al acceso', async ({ page }) => {
+  for (const path of ['/', '/ruta-que-no-existe', '/login/otra', '/loginx']) {
+    await page.goto(path)
+    await expect(page).toHaveURL(/\/login$/)
+  }
+})
+
+test('con sesión, una ruta inexistente muestra la página 404 y lleva a Productos', async ({
+  page,
+}) => {
+  await login(page, e2eUsers.owner.email, e2eUsers.owner.password)
+  await expect(page).toHaveURL(/\/products$/)
+  const response = await page.goto('/ruta-que-no-existe')
+  expect(response?.status()).toBe(404)
+  await expect(page).toHaveTitle('Página no encontrada · Catálogo')
+  await expect(page.getByRole('heading', { name: 'No encontramos esta página' })).toBeVisible()
+  await page.getByRole('link', { name: 'Ir a Productos' }).click()
+  await expect(page).toHaveURL(/\/products$/)
+})
+
+test('sin sesión, la página 404 lleva al inicio de sesión', async ({ page }) => {
+  // Las rutas con extensión de archivo (.png…) no pasan por el proxy: llegan a la 404 sin sesión.
+  const response = await page.goto('/no-existe.png')
+  expect(response?.status()).toBe(404)
+  await expect(page.getByRole('heading', { name: 'No encontramos esta página' })).toBeVisible()
+  await page.getByRole('link', { name: 'Ir al inicio de sesión' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+})

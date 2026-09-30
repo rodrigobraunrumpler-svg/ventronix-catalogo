@@ -4,20 +4,10 @@ import { redirect } from 'next/navigation'
 import { Brand } from '@/components/brand'
 import { signIn } from '@/features/auth/actions'
 import { LoginForm } from '@/features/auth/components/login-form'
-import { requireOwner, UnauthorizedError } from '@/lib/auth/require-owner'
+import { hasOwnerSession } from '@/lib/auth/require-owner'
 import { LoginShowcase } from './showcase'
 
 export const metadata: Metadata = { title: 'Iniciar sesión' }
-
-async function hasOwnerSession() {
-  try {
-    await requireOwner()
-    return true
-  } catch (error) {
-    if (error instanceof UnauthorizedError) return false
-    throw error
-  }
-}
 
 export default async function LoginPage() {
   if (await hasOwnerSession()) redirect('/products')
