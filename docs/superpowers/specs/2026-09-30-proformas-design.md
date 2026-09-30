@@ -137,12 +137,15 @@ Al abrir la ventana se compara cada línea con el catálogo actual (sección 4.5
 
 Tabla nueva de **una sola fila**, `company_profile`, con los permisos del catálogo (solo la cuenta autorizada lee y escribe):
 
-- Razón social, nombre comercial, RUC (11 dígitos), dirección, teléfono y correo.
-- Condición de pago y política de devoluciones (texto).
-- Validez por defecto de la oferta (1 a 365 días; 7 al crearla).
-- Cuentas para el pago: lista de banco, número de cuenta y CCI, más un número de Yape o Plin opcional.
+- **Datos:** razón social, nombre comercial y RUC (11 dígitos, con dígito verificador).
+- **Contacto:** dirección, uno o dos teléfonos y correo.
+- **Condiciones:** condición de pago y política de devoluciones (texto), y validez por defecto de la oferta (1 a 365 días; 7 al crearla).
+- **Cuentas bancarias:** una lista con banco, número de cuenta, CCI (20 dígitos) y titular opcional (por defecto, la razón social). Se pueden añadir, editar, quitar y ordenar; el documento las muestra en ese orden.
+- **Yape y Plin:** un número para cada uno, opcionales (9 dígitos que empiezan por 9). Si son el mismo, el documento muestra «Yape / Plin: 9XX XXX XXX».
 
-Se edita en una pantalla nueva **«Empresa»** del menú. Son obligatorios la razón social, el RUC, la dirección y el teléfono. Si falta alguno, «Generar» lo indica y enlaza a esa pantalla, porque el documento los necesita.
+Se edita en una pantalla nueva **«Empresa»** del menú: un formulario por secciones (Datos, Contacto, Condiciones y Pagos), con los errores junto a cada campo y un botón «Guardar cambios». Son obligatorios la razón social, el RUC, la dirección y un teléfono. Si falta alguno, «Generar» lo indica y enlaza a esa pantalla, porque el documento los necesita.
+
+Los cambios valen para las proformas que se generen después. Las ya enviadas no cambian, porque no se guardan.
 
 ### 6.3 Numeración
 
@@ -179,9 +182,10 @@ Migración que activa la extensión `unaccent` de Postgres y cambia `search_prod
 
 ## 11. Pruebas
 
-- **Unitarias:** cálculos con los ejemplos E1–E5, módulo de IGV en sus modos, validaciones (cantidad, precio, %, envío, RUC con dígito verificador, DNI y celular).
+- **Unitarias:** cálculos con los ejemplos E1–E5, módulo de IGV en sus modos, validaciones (cantidad, precio, %, envío, RUC con dígito verificador, DNI, celular, CCI de 20 dígitos, Yape y Plin).
 - **Componentes:** «Añadir» y `[− n +]` en la lista, validaciones de la ventana, borrador con aviso de precio cambiado, «Deshacer».
-- **Integración (Supabase local):** permisos de `company_profile`, función de numeración y búsqueda sin tildes.
+- **Integración (Supabase local):** permisos de `company_profile`, guardar y leer sus cuentas bancarias, función de numeración y búsqueda sin tildes.
+- **E2E de la pantalla «Empresa»:** completar los datos, añadir y quitar cuentas, y ver que «Generar» deja de pedirlos.
 - **E2E (escritorio y móvil):** añadir desde la lista, completar con RUC (proveedor de prueba), generar, corregir conservando el número, nueva proforma y error sin conexión.
 
 ## 12. Pendiente de información externa
