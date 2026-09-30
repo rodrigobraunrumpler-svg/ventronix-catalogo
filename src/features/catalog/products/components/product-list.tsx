@@ -15,6 +15,10 @@ import {
 import { useEffect, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ProformaControl } from '@/features/proforma/components/proforma-control'
+import { findLine } from '@/features/proforma/draft'
+import { useAddSingleResult } from '@/features/proforma/hooks'
+import { useProforma } from '@/features/proforma/store'
 import { cn } from '@/lib/utils'
 import { useCategories } from '../../categories/hooks'
 import { categoryColor } from '../../categories/theme'
@@ -35,6 +39,7 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
   const { filters, query } = useProducts()
   const [, setFilters] = useCatalogFilters()
   const categories = useCategories()
+  const addSingleResult = useAddSingleResult()
   const data = query.data
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
 
@@ -56,7 +61,7 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
       aria-busy={query.isPending}
       className="min-w-0 overflow-hidden rounded-[14px] border bg-card shadow-xs"
     >
-      <ProductFilters />
+      <ProductFilters onSearchEnter={() => void addSingleResult(filters)} />
 
       <div className="flex min-h-15 items-center justify-between gap-4 px-4 py-2.5 sm:px-5">
         <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
@@ -190,8 +195,10 @@ function CodeChip({ code }: { code: string }) {
   )
 }
 
-// PC: tabla con anchos fijos para que nunca se desborde de su tarjeta.
+// PC: tabla con anchos fijos para que nunca se desborde de su tarjeta. Las filas que están en la
+// proforma se marcan con un fondo verde claro (spec §4.1).
 function ProductTable({ items, onEdit, onDelete }: RowsProps) {
+  const { draft } = useProforma()
   const th =
     'h-11 border-y bg-background/60 px-3.5 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase'
   return (
@@ -202,13 +209,16 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
           <th scope="col" className={cn(th, 'pl-5')}>
             Producto
           </th>
-          <th scope="col" className={cn(th, 'w-42')}>
+          <th scope="col" className={cn(th, 'w-36')}>
             Categoría
           </th>
-          <th scope="col" className={cn(th, 'w-39 text-right')}>
+          <th scope="col" className={cn(th, 'w-36 text-right')}>
             Precio unitario
           </th>
-          <th scope="col" className={cn(th, 'w-29 pr-5 text-right')}>
+          <th scope="col" className={cn(th, 'w-36 text-center')}>
+            Proforma
+          </th>
+          <th scope="col" className={cn(th, 'w-28 pr-5 text-right')}>
             Acciones
           </th>
         </tr>
@@ -217,7 +227,12 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
         {items.map((product) => (
           <tr
             key={product.id}
-            className="border-b transition-colors last:border-b-0 hover:bg-background/40"
+            className={cn(
+              'border-b transition-colors last:border-b-0',
+              findLine(draft, product.id)
+                ? 'bg-primary/10 hover:bg-primary/15'
+                : 'hover:bg-background/40',
+            )}
           >
             <td className="overflow-hidden py-3.5 pr-3.5 pl-5 align-middle">
               <p className="truncate font-semibold" title={product.name}>
@@ -239,6 +254,9 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
             <td className="px-3.5 py-3.5 text-right align-middle">
               <Price value={product.unit_price} />
             </td>
+            <td className="px-2 py-3.5 text-center align-middle">
+              <ProformaControl product={product} />
+            </td>
             <td className="py-3.5 pr-5 pl-2 text-right align-middle">
               <RowActions product={product} onEdit={onEdit} onDelete={onDelete} />
             </td>
@@ -249,21 +267,29 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
   )
 }
 
-// Móvil: tarjetas legibles sin desbordamiento horizontal.
+// Móvil: tarjetas legibles sin desbordamiento horizontal, con el mismo control de proforma.
 function ProductCards({ items, onEdit, onDelete }: RowsProps) {
+  const { draft } = useProforma()
   return (
     <ul className="md:hidden">
       {items.map((product) => (
-        <li key={product.id} className="grid gap-2 border-t px-4 py-3.5">
+        <li
+          key={product.id}
+          className={cn(
+            'grid gap-2 border-t px-4 py-3.5',
+            findLine(draft, product.id) && 'bg-primary/10',
+          )}
+        >
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 font-semibold">{product.name}</p>
             <Price value={product.unit_price} />
           </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <CodeChip code={product.code} />
+            <CategoryBadge product={product} />
+          </div>
           <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <CodeChip code={product.code} />
-              <CategoryBadge product={product} />
-            </div>
+            <ProformaControl product={product} />
             <RowActions product={product} onEdit={onEdit} onDelete={onDelete} />
           </div>
         </li>

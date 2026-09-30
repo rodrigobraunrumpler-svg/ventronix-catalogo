@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { useCatalogFilters } from '../hooks'
 
 // La categoría se elige en la tarjeta Categorías; aquí solo la búsqueda y «Limpiar filtros».
-export function ProductFilters() {
+// Enter avisa a quien la usa (la proforma añade el único resultado).
+export function ProductFilters({ onSearchEnter }: { onSearchEnter?: () => void }) {
   const [filters, setFilters] = useCatalogFilters()
   const hasFilters = filters.search !== '' || filters.category !== null
 
@@ -27,6 +28,11 @@ export function ProductFilters() {
           onChange={(event) =>
             setFilters({ search: event.target.value || null, page: null }, { history: 'replace' })
           }
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || !onSearchEnter) return
+            event.preventDefault()
+            onSearchEnter()
+          }}
           maxLength={120}
           autoComplete="off"
           placeholder="Buscar por nombre o código…"
