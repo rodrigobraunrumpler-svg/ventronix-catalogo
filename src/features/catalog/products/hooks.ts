@@ -33,12 +33,14 @@ export function useProductMutations() {
   }
 }
 
-// Datos actuales del producto al abrir la edición (puede haber cambiado desde que se listó).
+// Datos actuales del producto al abrir la edición (puede haber cambiado desde que se listó, por
+// ejemplo en otro dispositivo): aquí no se usa la caché de 5 minutos.
 export function useProduct(id: string | null) {
   return useQuery({
     queryKey: catalogKeys.product(id ?? ''),
     queryFn: () => getProduct(createClient(), id ?? ''),
     enabled: id !== null,
+    staleTime: 0,
   })
 }
 
