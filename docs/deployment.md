@@ -41,16 +41,17 @@ Usa el proyecto que ya creaste. No ejecutes las pruebas contra él, porque borra
 
 ### Migraciones
 
-Se aplican en orden con la CLI de Supabase del proyecto, desde la raíz del repositorio:
+Se aplican en orden desde la raíz del repositorio, sin `supabase login` ni `link`:
 
 ```bash
-pnpm exec supabase login                      # abre el navegador la primera vez
-pnpm exec supabase link --project-ref <ref>   # <ref>: el subdominio de https://<ref>.supabase.co; pide la contraseña de la base
-pnpm exec supabase db push --dry-run          # lista lo que aplicaría, sin tocar nada
-pnpm exec supabase db push                    # aplica las pendientes en orden y las registra
+pnpm db:push
 ```
 
-`db push` solo aplica las migraciones de `supabase/migrations` que el proyecto aún no tiene registradas: nunca las repite ni borra datos. La primera vez aplica las tres del catálogo (tablas, acceso y búsqueda).
+El script pide la cadena de conexión de la base y la contraseña, que no se muestra ni se guarda. La cadena se copia en Supabase, en el botón **Connect → Session pooler**: empieza por `postgresql://` y no es la URL de la API de `.env.local`.
+
+Antes de aplicar nada, el script comprueba que la cadena sea del mismo proyecto que `.env.local` y muestra las migraciones pendientes (`--dry-run`). Solo las aplica si escribes «si». Para no pegar la cadena cada vez, guárdala en `.env.local` como `SUPABASE_DB_URL`, tal cual la da Supabase, con `[YOUR-PASSWORD]`.
+
+Por debajo usa `supabase db push`, que solo aplica las migraciones de `supabase/migrations` que el proyecto aún no tiene registradas: nunca las repite ni borra datos. La primera vez aplica las tres del catálogo (tablas, acceso y búsqueda).
 
 Nunca ejecutes `supabase db reset --linked` ni edites una migración ya aplicada. Cada cambio de esquema va en una migración nueva.
 
@@ -99,7 +100,7 @@ pnpm exec supabase db dump --linked -s public -f ~/respaldos-catalogo/$(date +%F
 pnpm exec supabase db dump --linked -s public --data-only -f ~/respaldos-catalogo/$(date +%F)-datos.sql
 ```
 
-El esquema también está en `supabase/migrations`. La cuenta no entra en la copia: si hiciera falta, se recrea con `pnpm owner:create`.
+Estos comandos necesitan el proyecto enlazado una vez (`pnpm exec supabase login` y `pnpm exec supabase link --project-ref <ref>`), o cambiar `--linked` por `--db-url "<cadena con la contraseña>"`. El esquema también está en `supabase/migrations`. La cuenta no entra en la copia: si hiciera falta, se recrea con `pnpm owner:create`.
 
 **Restaurar los datos**, por ejemplo tras un borrado por error:
 

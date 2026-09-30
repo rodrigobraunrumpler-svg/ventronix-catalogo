@@ -46,6 +46,7 @@ Abre `http://localhost:3000`; la raíz redirige a `/products`.
 | `pnpm test:integration` | Pruebas contra el Supabase de pruebas; requiere el entorno de la tarea 2. |
 | `pnpm test:e2e`         | Pruebas de extremo a extremo con Playwright (escritorio y móvil).         |
 | `pnpm validate`         | Lint, tipos, formato, pruebas y build de producción.                      |
+| `pnpm db:push`          | Aplica las migraciones al Supabase de producción (ver `deployment.md`).   |
 
 `pnpm test:e2e` necesita el navegador de Playwright una sola vez (`pnpm exec playwright install chromium`), el Supabase local en marcha y `.env.development.local`. Sus cuentas de prueba se crean solas en el Supabase local.
 

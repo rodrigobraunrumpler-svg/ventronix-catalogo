@@ -19,7 +19,8 @@
     "validate": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm build",
     "prepare": "husky",
     "owner:create": "node scripts/create-owner.mjs",
-    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
+    "db:push": "node --env-file-if-exists=.env.local scripts/db-push.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs}": [
