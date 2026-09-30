@@ -5,6 +5,9 @@ import type { z } from 'zod'
 // (modo privado, sin espacio), el formulario funciona igual, solo que sin borrador.
 const PREFIX = 'catalogo:borrador:'
 
+// Clave real en localStorage, para reconocer los cambios que llegan desde otra pestaña.
+export const draftStorageKey = (key: string) => PREFIX + key
+
 export function readDraft<T>(key: string, schema: z.ZodType<T>): T | null {
   try {
     const raw = localStorage.getItem(PREFIX + key)

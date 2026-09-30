@@ -1,8 +1,15 @@
 'use client'
 
-import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 import { toast } from 'sonner'
-import { readDraft, saveDraft } from '@/lib/drafts'
+import { draftStorageKey, readDraft, saveDraft } from '@/lib/drafts'
 import {
   draftSchema,
   EMPTY_DRAFT,
@@ -22,6 +29,7 @@ type Store = {
   // Devuelve la proforma ya guardada, para anunciar lo que de verdad quedó.
   update: (change: (draft: ProformaDraft) => ProformaDraft) => ProformaDraft
   announce: (message: string) => void
+  reload: () => void
 }
 
 // Un almacén por pantalla: al volver a Productos, o tras cerrar sesión (que borra los borradores),
@@ -51,6 +59,10 @@ function createStore(): Store {
       message = text
       notify()
     },
+    reload() {
+      draft = readDraft(PROFORMA_DRAFT_KEY, draftSchema) ?? EMPTY_DRAFT
+      notify()
+    },
   }
 }
 
@@ -61,6 +73,17 @@ const serverMessage = () => ''
 export function ProformaProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createStore)
   const message = useSyncExternalStore(store.subscribe, store.getMessage, serverMessage)
+
+  // Otra pestaña cambió la proforma o cerró sesión: esta la vuelve a leer, así ninguna pisa lo que
+  // no ha visto. El navegador solo avisa a las demás pestañas, nunca a la que escribió.
+  useEffect(() => {
+    const key = draftStorageKey(PROFORMA_DRAFT_KEY)
+    function onStorage(event: StorageEvent) {
+      if (event.key === null || event.key === key) store.reload()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [store])
   return (
     <StoreContext value={store}>
       {children}
