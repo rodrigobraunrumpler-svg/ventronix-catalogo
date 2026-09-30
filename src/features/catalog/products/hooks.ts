@@ -1,12 +1,15 @@
 'use client'
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryStates } from 'nuqs'
+import { useEffect, useState } from 'react'
 import type { ActionResult } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
 import { catalogKeys } from '../query-keys'
+import { searchParsers } from '../search-params'
 import type { ProductInput } from '../types'
 import { createProduct, deleteProduct, updateProduct } from './actions'
-import { getProduct } from './queries'
+import { getProduct, listProducts } from './queries'
 
 // Tras un cambio correcto se refrescan los productos y los contadores de las categorías.
 export function useProductMutations() {
@@ -36,4 +39,35 @@ export function useProduct(id: string | null) {
     queryFn: () => getProduct(createClient(), id ?? ''),
     enabled: id !== null,
   })
+}
+
+// Búsqueda, categoría y página viven en la URL (spec §7); cada cambio de filtro añade una entrada
+// al historial para que atrás/adelante los restauren.
+export function useCatalogFilters() {
+  return useQueryStates(searchParsers, { history: 'push' })
+}
+
+function useDebouncedValue<T>(value: T, delay: number) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
+
+// La búsqueda espera 300 ms; claves distintas por filtro y la señal de cancelación evitan que una
+// respuesta antigua sustituya a la actual.
+export function useProducts() {
+  const [filters] = useCatalogFilters()
+  const search = useDebouncedValue(filters.search, 300)
+  const current = { search, category: filters.category, page: filters.page }
+  return {
+    filters,
+    query: useQuery({
+      queryKey: catalogKeys.productList(current),
+      queryFn: ({ signal }) => listProducts(createClient(), current, signal),
+      placeholderData: keepPreviousData,
+    }),
+  }
 }

@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 import type { Database } from '@/lib/supabase/database.types'
 import { unitPriceSchema } from '../money'
-import type { Product, ProductListItem } from '../types'
+import { normalizeSearch } from '../search-pattern'
+import type { Product, ProductFilters, ProductListItem, ProductPage } from '../types'
 
 type Client = SupabaseClient<Database>
 
@@ -26,4 +28,47 @@ export async function getProduct(supabase: Client, id: string): Promise<ProductL
   if (!data) return null
   const { categories, ...row } = data
   return { ...toProduct(row), category_name: categories?.name ?? '' }
+}
+
+export const PAGE_SIZE = 20
+
+const pageSchema = z.object({
+  total: z.number().int().nonnegative(),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      code: z.string(),
+      name: z.string(),
+      description: z.string().nullable(),
+      category_id: z.string(),
+      unit_price: z.string(),
+      created_at: z.string(),
+      updated_at: z.string(),
+      category_name: z.string(),
+    }),
+  ),
+})
+
+// Búsqueda, filtro y página se resuelven en la base de datos: nunca se descarga todo el catálogo.
+export async function listProducts(
+  supabase: Client,
+  filters: ProductFilters,
+  signal?: AbortSignal,
+): Promise<ProductPage> {
+  let request = supabase.rpc('search_products', {
+    search: normalizeSearch(filters.search),
+    category: filters.category ?? undefined,
+    page: filters.page,
+    page_size: PAGE_SIZE,
+  })
+  if (signal) request = request.abortSignal(signal)
+  const { data, error } = await request
+  if (error) throw error
+  const parsed = pageSchema.parse(data)
+  return {
+    total: parsed.total,
+    page: filters.page,
+    pageSize: PAGE_SIZE,
+    items: parsed.items.map(({ category_name, ...row }) => ({ ...toProduct(row), category_name })),
+  }
 }

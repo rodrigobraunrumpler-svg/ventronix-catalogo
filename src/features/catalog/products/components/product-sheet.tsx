@@ -1,6 +1,5 @@
 'use client'
 
-import { useQueryState } from 'nuqs'
 import { toast } from 'sonner'
 import {
   Sheet,
@@ -11,7 +10,7 @@ import {
 } from '@/components/ui/sheet'
 import { useCategoryOptions } from '../../categories/hooks'
 import type { ProductListItem } from '../../types'
-import { useProduct, useProductMutations } from '../hooks'
+import { useCatalogFilters, useProduct, useProductMutations } from '../hooks'
 import { ProductForm } from './product-form'
 
 export type ProductSheetState =
@@ -28,7 +27,7 @@ export function ProductSheet({ state, onClose, onCreateCategory }: ProductSheetP
   const editing = state?.mode === 'edit'
   const options = useCategoryOptions()
   const current = useProduct(editing ? state.product.id : null)
-  const [selectedCategory] = useQueryState('category')
+  const [{ category: selectedCategory }] = useCatalogFilters()
   const { create, update } = useProductMutations()
 
   const categories = options.data ?? []

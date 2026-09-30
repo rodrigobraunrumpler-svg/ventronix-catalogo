@@ -123,3 +123,116 @@ test('sin categorías, el formulario de producto permite crear una', async ({ pa
   await page.getByRole('button', { name: 'Crear categoría' }).click()
   await expect(sheet.getByLabel('Categoría')).toContainText('Plotters')
 })
+
+// 21 laptops y 1 impresora: dos páginas de 20.
+async function seedCatalog() {
+  const db = await connect()
+  try {
+    await resetCatalog(db)
+    const { rows } = await db.query<{ id: string; name: string }>(
+      "insert into public.categories (name) values ('Laptops'), ('Impresoras') returning id, name",
+    )
+    const id = (name: string) => rows.find((row) => row.name === name)!.id
+    for (let i = 1; i <= 21; i++) {
+      const n = String(i).padStart(2, '0')
+      await db.query(
+        `insert into public.products (code, name, category_id, unit_price) values ($1, $2, $3, 2590)`,
+        [`LAP-0${n}`, `Laptop ${n}`, id('Laptops')],
+      )
+    }
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price)
+       values ('IMP-001', 'Impresora láser', $1, 890)`,
+      [id('Impresoras')],
+    )
+  } finally {
+    await db.end()
+  }
+}
+
+const productList = (page: Page) => page.getByRole('region', { name: 'Lista de productos' })
+
+test('pagina, filtra y busca; atrás, adelante y recargar restauran el estado', async ({ page }) => {
+  await seedCatalog()
+  await login(page)
+  const list = productList(page)
+  await expect(list.getByText('Mostrando 1–20 de 22 productos')).toBeVisible()
+
+  await list.getByRole('button', { name: 'Página siguiente' }).click()
+  await expect(page).toHaveURL(/page=2/)
+  await expect(list.getByText('Mostrando 21–22 de 22 productos')).toBeVisible()
+
+  await categoriesCard(page)
+    .getByRole('button', { name: /^Impresoras/ })
+    .click()
+  await expect(page).not.toHaveURL(/page=/)
+  await expect(list.getByText('Mostrando 1–1 de 1 producto')).toBeVisible()
+
+  await page.goBack()
+  await expect(page).toHaveURL(/page=2/)
+  await expect(list.getByText('Mostrando 21–22 de 22 productos')).toBeVisible()
+  await page.goForward()
+  await expect(list.getByText('Mostrando 1–1 de 1 producto')).toBeVisible()
+
+  await categoriesCard(page)
+    .getByRole('button', { name: /^Todos los productos/ })
+    .click()
+  await list.getByLabel('Buscar por nombre o código').fill('lap-007')
+  await expect(page).toHaveURL(/search=lap-007/)
+  await expect(list.getByText('Mostrando 1–1 de 1 producto')).toBeVisible()
+  await expect(list.getByText('Laptop 07').filter({ visible: true })).toBeVisible()
+
+  await page.reload()
+  await expect(productList(page).getByLabel('Buscar por nombre o código')).toHaveValue('lap-007')
+  await expect(productList(page).getByText('Laptop 07').filter({ visible: true })).toBeVisible()
+})
+
+test('distingue la búsqueda sin resultados del catálogo vacío', async ({ page }) => {
+  await seedCatalog()
+  await login(page)
+  const list = productList(page)
+  await list.getByLabel('Buscar por nombre o código').fill('no-existe')
+  await expect(list.getByText('No encontramos productos')).toBeVisible()
+  await list.getByRole('button', { name: 'Limpiar filtros' }).first().click()
+  await expect(list.getByText('Mostrando 1–20 de 22 productos')).toBeVisible()
+
+  await seed([])
+  await page.reload()
+  await expect(productList(page).getByText('Tu catálogo empieza aquí')).toBeVisible()
+})
+
+test('edita un producto desde la lista y muestra el nombre de categoría renombrada', async ({
+  page,
+}) => {
+  await seedCatalog()
+  await login(page)
+  const list = productList(page)
+  await list.getByRole('button', { name: 'Editar Impresora láser' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Editar producto' })
+  await expect(sheet.getByLabel('Código')).toHaveValue('IMP-001')
+  await sheet.getByLabel('Nombre del producto').fill('Impresora láser B/N')
+  await sheet.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(list.getByText('Impresora láser B/N').filter({ visible: true })).toBeVisible()
+
+  const card = categoriesCard(page)
+  await card.getByRole('button', { name: /^Impresoras/ }).click()
+  await card.getByRole('button', { name: 'Renombrar Impresoras' }).click()
+  await page.getByLabel('Nombre de la categoría').fill('Impresión')
+  await page.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(list.getByText('Impresión', { exact: true }).filter({ visible: true })).toBeVisible()
+})
+
+test('al borrar el último producto de la última página vuelve a la anterior', async ({ page }) => {
+  await seedCatalog()
+  await login(page)
+  const list = productList(page)
+  await list.getByRole('button', { name: 'Página siguiente' }).click()
+  await expect(list.getByText('Mostrando 21–22 de 22 productos')).toBeVisible()
+  await list.getByRole('button', { name: 'Eliminar Laptop 21' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar producto' }).click()
+  await expect(list.getByText('Mostrando 21–21 de 21 productos')).toBeVisible()
+  await list.getByRole('button', { name: 'Eliminar Laptop 20' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar producto' }).click()
+  await expect(list.getByText('Mostrando 1–20 de 20 productos')).toBeVisible()
+  await expect(page).not.toHaveURL(/page=2/)
+})

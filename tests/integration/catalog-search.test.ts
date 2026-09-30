@@ -1,0 +1,116 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Client } from 'pg'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { listProducts } from '@/features/catalog/products/queries'
+import { ensureUser, signedInClient } from '../support/local-supabase'
+import { connect, resetCatalog } from './db'
+
+const password = 'busqueda-clave-123'
+const owner = { email: 'busqueda-owner@catalogo.test', appMetadata: { catalog_access: 'owner' } }
+const intruder = { email: 'busqueda-intruso@catalogo.test' }
+
+let db: Client
+let supabase: SupabaseClient
+let outsider: SupabaseClient
+let laptops: string
+let printers: string
+
+beforeAll(async () => {
+  db = await connect()
+  await ensureUser({ password, ...owner })
+  await ensureUser({ password, ...intruder })
+  supabase = await signedInClient(owner.email, password)
+  outsider = await signedInClient(intruder.email, password)
+})
+
+afterAll(async () => {
+  await db.end()
+})
+
+async function insertProduct(code: string, name: string, category: string, price = '100.00') {
+  await db.query(
+    `insert into public.products (code, name, category_id, unit_price) values ($1, $2, $3, $4)`,
+    [code, name, category, price],
+  )
+}
+
+beforeEach(async () => {
+  await resetCatalog(db)
+  const { rows } = await db.query<{ id: string; name: string }>(
+    "insert into public.categories (name) values ('Laptops'), ('Impresoras') returning id, name",
+  )
+  laptops = rows.find((row) => row.name === 'Laptops')!.id
+  printers = rows.find((row) => row.name === 'Impresoras')!.id
+})
+
+const filters = (overrides = {}) => ({ search: '', category: null, page: 1, ...overrides })
+const codes = (page: Awaited<ReturnType<typeof listProducts>>) => page.items.map((p) => p.code)
+
+describe('listado del catálogo', () => {
+  it('pagina de 20 en 20 en orden estable por nombre e ID, con el total', async () => {
+    for (let i = 1; i <= 21; i++) {
+      await insertProduct(
+        `LAP-${String(i).padStart(3, '0')}`,
+        `Laptop ${String(i).padStart(2, '0')}`,
+        laptops,
+      )
+    }
+    const first = await listProducts(supabase, filters())
+    expect(first).toMatchObject({ total: 21, page: 1, pageSize: 20 })
+    expect(first.items).toHaveLength(20)
+    expect(first.items[0]).toMatchObject({
+      code: 'LAP-001',
+      category_name: 'Laptops',
+      unit_price: '100.00',
+    })
+    const second = await listProducts(supabase, filters({ page: 2 }))
+    expect(codes(second)).toEqual(['LAP-021'])
+  })
+
+  it('devuelve el total aunque la página pedida ya no tenga filas', async () => {
+    await insertProduct('LAP-001', 'Laptop', laptops)
+    expect(await listProducts(supabase, filters({ page: 5 }))).toMatchObject({
+      total: 1,
+      items: [],
+    })
+  })
+
+  it('busca por código o por nombre sin distinguir mayúsculas', async () => {
+    await insertProduct('LAP-001', 'Laptop de 14 pulgadas', laptops)
+    await insertProduct('IMP-001', 'Impresora láser', printers)
+    expect(codes(await listProducts(supabase, filters({ search: 'imp-0' })))).toEqual(['IMP-001'])
+    expect(codes(await listProducts(supabase, filters({ search: 'LÁSER' })))).toEqual(['IMP-001'])
+  })
+
+  it('combina búsqueda y categoría', async () => {
+    await insertProduct('LAP-001', 'Equipo A', laptops)
+    await insertProduct('IMP-001', 'Equipo B', printers)
+    const result = await listProducts(supabase, filters({ search: 'equipo', category: printers }))
+    expect(codes(result)).toEqual(['IMP-001'])
+  })
+
+  it.each([
+    ['%', 'PCT'],
+    ['_', 'UND'],
+    ['(a,b)', 'PAR'],
+    ['"negro"', 'COM'],
+    ['\\', 'BAR'],
+    ['/2m', 'SLA'],
+    ['*', 'AST'],
+  ])('trata %j como texto literal', async (term, expected) => {
+    await insertProduct('PCT', 'Tóner 50% rendimiento', printers)
+    await insertProduct('UND', 'Cable x_y', printers)
+    await insertProduct('PAR', 'Kit (a,b) completo', printers)
+    await insertProduct('COM', 'Funda "negro"', printers)
+    await insertProduct('BAR', 'Ruta C:\\drivers', printers)
+    await insertProduct('SLA', 'Cable USB /2m', printers)
+    await insertProduct('AST', 'Plan *premium*', printers)
+    await insertProduct('OTR', 'Otro producto', printers)
+    expect(codes(await listProducts(supabase, filters({ search: term })))).toEqual([expected])
+  })
+
+  it('una cuenta sin autorización no ve productos', async () => {
+    await insertProduct('LAP-001', 'Laptop', laptops)
+    expect(await listProducts(outsider, filters())).toMatchObject({ total: 0, items: [] })
+  })
+})

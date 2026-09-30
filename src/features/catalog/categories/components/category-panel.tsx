@@ -1,13 +1,13 @@
 'use client'
 
 import { Info, Package, Pencil, Plus, Tag, Trash2 } from 'lucide-react'
-import { useQueryState } from 'nuqs'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { CategoryListItem } from '../../types'
+import { useCatalogFilters } from '../../products/hooks'
 import { useCategories, useCategoryMutations } from '../hooks'
 import { categoryColor } from '../theme'
 import { CategoryDialog, type CategoryDialogState } from './category-dialog'
@@ -30,7 +30,8 @@ function CountPill({ children }: { children: ReactNode }) {
 export function CategoryPanel() {
   const { data: categories, isPending, isError, refetch } = useCategories()
   const { remove } = useCategoryMutations()
-  const [selectedId, setSelectedId] = useQueryState('category')
+  const [{ category: selectedId }, setFilters] = useCatalogFilters()
+  const selectCategory = (category: string | null) => setFilters({ category, page: null })
   const [form, setForm] = useState<CategoryDialogState>(null)
   const [toDelete, setToDelete] = useState<CategoryListItem | null>(null)
 
@@ -46,7 +47,7 @@ export function CategoryPanel() {
     const result = await remove(category.id)
     setToDelete(null)
     if (result.ok) {
-      if (activeId === category.id) await setSelectedId(null)
+      if (activeId === category.id) await selectCategory(null)
       toast.success('Categoría eliminada')
       return
     }
@@ -98,7 +99,7 @@ export function CategoryPanel() {
             active={activeId === null}
             icon={<Package className="size-4" aria-hidden />}
             tile={{ bg: 'var(--accent)', fg: '#3d4b63' }}
-            onSelect={() => setSelectedId(null)}
+            onSelect={() => selectCategory(null)}
           />
           <div className="mx-2.5 my-1 h-px bg-border" />
           {categories.map((category) => (
@@ -109,7 +110,7 @@ export function CategoryPanel() {
               active={activeId === category.id}
               icon={<Tag className="size-4" aria-hidden />}
               tile={categoryColor(category.id)}
-              onSelect={() => setSelectedId(category.id)}
+              onSelect={() => selectCategory(category.id)}
               actions={
                 <>
                   <Button
