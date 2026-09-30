@@ -155,68 +155,66 @@ export function ProductForm({
           <FieldMessage id="product-description" error={errors.description?.message} />
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
-          <div className="grid content-start gap-1.5">
-            <Label htmlFor="product-category">Categoría</Label>
-            <div className="relative">
-              <select
-                {...a11y('category_id', 'product-category')}
-                className="h-10.5 w-full appearance-none rounded-lg border border-input bg-card pr-9 pl-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm"
-                {...register('category_id')}
-              >
-                <option value="">Selecciona una categoría</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute top-3 right-3 size-4 text-muted-foreground"
-                aria-hidden
-              />
-            </div>
-            <FieldMessage id="product-category" error={errors.category_id?.message} />
-            {categories.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                <span>Aún no hay categorías.</span>{' '}
-                <button
-                  type="button"
-                  onClick={onCreateCategory}
-                  className="font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-2"
-                >
-                  Crear una categoría
-                </button>
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid content-start gap-1.5">
-            <Label htmlFor="product-price">Precio unitario</Label>
-            <div
-              className={cn(
-                'flex h-10.5 overflow-hidden rounded-lg border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
-                errors.unit_price && 'border-destructive ring-3 ring-destructive/20',
-              )}
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor="product-category">Categoría</Label>
+          <div className="relative">
+            <select
+              {...a11y('category_id', 'product-category')}
+              className="h-10.5 w-full appearance-none rounded-lg border border-input bg-card pr-9 pl-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm"
+              {...register('category_id')}
             >
-              <span className="grid place-items-center border-r bg-muted px-3 text-[13px] font-semibold text-muted-foreground">
-                S/
-              </span>
-              <input
-                {...a11y('unit_price', 'product-price', true)}
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="0.00"
-                className="w-full min-w-0 bg-transparent px-3 text-base tabular-nums outline-none md:text-sm"
-                {...register('unit_price')}
-              />
-            </div>
-            <FieldMessage
-              id="product-price"
-              error={errors.unit_price?.message}
-              help="Hasta dos decimales."
+              <option value="">Selecciona una categoría</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute top-3 right-3 size-4 text-muted-foreground"
+              aria-hidden
             />
           </div>
+          <FieldMessage id="product-category" error={errors.category_id?.message} />
+          {categories.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              <span>Aún no hay categorías.</span>{' '}
+              <button
+                type="button"
+                onClick={onCreateCategory}
+                className="font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-2"
+              >
+                Crear una categoría
+              </button>
+            </p>
+          ) : null}
+        </div>
+
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor="product-price">Precio unitario</Label>
+          <div
+            className={cn(
+              'flex h-10.5 overflow-hidden rounded-lg border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
+              errors.unit_price && 'border-destructive ring-3 ring-destructive/20',
+            )}
+          >
+            <span className="grid place-items-center border-r bg-muted px-3 text-[13px] font-semibold text-muted-foreground">
+              S/
+            </span>
+            <input
+              {...a11y('unit_price', 'product-price', true)}
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0.00"
+              className="w-full min-w-0 bg-transparent px-3 text-base tabular-nums outline-none md:text-sm"
+              {...register('unit_price')}
+            />
+          </div>
+          <FieldMessage
+            id="product-price"
+            error={errors.unit_price?.message}
+            help="Hasta dos decimales."
+          />
         </div>
 
         <section aria-label="Vista previa" className="overflow-hidden rounded-[14px] border">
