@@ -66,7 +66,7 @@ Comandos útiles:
 
 ---
 
-### Tarea 1: Dinero, IGV y totales
+### Task 1: Dinero, IGV y totales
 
 **Archivos:**
 - Crear: `src/features/proforma/money.ts`, `src/features/proforma/tax.ts`, `src/features/proforma/totals.ts`
@@ -456,7 +456,7 @@ git commit -m "feat: add proforma money, IGV and totals"
 
 ---
 
-### Tarea 2: Validaciones peruanas
+### Task 2: Validaciones peruanas
 
 **Archivos:**
 - Crear: `src/lib/peru.ts`
@@ -568,7 +568,7 @@ git commit -m "feat: validate Peruvian RUC, DNI and mobile numbers"
 
 ---
 
-### Tarea 3: Búsqueda sin tildes
+### Task 3: Búsqueda sin tildes
 
 **Archivos:**
 - Crear: `supabase/migrations/202609300001_search_unaccent.sql`
@@ -678,7 +678,7 @@ git commit -m "feat: search products ignoring accents"
 ```
 
 ---
-### Tarea 4: Datos de la empresa en la base
+### Task 4: Datos de la empresa en la base
 
 **Archivos:**
 - Crear: `supabase/migrations/202609300002_company_profile.sql`
@@ -1315,7 +1315,7 @@ git commit -m "feat: store company profile for proformas"
 
 ---
 
-### Tarea 5: Pantalla «Empresa»
+### Task 5: Pantalla «Empresa»
 
 **Archivos:**
 - Crear: `src/features/company/hooks.ts`, `src/features/company/components/company-screen.tsx`, `src/features/company/components/company-form.tsx`, `src/features/company/components/company-preview.tsx`, `src/app/(private)/company/page.tsx`
@@ -2363,7 +2363,7 @@ git commit -m "feat: add company screen with accounts, phones and wallets"
 
 ---
 
-### Tarea 6: Numeración correlativa
+### Task 6: Numeración correlativa
 
 **Archivos:**
 - Crear: `supabase/migrations/202609300003_proforma_number.sql`, `src/features/proforma/number.ts`, `src/features/proforma/actions.ts`
@@ -2524,7 +2524,7 @@ git commit -m "feat: number proformas with an owner-only sequence"
 
 ---
 
-### Tarea 7: Consulta de RUC
+### Task 7: Consulta de RUC
 
 Proveedor elegido: **Decolecta** (`GET https://api.decolecta.com/v1/sunat/ruc?numero=<ruc>`, cabecera `Authorization: Bearer <token>`; 1 000 consultas al mes gratis; devuelve `razon_social`, `numero_documento`, `estado`, `condicion`, `direccion`, `distrito`, `provincia`, `departamento`; responde 422 si el RUC no es válido). Alternativa si hiciera falta: Factiliza (100 gratis). El cambio de proveedor es una implementación nueva de `RucProvider`.
 
@@ -2828,7 +2828,7 @@ git commit -m "feat: look up RUC in SUNAT through a server-only provider"
 
 ---
 
-### Tarea 8: Proforma en curso y su almacén
+### Task 8: Proforma en curso y su almacén
 
 **Archivos:**
 - Crear: `src/features/proforma/draft.ts`, `src/features/proforma/store.tsx`, `tests/support/proforma.ts`
@@ -3328,7 +3328,7 @@ git commit -m "feat: keep the proforma draft in the browser"
 
 ---
 
-### Tarea 9: «Añadir» en la lista, Enter y «/»
+### Task 9: «Añadir» en la lista, Enter y «/»
 
 **Archivos:**
 - Crear: `src/features/proforma/components/proforma-control.tsx`, `src/features/proforma/hooks.ts`
@@ -3790,7 +3790,7 @@ git commit -m "feat: add products to the proforma from the list"
 
 ---
 
-### Tarea 10: Barra de proforma
+### Task 10: Barra de proforma
 
 **Archivos:**
 - Crear: `src/features/proforma/components/proforma-bar.tsx`
@@ -3945,7 +3945,7 @@ git commit -m "feat: add proforma bar with undoable empty"
 
 ---
 
-### Tarea 11: Ventana — productos, cliente y resumen
+### Task 11: Ventana — productos, cliente y resumen
 
 **Archivos:**
 - Crear: `src/features/proforma/readiness.ts`, `src/features/proforma/components/proforma-editor.tsx`, `src/features/proforma/components/proforma-lines.tsx`, `src/features/proforma/components/proforma-client.tsx`, `src/features/proforma/components/proforma-summary.tsx`
@@ -5080,7 +5080,7 @@ git commit -m "feat: complete proforma lines, client and summary"
 
 ---
 
-### Tarea 12: Generar, proforma lista y ventana en Productos
+### Task 12: Generar, proforma lista y ventana en Productos
 
 **Archivos:**
 - Crear: `src/features/proforma/queries.ts`, `src/features/proforma/components/proforma-panel.tsx`, `src/features/proforma/components/proforma-dialog.tsx`
@@ -5705,7 +5705,7 @@ git commit -m "feat: generate numbered proformas from the products screen"
 
 ---
 
-### Tarea 13: Configuración, documentación y verificación final
+### Task 13: Configuración, documentación y verificación final
 
 **Archivos:**
 - Modificar: `.env.example`, `docs/setup.md`, `docs/deployment.md`
