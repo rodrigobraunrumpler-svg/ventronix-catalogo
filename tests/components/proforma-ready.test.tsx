@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Toaster } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProformaReady } from '@/features/proforma/components/proforma-ready'
 import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
@@ -25,14 +26,15 @@ function renderReady(
         onCorrect={vi.fn()}
         onNew={vi.fn()}
       />
+      <Toaster />
     </ProformaProvider>,
   )
   return { generatePdf, user: userEvent.setup() }
 }
 
-const seed = (phone = '900000000') =>
+const seed = (phone = '900000000', quantity = 1) =>
   seedProforma({
-    lines: [line()],
+    lines: [line({ quantity })],
     client: { ...EMPTY_DRAFT.client, name: 'Cliente de ejemplo S.A.C.', phone },
     number: 1,
     issuedAt: '2026-09-30T15:00:00.000Z',
@@ -75,7 +77,7 @@ describe('ProformaReady', () => {
   it('en la PC descarga el PDF y abre el chat del cliente con el mensaje', async () => {
     seed()
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window)
     const { user } = renderReady()
     const send = screen.getByRole('button', { name: 'Enviar por WhatsApp' })
     await vi.waitFor(() => expect(send).toBeEnabled())
@@ -85,8 +87,8 @@ describe('ProformaReady', () => {
     expect(open).toHaveBeenCalledWith(
       `https://wa.me/51900000000?text=${encodeURIComponent(message)}`,
       '_blank',
-      'noopener',
     )
+    expect(screen.queryByText(/bloqueó/)).not.toBeInTheDocument()
   })
 
   it('si no se puede preparar el PDF, lo dice y deja reintentar', async () => {
@@ -108,5 +110,53 @@ describe('ProformaReady', () => {
       expect(screen.getByRole('button', { name: 'Descargar PDF' })).toBeEnabled(),
     )
     expect(generatePdf).toHaveBeenCalledTimes(2)
+  })
+
+  it('si otra pestaña cambia la proforma, no deja descargar el PDF anterior', async () => {
+    seed()
+    let finish: (value: ActionResult<GeneratedDocument>) => void = () => {}
+    const generatePdf = vi
+      .fn<Generate>()
+      .mockResolvedValueOnce({ ok: true, data: pdf })
+      .mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)))
+    renderReady(generatePdf)
+    const download = screen.getByRole('button', { name: 'Descargar PDF' })
+    await vi.waitFor(() => expect(download).toBeEnabled())
+    seed('900000000', 2)
+    act(() => window.dispatchEvent(new StorageEvent('storage', { key: null })))
+    expect(download).toBeDisabled()
+    expect(screen.getByText('Preparando el PDF…')).toBeVisible()
+    await act(async () => finish({ ok: true, data: pdf }))
+    expect(download).toBeEnabled()
+    expect(generatePdf).toHaveBeenCalledTimes(2)
+  })
+
+  it('si el navegador bloquea la pestaña, «Ver el documento» descarga el PDF y lo avisa', async () => {
+    seed()
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const { user } = renderReady()
+    const view = screen.getByRole('button', { name: 'Ver el documento' })
+    await vi.waitFor(() => expect(view).toBeEnabled())
+    await user.click(view)
+    expect(
+      await screen.findByText('Tu navegador bloqueó la pestaña nueva: descargamos el PDF.'),
+    ).toBeVisible()
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(pdf.fileName)
+  })
+
+  it('si el navegador bloquea WhatsApp, ofrece abrir el chat con un enlace', async () => {
+    seed()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    const { user } = renderReady()
+    const send = screen.getByRole('button', { name: 'Enviar por WhatsApp' })
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    await user.click(send)
+    expect(await screen.findByText('Tu navegador bloqueó la pestaña de WhatsApp.')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Abrir el chat' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^https:\/\/wa\.me\/51900000000\?text=Hola/),
+    )
   })
 })

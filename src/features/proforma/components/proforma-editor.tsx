@@ -3,11 +3,12 @@
 import { FileText } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
-import { base64ToFile, openFile } from '../document/files'
+import { base64ToFile, newTab, openFile, TAB_BLOCKED } from '../document/files'
 import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
-import { generateBlocker, type CompanyStatus } from '../readiness'
+import { generateBlocker, validityError, type CompanyStatus } from '../readiness'
 import type { RucLookupResult } from '../ruc'
 import { useProforma } from '../store'
 import { totalsFromText } from '../totals'
@@ -43,12 +44,15 @@ export function ProformaEditor({
   const defaultValidity = company.status === 'ready' ? company.profile.default_validity_days : null
   const [previewing, setPreviewing] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
-  const canPreview = draft.lines.length > 0 && totalsFromText(draft) !== null
+  const canPreview =
+    draft.lines.length > 0 &&
+    totalsFromText(draft) !== null &&
+    validityError(draft.validityDays) === null
 
   // La pestaña se abre al pulsar, antes de esperar al servidor, para que el navegador no la bloquee.
   async function preview() {
     setPreviewError(null)
-    const tab = window.open('', '_blank')
+    const tab = newTab()
     setPreviewing(true)
     const result = await generatePdf(documentInput(draft, { draft: true }))
     setPreviewing(false)
@@ -57,7 +61,7 @@ export function ProformaEditor({
       setPreviewError(result.error.message)
       return
     }
-    openFile(base64ToFile(result.data.base64, result.data.fileName), tab)
+    if (!openFile(base64ToFile(result.data.base64, result.data.fileName), tab)) toast(TAB_BLOCKED)
   }
 
   return (

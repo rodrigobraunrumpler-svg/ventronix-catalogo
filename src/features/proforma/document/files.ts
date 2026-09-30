@@ -20,26 +20,42 @@ export function downloadFile(file: File) {
   release(url)
 }
 
-// Con una pestaña ya abierta (abierta al pulsar, para que el navegador no la bloquee) se usa esa.
-export function openFile(file: File, tab?: Window | null) {
+export const TAB_BLOCKED = 'Tu navegador bloqueó la pestaña nueva: descargamos el PDF.'
+
+// Pestaña nueva sin acceso a esta, como «noopener» (que no devuelve la pestaña). null si el
+// navegador la bloquea.
+export function newTab(url = '') {
+  const tab = window.open(url, '_blank')
+  if (tab) tab.opener = null
+  return tab
+}
+
+// Abre el PDF en una pestaña: la abierta al pulsar (después el navegador ya no deja abrirla) o una
+// nueva. Si el navegador bloquea las pestañas, lo descarga; devuelve si se abrió.
+export function openFile(file: File, tab = newTab()) {
+  if (!tab) {
+    downloadFile(file)
+    return false
+  }
   const url = URL.createObjectURL(file)
-  if (tab) tab.location.href = url
-  else window.open(url, '_blank', 'noopener')
+  tab.location.href = url
   release(url)
+  return true
 }
 
 // Móvil: menú de compartir del teléfono con el PDF y el mensaje. PC (o si no se puede compartir):
-// descarga el PDF y abre el chat del cliente en WhatsApp (spec del documento §7).
+// descarga el PDF y abre el chat del cliente en WhatsApp (spec del documento §7). Devuelve false si
+// el navegador bloqueó la pestaña del chat.
 export async function shareOnWhatsApp(file: File, message: string, phone: string) {
   const touch = window.matchMedia?.('(pointer: coarse)').matches
   if (touch && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], text: message })
-      return
+      return true
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
+      if (error instanceof DOMException && error.name === 'AbortError') return true
     }
   }
   downloadFile(file)
-  window.open(whatsappLink(phone, message), '_blank', 'noopener')
+  return newTab(whatsappLink(phone, message)) !== null
 }

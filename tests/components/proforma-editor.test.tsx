@@ -233,4 +233,26 @@ describe('ProformaEditor', () => {
     expect(tab.location.href).toBe('blob:borrador')
     open.mockRestore()
   })
+
+  it('«Vista previa» espera a que la validez de la oferta sea válida', () => {
+    seedProforma({ lines: [line()], validityDays: '0' })
+    renderEditor()
+    expect(screen.getByRole('button', { name: 'Vista previa' })).toBeDisabled()
+  })
+
+  it('si el navegador bloquea la pestaña, descarga la vista previa y lo avisa', async () => {
+    seedProforma({ lines: [line()] })
+    URL.createObjectURL = vi.fn(() => 'blob:borrador')
+    URL.revokeObjectURL = vi.fn()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const { user } = renderEditor()
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    expect(
+      await screen.findByText('Tu navegador bloqueó la pestaña nueva: descargamos el PDF.'),
+    ).toBeVisible()
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe('Proforma-borrador.pdf')
+    open.mockRestore()
+    click.mockRestore()
+  })
 })

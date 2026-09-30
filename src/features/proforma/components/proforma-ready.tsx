@@ -2,11 +2,18 @@
 
 import { Check, Download, MessageCircle, Pencil, Plus } from 'lucide-react'
 import { useEffect, useEffectEvent, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
 import { digitsOnly, isValidMobile } from '@/lib/peru'
-import { base64ToFile, downloadFile, openFile, shareOnWhatsApp } from '../document/files'
-import { documentDates, whatsappMessage } from '../document/format'
+import {
+  base64ToFile,
+  downloadFile,
+  openFile,
+  shareOnWhatsApp,
+  TAB_BLOCKED,
+} from '../document/files'
+import { documentDates, whatsappLink, whatsappMessage } from '../document/format'
 import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
 import { formatCents, ZERO } from '../money'
 import { formatProformaNumber } from '../number'
@@ -14,8 +21,8 @@ import type { CompanyStatus } from '../readiness'
 import { useProforma } from '../store'
 import { totalsFromText } from '../totals'
 
-type Status =
-  { kind: 'loading' } | { kind: 'ready'; file: File } | { kind: 'error'; message: string }
+type Outcome = { kind: 'ready'; file: File } | { kind: 'error'; message: string }
+const LOADING = { kind: 'loading' } as const
 
 const inlineAction =
   'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3 disabled:opacity-50'
@@ -31,26 +38,32 @@ type ProformaReadyProps = {
 // descargar, ver y compartir son inmediatos y el navegador no los bloquea.
 export function ProformaReady({ company, generatePdf, onCorrect, onNew }: ProformaReadyProps) {
   const { draft } = useProforma()
-  const [status, setStatus] = useState<Status>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  // El PDF vale solo para la proforma y el intento con que se pidió: si otra pestaña cambia la
+  // proforma, se prepara de nuevo y mientras tanto no se puede bajar el anterior.
+  const [result, setResult] = useState<{ payload: string; attempt: number; outcome: Outcome }>()
   const payload = JSON.stringify(documentInput(draft, { draft: false }))
   const generate = useEffectEvent((input: DocumentInput) => generatePdf(input))
 
   useEffect(() => {
     let active = true
-    void generate(JSON.parse(payload)).then((result) => {
+    void generate(JSON.parse(payload)).then((response) => {
       if (!active) return
-      setStatus(
-        result.ok
-          ? { kind: 'ready', file: base64ToFile(result.data.base64, result.data.fileName) }
-          : { kind: 'error', message: result.error.message },
-      )
+      setResult({
+        payload,
+        attempt,
+        outcome: response.ok
+          ? { kind: 'ready', file: base64ToFile(response.data.base64, response.data.fileName) }
+          : { kind: 'error', message: response.error.message },
+      })
     })
     return () => {
       active = false
     }
   }, [payload, attempt])
 
+  const status =
+    result?.payload === payload && result.attempt === attempt ? result.outcome : LOADING
   const profile = company.status === 'ready' ? company.profile : null
   const totals = totalsFromText(draft)
   const total = `S/ ${formatCents(totals?.total ?? ZERO)}`
@@ -70,8 +83,29 @@ export function ProformaReady({ company, generatePdf, onCorrect, onNew }: Profor
   const file = status.kind === 'ready' ? status.file : null
 
   function retry() {
-    setStatus({ kind: 'loading' })
     setAttempt((current) => current + 1)
+  }
+
+  function view(pdf: File) {
+    if (!openFile(pdf)) toast(TAB_BLOCKED)
+  }
+
+  async function send(pdf: File) {
+    if (await shareOnWhatsApp(pdf, message, draft.client.phone)) return
+    // El navegador no dejó abrir la pestaña; un enlace sí se abre al pulsarlo.
+    toast('Tu navegador bloqueó la pestaña de WhatsApp.', {
+      duration: 10_000,
+      action: (
+        <a
+          href={whatsappLink(draft.client.phone, message)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`ml-auto shrink-0 ${inlineAction}`}
+        >
+          Abrir el chat
+        </a>
+      ),
+    })
   }
 
   return (
@@ -99,7 +133,7 @@ export function ProformaReady({ company, generatePdf, onCorrect, onNew }: Profor
           className="h-11.5 text-[15px] font-bold"
           disabled={!file || !phoneOk}
           aria-describedby={phoneOk ? undefined : 'ready-phone-hint'}
-          onClick={() => file && void shareOnWhatsApp(file, message, draft.client.phone)}
+          onClick={() => file && void send(file)}
         >
           <MessageCircle aria-hidden />
           Enviar por WhatsApp
@@ -124,7 +158,7 @@ export function ProformaReady({ company, generatePdf, onCorrect, onNew }: Profor
         type="button"
         className={`mt-2 text-sm ${inlineAction}`}
         disabled={!file}
-        onClick={() => file && openFile(file)}
+        onClick={() => file && view(file)}
       >
         Ver el documento
       </button>
