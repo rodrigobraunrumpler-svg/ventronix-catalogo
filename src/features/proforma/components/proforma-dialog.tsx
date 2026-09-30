@@ -11,7 +11,7 @@ import {
 import { useCompanyProfile } from '@/features/company/hooks'
 import { settle } from '@/lib/action-result'
 import { useReturnFocus } from '@/lib/use-return-focus'
-import { reserveProformaNumber } from '../actions'
+import { generateProformaDocument, reserveProformaNumber } from '../actions'
 import { useCurrentPrices, useRucLookup } from '../hooks'
 import { formatProformaNumber } from '../number'
 import { firstPendingField, type CompanyStatus } from '../readiness'
@@ -63,6 +63,7 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
           prices={prices.data}
           lookupRuc={lookupRuc}
           reserveNumber={() => settle(reserveProformaNumber())}
+          generatePdf={(input) => settle(generateProformaDocument(input))}
           onContinue={onClose}
           onFinish={onClose}
         />

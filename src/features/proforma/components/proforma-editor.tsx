@@ -2,10 +2,15 @@
 
 import { FileText } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import type { ActionResult } from '@/lib/action-result'
+import { base64ToFile, openFile } from '../document/files'
+import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
 import { generateBlocker, type CompanyStatus } from '../readiness'
 import type { RucLookupResult } from '../ruc'
 import { useProforma } from '../store'
+import { totalsFromText } from '../totals'
 import { ProformaClient } from './proforma-client'
 import { ProformaLines } from './proforma-lines'
 import { ProformaSummary } from './proforma-summary'
@@ -16,6 +21,7 @@ export type ProformaEditorProps = {
   lookupRuc: (ruc: string) => Promise<RucLookupResult>
   onContinue: () => void
   onGenerate: () => void
+  generatePdf: (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
   generating?: boolean
   error?: string | null
 }
@@ -28,12 +34,31 @@ export function ProformaEditor({
   lookupRuc,
   onContinue,
   onGenerate,
+  generatePdf,
   generating = false,
   error = null,
 }: ProformaEditorProps) {
   const { draft } = useProforma()
   const blocker = generateBlocker(draft, company)
   const defaultValidity = company.status === 'ready' ? company.profile.default_validity_days : null
+  const [previewing, setPreviewing] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const canPreview = draft.lines.length > 0 && totalsFromText(draft) !== null
+
+  // La pestaña se abre al pulsar, antes de esperar al servidor, para que el navegador no la bloquee.
+  async function preview() {
+    setPreviewError(null)
+    const tab = window.open('', '_blank')
+    setPreviewing(true)
+    const result = await generatePdf(documentInput(draft, { draft: true }))
+    setPreviewing(false)
+    if (!result.ok) {
+      tab?.close()
+      setPreviewError(result.error.message)
+      return
+    }
+    openFile(base64ToFile(result.data.base64, result.data.fileName), tab)
+  }
 
   return (
     <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-5 pt-5 pb-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -76,6 +101,19 @@ export function ProformaEditor({
             Recibe su número correlativo al generarla.
           </p>
         )}
+        <button
+          type="button"
+          disabled={!canPreview || previewing}
+          onClick={() => void preview()}
+          className="justify-self-start text-xs font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3 disabled:opacity-50"
+        >
+          {previewing ? 'Preparando la vista previa…' : 'Vista previa'}
+        </button>
+        {previewError ? (
+          <p role="alert" className="text-xs text-destructive">
+            {previewError}
+          </p>
+        ) : null}
       </ProformaSummary>
     </div>
   )

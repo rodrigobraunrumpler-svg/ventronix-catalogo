@@ -5,6 +5,7 @@ import {
   ProformaPanel,
   type ProformaPanelProps,
 } from '@/features/proforma/components/proforma-panel'
+import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
 import { draftSchema, EMPTY_DRAFT, PROFORMA_DRAFT_KEY } from '@/features/proforma/draft'
 import type { RucLookupResult } from '@/features/proforma/ruc'
 import { ProformaProvider } from '@/features/proforma/store'
@@ -22,6 +23,9 @@ function renderPanel(overrides: Partial<ProformaPanelProps> = {}) {
     reserveNumber: vi.fn(async (): Promise<ActionResult<number>> => ({ ok: true, data: 1 })),
     onContinue: vi.fn(),
     onFinish: vi.fn(),
+    generatePdf: vi.fn<(input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>>(
+      () => new Promise(() => {}),
+    ),
     ...overrides,
   }
   render(

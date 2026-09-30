@@ -6,12 +6,15 @@ import {
   ProformaEditor,
   type ProformaEditorProps,
 } from '@/features/proforma/components/proforma-editor'
+import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
 import { EMPTY_DRAFT } from '@/features/proforma/draft'
 import type { RucLookupResult } from '@/features/proforma/ruc'
 import { ProformaProvider } from '@/features/proforma/store'
+import type { ActionResult } from '@/lib/action-result'
 import { completeCompany, e1Lines, line, seedProforma } from '../support/proforma'
 
 type Lookup = (ruc: string) => Promise<RucLookupResult>
+type Generate = (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
 
 function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
   const props: ProformaEditorProps = {
@@ -20,6 +23,10 @@ function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
     lookupRuc: vi.fn<Lookup>(async () => ({ kind: 'not-found' })),
     onContinue: vi.fn(),
     onGenerate: vi.fn(),
+    generatePdf: vi.fn<Generate>(async () => ({
+      ok: true,
+      data: { fileName: 'Proforma-borrador.pdf', base64: btoa('%PDF') },
+    })),
     ...overrides,
   }
   render(
@@ -204,5 +211,26 @@ describe('ProformaEditor', () => {
     const { onContinue, user } = renderEditor()
     await user.click(screen.getByRole('button', { name: 'Seguir eligiendo productos' }))
     expect(onContinue).toHaveBeenCalledTimes(1)
+  })
+
+  it('«Vista previa» abre la pestaña al instante y luego muestra el borrador', async () => {
+    seedProforma({ lines: [line()] })
+    URL.createObjectURL = vi.fn(() => 'blob:borrador')
+    URL.revokeObjectURL = vi.fn()
+    const tab = { location: { href: '' }, close: vi.fn() } as unknown as Window
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab)
+    let finish: (value: ActionResult<GeneratedDocument>) => void = () => {}
+    const generatePdf = vi.fn<Generate>(
+      () => new Promise<ActionResult<GeneratedDocument>>((resolve) => (finish = resolve)),
+    )
+    const { user } = renderEditor({ generatePdf })
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(generatePdf).toHaveBeenCalledWith(expect.objectContaining({ draft: true }))
+    await act(async () =>
+      finish({ ok: true, data: { fileName: 'Proforma-borrador.pdf', base64: btoa('%PDF') } }),
+    )
+    expect(tab.location.href).toBe('blob:borrador')
+    open.mockRestore()
   })
 })
