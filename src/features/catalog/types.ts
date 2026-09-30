@@ -6,6 +6,8 @@ export type Category = {
 }
 
 export type CategoryOption = Pick<Category, 'id' | 'name'>
+// La tarjeta Categorías muestra cuántos productos tiene cada una (spec §7).
+export type CategoryListItem = Category & { product_count: number }
 export type CategoryInput = { name: string }
 
 export type ProductInput = {
