@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Download, MessageCircle, Pencil, Plus } from 'lucide-react'
+import { Check, CheckCheck, Download, MessageCircle, Pencil, Plus } from 'lucide-react'
 import { useEffect, useEffectEvent, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -24,20 +24,36 @@ import { totalsFromText } from '../totals'
 type Outcome = { kind: 'ready'; file: File } | { kind: 'error'; message: string }
 const LOADING = { kind: 'loading' } as const
 
+// Envío automático por WhatsApp (spec de WhatsApp §4); fallback: abrir el chat (paso 1).
+type Delivery =
+  | { kind: 'idle' }
+  | { kind: 'sending' }
+  | { kind: 'sent'; phone: string }
+  | { kind: 'failed'; message: string; fallback: boolean }
+
 const inlineAction =
   'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3 disabled:opacity-50'
 
-type ProformaReadyProps = {
+export type ProformaReadyProps = {
   company: CompanyStatus
   generatePdf: (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
   onCorrect: () => void
   onNew: () => void
+  // Con el WhatsApp de la empresa vinculado: la envía el servidor. Sin él, se abre el chat.
+  sendByWhatsApp?: (input: DocumentInput) => Promise<ActionResult<{ phone: string }>>
 }
 
 // «Proforma N° 0001 lista» (spec del documento §6 y prototipo). El PDF se prepara al entrar: así
 // descargar, ver y compartir son inmediatos y el navegador no los bloquea.
-export function ProformaReady({ company, generatePdf, onCorrect, onNew }: ProformaReadyProps) {
+export function ProformaReady({
+  company,
+  generatePdf,
+  onCorrect,
+  onNew,
+  sendByWhatsApp,
+}: ProformaReadyProps) {
   const { draft } = useProforma()
+  const [delivery, setDelivery] = useState<Delivery>({ kind: 'idle' })
   const [attempt, setAttempt] = useState(0)
   // El PDF vale solo para la proforma y el intento con que se pidió: si otra pestaña cambia la
   // proforma, se prepara de nuevo y mientras tanto no se puede bajar el anterior.
@@ -91,6 +107,22 @@ export function ProformaReady({ company, generatePdf, onCorrect, onNew }: Profor
   }
 
   async function send(pdf: File) {
+    if (!sendByWhatsApp) return openChat(pdf)
+    setDelivery({ kind: 'sending' })
+    const result = await sendByWhatsApp(documentInput(draft, { draft: false }))
+    setDelivery(
+      result.ok
+        ? { kind: 'sent', phone: result.data.phone }
+        : {
+            kind: 'failed',
+            message: result.error.message,
+            // Si el cliente no tiene WhatsApp, abrir el chat tampoco sirve.
+            fallback: result.error.code !== 'VALIDATION',
+          },
+    )
+  }
+
+  async function openChat(pdf: File) {
     if (await shareOnWhatsApp(pdf, message, draft.client.phone)) return
     // El navegador no dejó abrir la pestaña; un enlace sí se abre al pulsarlo.
     toast('Tu navegador bloqueó la pestaña de WhatsApp.', {
@@ -131,14 +163,33 @@ export function ProformaReady({ company, generatePdf, onCorrect, onNew }: Profor
         <Button
           variant="outline"
           className="h-11.5 text-[15px] font-bold"
-          disabled={!file || !phoneOk}
+          disabled={!file || !phoneOk || delivery.kind === 'sending'}
           aria-describedby={phoneOk ? undefined : 'ready-phone-hint'}
           onClick={() => file && void send(file)}
         >
           <MessageCircle aria-hidden />
-          Enviar por WhatsApp
+          {delivery.kind === 'sending' ? 'Enviando…' : 'Enviar por WhatsApp'}
         </Button>
       </div>
+      {delivery.kind === 'sending' ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          Enviando por WhatsApp…
+        </p>
+      ) : delivery.kind === 'sent' ? (
+        <p role="status" className="inline-flex items-center gap-1.5 text-xs text-ring">
+          <CheckCheck className="size-4" aria-hidden />
+          Enviada por WhatsApp al {delivery.phone}.
+        </p>
+      ) : delivery.kind === 'failed' ? (
+        <p role="alert" className="text-xs text-destructive">
+          {delivery.message}{' '}
+          {delivery.fallback && file ? (
+            <button type="button" className={inlineAction} onClick={() => void openChat(file)}>
+              Abrir el chat
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       {status.kind === 'loading' ? (
         <p className="text-xs text-muted-foreground">Preparando el PDF…</p>
       ) : status.kind === 'error' ? (

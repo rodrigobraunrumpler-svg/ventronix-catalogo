@@ -1,14 +1,22 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { connect, fillCompanyProfile, resetCatalog, resetCompanyProfile } from '../integration/db'
+import {
+  connect,
+  fillCompanyProfile,
+  resetCatalog,
+  resetCompanyProfile,
+  resetWhatsAppSession,
+} from '../integration/db'
 import { login } from './session'
 
-// Dos laptops, la numeración desde 1 y, si se pide, la empresa con lo obligatorio.
+// Dos laptops, la numeración desde 1, WhatsApp sin vincular y, si se pide, la empresa con lo
+// obligatorio.
 async function seed({ company = true } = {}) {
   const db = await connect()
   try {
     await resetCatalog(db)
     await resetCompanyProfile(db)
+    await resetWhatsAppSession(db)
     if (company) await fillCompanyProfile(db)
     await db.query('alter sequence public.proforma_number_seq restart with 1')
     const { rows } = await db.query<{ id: string }>(
@@ -158,4 +166,30 @@ test('descarga el PDF y abre WhatsApp con el mensaje escrito', async ({ page }) 
   expect((await chat).url()).toContain(
     'https://wa.me/51987654321?text=Hola%2C%20Cliente%20de%20ejemplo%20S.A.C.%20Le%20env',
   )
+})
+
+// El proveedor de prueba (WHATSAPP_PROVIDER=stub) vincula al instante y nunca sale a WhatsApp.
+test('vincula WhatsApp en Empresa y la proforma se envía sola', async ({ page }) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Empresa' }).click()
+  const card = page.getByRole('region', { name: 'WhatsApp' })
+  await expect(card).toContainText('Sin vincular')
+  await card.getByRole('button', { name: 'Vincular WhatsApp' }).click()
+  const link = page.getByRole('dialog', { name: 'Vincular WhatsApp' })
+  await link.getByLabel('Celular de WhatsApp de la empresa').fill('987 654 321')
+  await link.getByRole('button', { name: 'Generar código' }).click()
+  await expect(page.getByText('WhatsApp vinculado.')).toBeVisible()
+  await expect(card).toContainText('Las proformas se envían desde el 987 654 321.')
+
+  await page.getByRole('link', { name: 'Productos' }).click()
+  await addLaptop14(page)
+  await bar(page).getByRole('button', { name: 'Completar proforma' }).click()
+  const panel = dialog(page)
+  await panel.getByLabel('Razón social o nombre').fill('Cliente de ejemplo S.A.C.')
+  await panel.getByLabel('Celular').fill('900 000 000')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
+  await panel.getByRole('button', { name: 'Enviar por WhatsApp' }).click()
+  await expect(panel.getByText('Enviada por WhatsApp al 900 000 000.')).toBeVisible()
 })

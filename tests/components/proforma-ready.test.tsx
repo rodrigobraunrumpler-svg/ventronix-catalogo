@@ -10,6 +10,7 @@ import type { ActionResult } from '@/lib/action-result'
 import { completeCompany, line, seedProforma } from '../support/proforma'
 
 type Generate = (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
+type Send = (input: DocumentInput) => Promise<ActionResult<{ phone: string }>>
 const pdf: GeneratedDocument = {
   fileName: 'Proforma-0001-Cliente-de-ejemplo-SAC.pdf',
   base64: btoa('%PDF-1.4 prueba'),
@@ -17,12 +18,14 @@ const pdf: GeneratedDocument = {
 
 function renderReady(
   generatePdf: Generate = vi.fn<Generate>(async () => ({ ok: true, data: pdf })),
+  sendByWhatsApp?: Send,
 ) {
   render(
     <ProformaProvider>
       <ProformaReady
         company={{ status: 'ready', profile: { ...completeCompany, trade_name: 'Ventronix' } }}
         generatePdf={generatePdf}
+        sendByWhatsApp={sendByWhatsApp}
         onCorrect={vi.fn()}
         onNew={vi.fn()}
       />
@@ -158,5 +161,56 @@ describe('ProformaReady', () => {
       'href',
       expect.stringMatching(/^https:\/\/wa\.me\/51900000000\?text=Hola/),
     )
+  })
+
+  it('con WhatsApp vinculado, la envía sin descargarla ni abrir el chat', async () => {
+    seed()
+    const open = vi.spyOn(window, 'open')
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const sendByWhatsApp = vi.fn<Send>(async () => ({ ok: true, data: { phone: '900 000 000' } }))
+    const { user } = renderReady(undefined, sendByWhatsApp)
+    const send = screen.getByRole('button', { name: 'Enviar por WhatsApp' })
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    await user.click(send)
+    expect(sendByWhatsApp).toHaveBeenCalledWith(
+      expect.objectContaining({ draft: false, number: 1 }),
+    )
+    expect(await screen.findByText('Enviada por WhatsApp al 900 000 000.')).toBeVisible()
+    expect(open).not.toHaveBeenCalled()
+    expect(click).not.toHaveBeenCalled()
+  })
+
+  it('si el envío automático falla, lo dice y ofrece abrir el chat', async () => {
+    seed()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window)
+    const sendByWhatsApp = vi.fn<Send>(async () => ({
+      ok: false,
+      error: { code: 'UNEXPECTED', message: 'No pudimos enviarla por WhatsApp.' },
+    }))
+    const { user } = renderReady(undefined, sendByWhatsApp)
+    const send = screen.getByRole('button', { name: 'Enviar por WhatsApp' })
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    await user.click(send)
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos enviarla por WhatsApp.')
+    await user.click(screen.getByRole('button', { name: 'Abrir el chat' }))
+    expect(open).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/wa\.me\/51900000000/),
+      '_blank',
+    )
+  })
+
+  it('si el cliente no tiene WhatsApp, no ofrece abrir el chat', async () => {
+    seed()
+    const sendByWhatsApp = vi.fn<Send>(async () => ({
+      ok: false,
+      error: { code: 'VALIDATION', message: 'El 900 000 000 no tiene WhatsApp.' },
+    }))
+    const { user } = renderReady(undefined, sendByWhatsApp)
+    const send = screen.getByRole('button', { name: 'Enviar por WhatsApp' })
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    await user.click(send)
+    expect(await screen.findByRole('alert')).toHaveTextContent('El 900 000 000 no tiene WhatsApp.')
+    expect(screen.queryByRole('button', { name: 'Abrir el chat' })).not.toBeInTheDocument()
   })
 })

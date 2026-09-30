@@ -185,11 +185,13 @@ type CompanyFormProps = {
   onSaved?: () => void
   // Consulta de RUC en SUNAT para rellenar razón social y dirección (la misma de la proforma).
   lookupRuc?: (ruc: string) => Promise<RucLookupResult>
+  // Debajo de la vista previa: la tarjeta de WhatsApp, que no es parte del formulario.
+  aside?: ReactNode
 }
 
 // Datos de la empresa (spec §6.2): pestañas con los errores marcados, guardar siempre a la vista y
 // vista previa de cómo saldrán en la proforma.
-export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc }: CompanyFormProps) {
+export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: CompanyFormProps) {
   const [tab, setTab] = useState<Section>('datos')
   const [status, setStatus] = useState<'idle' | 'saved' | 'invalid'>('idle')
   const [serverError, setServerError] = useState<string | null>(null)
@@ -692,7 +694,10 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc }: CompanyFo
           </Tabs.Content>
         </Tabs.Root>
 
-        <CompanyPreview values={live} />
+        <div className="grid gap-4">
+          <CompanyPreview values={live} />
+          {aside}
+        </div>
       </div>
     </form>
   )

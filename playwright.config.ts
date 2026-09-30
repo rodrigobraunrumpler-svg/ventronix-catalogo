@@ -32,7 +32,7 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    // Consulta de RUC con datos de prueba: las e2e nunca llaman al servicio real.
-    env: { RUC_PROVIDER: 'stub' },
+    // RUC y WhatsApp de prueba: las e2e nunca llaman a los servicios reales.
+    env: { RUC_PROVIDER: 'stub', WHATSAPP_PROVIDER: 'stub' },
   },
 })

@@ -6,6 +6,12 @@ import { CompanyScreen } from '@/features/company/components/company-screen'
 // La consulta no responde nunca: la pantalla se queda cargando.
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({}) }))
 vi.mock('@/features/company/queries', () => ({ getCompanyProfile: () => new Promise(() => {}) }))
+// Las acciones de WhatsApp cargan Baileys, que esta pantalla no necesita para cargar.
+vi.mock('@/features/whatsapp/actions', () => ({
+  getWhatsAppStatus: () => new Promise(() => {}),
+  linkWhatsApp: vi.fn(),
+  unlinkWhatsApp: vi.fn(),
+}))
 
 it('mientras carga muestra un esqueleto del formulario, no un texto suelto', () => {
   render(

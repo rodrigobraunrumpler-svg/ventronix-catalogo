@@ -4,6 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRucLookup } from '@/features/proforma/hooks'
+import { WhatsAppSection } from '@/features/whatsapp/components/whatsapp-section'
 import { cn } from '@/lib/utils'
 import { useCompanyProfile, useSaveCompanyProfile } from '../hooks'
 import { CompanyForm, CompanyHeader } from './company-form'
@@ -55,7 +56,14 @@ export function CompanyScreen() {
   const lookupRuc = useRucLookup()
 
   if (profile.isSuccess && profile.data) {
-    return <CompanyForm profile={profile.data} onSubmit={save} lookupRuc={lookupRuc} />
+    return (
+      <CompanyForm
+        profile={profile.data}
+        onSubmit={save}
+        lookupRuc={lookupRuc}
+        aside={<WhatsAppSection />}
+      />
+    )
   }
 
   return (

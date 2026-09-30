@@ -5,7 +5,7 @@ import type { ActionResult } from '@/lib/action-result'
 import { EMPTY_DRAFT, setNumber } from '../draft'
 import { useProforma } from '../store'
 import { ProformaEditor, type ProformaEditorProps } from './proforma-editor'
-import { ProformaReady } from './proforma-ready'
+import { ProformaReady, type ProformaReadyProps } from './proforma-ready'
 
 export type ProformaPanelProps = Omit<
   ProformaEditorProps,
@@ -13,11 +13,16 @@ export type ProformaPanelProps = Omit<
 > & {
   reserveNumber: () => Promise<ActionResult<number>>
   onFinish: () => void
+  sendByWhatsApp?: ProformaReadyProps['sendByWhatsApp']
 }
 
 // El número se pide una sola vez: «Corregir» lo conserva y «Nueva proforma» lo libera (spec §4.4).
-// Descargar el PDF y enviarlo por WhatsApp llegan con las tareas 10 y 11 del plan del catálogo.
-export function ProformaPanel({ reserveNumber, onFinish, ...editor }: ProformaPanelProps) {
+export function ProformaPanel({
+  reserveNumber,
+  onFinish,
+  sendByWhatsApp,
+  ...editor
+}: ProformaPanelProps) {
   const { draft, update } = useProforma()
   const [view, setView] = useState<'edit' | 'ready'>('edit')
   const [generating, setGenerating] = useState(false)
@@ -52,6 +57,7 @@ export function ProformaPanel({ reserveNumber, onFinish, ...editor }: ProformaPa
       <ProformaReady
         company={editor.company}
         generatePdf={editor.generatePdf}
+        sendByWhatsApp={sendByWhatsApp}
         onCorrect={() => setView('edit')}
         onNew={startNew}
       />

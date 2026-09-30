@@ -11,7 +11,9 @@ import {
 import { useCompanyProfile } from '@/features/company/hooks'
 import { settle } from '@/lib/action-result'
 import { useReturnFocus } from '@/lib/use-return-focus'
-import { generateProformaDocument, reserveProformaNumber } from '../actions'
+import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
+import { generateProformaDocument, reserveProformaNumber, sendProformaByWhatsApp } from '../actions'
+import type { DocumentInput } from '../document/input'
 import { useCurrentPrices, useRucLookup } from '../hooks'
 import { formatProformaNumber } from '../number'
 import { firstPendingField, type CompanyStatus } from '../readiness'
@@ -28,6 +30,19 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
   )
   const lookupRuc = useRucLookup()
   const returnFocus = useReturnFocus(open, 'product-search')
+  const whatsapp = useWhatsAppStatus(open)
+  const { refresh } = useWhatsAppLink()
+
+  // Con el WhatsApp de la empresa vinculado, la proforma se envía sola (spec de WhatsApp §4). Si
+  // falla, el estado se vuelve a pedir: el teléfono pudo cerrar la sesión.
+  const sendByWhatsApp =
+    whatsapp.data?.configured && whatsapp.data.phone
+      ? async (input: DocumentInput) => {
+          const result = await settle(sendProformaByWhatsApp(input))
+          if (!result.ok) void refresh()
+          return result
+        }
+      : undefined
 
   const companyStatus: CompanyStatus = company.isPending
     ? { status: 'loading' }
@@ -64,6 +79,7 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
           lookupRuc={lookupRuc}
           reserveNumber={() => settle(reserveProformaNumber())}
           generatePdf={(input) => settle(generateProformaDocument(input))}
+          sendByWhatsApp={sendByWhatsApp}
           onContinue={onClose}
           onFinish={onClose}
         />
