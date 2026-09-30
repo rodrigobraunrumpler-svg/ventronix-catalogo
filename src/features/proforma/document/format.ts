@@ -64,3 +64,23 @@ export function whatsappMessage({
 // Chat del cliente en WhatsApp con el mensaje: código de Perú delante del celular.
 export const whatsappLink = (phone: string, message: string) =>
   `https://wa.me/51${digitsOnly(phone)}?text=${encodeURIComponent(message)}`
+
+// Un código largo se parte en líneas de `width` caracteres, como lo haría el navegador: tras «-»,
+// «/», «_», «.» o un espacio; un tramo que no cabe se corta donde llegue (la fuente es monoespaciada).
+export function wrapCode(code: string, width: number) {
+  const lines: string[] = []
+  let line = ''
+  for (const part of code.match(/[^-/_. ]+[-/_. ]*|[-/_. ]+/g) ?? []) {
+    if (line && line.length + part.trimEnd().length > width) {
+      lines.push(line.trimEnd())
+      line = ''
+    }
+    line += part
+    while (line.trimEnd().length > width) {
+      lines.push(line.slice(0, width))
+      line = line.slice(width)
+    }
+  }
+  if (line.trimEnd()) lines.push(line.trimEnd())
+  return lines.join('\n')
+}

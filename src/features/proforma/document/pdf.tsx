@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from '@react-pdf/renderer'
+import { wrapCode } from './format'
 import type { DocumentModel } from './model'
 
 const fonts = path.join(process.cwd(), 'src/features/proforma/document/fonts')
@@ -45,6 +46,8 @@ const SIDE = 30
 // Margen superior de las páginas siguientes; la franja negra de la primera lo cubre con un margen
 // negativo para quedar pegada al borde, como en la pizarra.
 const TOP = 24
+// Caracteres de JetBrains Mono (0,6 em) que caben en la columna CÓDIGO: (64,5 − 15) / (9 × 0,6).
+const CODE_CHARS = 9
 
 const s = StyleSheet.create({
   page: {
@@ -278,7 +281,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           {model.rows.map((row, index) => (
             <View key={index} style={s.row} wrap={false}>
               <Text style={[s.td, s.quantity]}>{row.quantity}</Text>
-              <Text style={[s.td, s.code, s.mono]}>{row.code}</Text>
+              <Text style={[s.td, s.code, s.mono]}>{wrapCode(row.code, CODE_CHARS)}</Text>
               <View style={[s.td, s.description]}>
                 <Text style={s.semibold}>{row.name}</Text>
                 {row.description ? <Text style={s.detail}>{row.description}</Text> : null}

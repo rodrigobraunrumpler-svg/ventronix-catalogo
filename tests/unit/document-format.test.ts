@@ -4,6 +4,7 @@ import {
   documentFileName,
   whatsappLink,
   whatsappMessage,
+  wrapCode,
 } from '@/features/proforma/document/format'
 
 describe('documentDates', () => {
@@ -52,5 +53,23 @@ describe('WhatsApp', () => {
     expect(whatsappLink('987 654 321', 'Hola, ¿qué tal?')).toBe(
       'https://wa.me/51987654321?text=Hola%2C%20%C2%BFqu%C3%A9%20tal%3F',
     )
+  })
+})
+
+describe('wrapCode', () => {
+  it('deja igual un código que cabe', () => {
+    expect(wrapCode('LAP-001', 9)).toBe('LAP-001')
+  })
+
+  it('parte tras los guiones, como el navegador', () => {
+    expect(wrapCode('HP-LASERJET-M404DN', 9)).toBe('HP-\nLASERJET-\nM404DN')
+  })
+
+  it('parte entre palabras sin dejar el espacio al final', () => {
+    expect(wrapCode('TONER HP CF258A', 9)).toBe('TONER HP\nCF258A')
+  })
+
+  it('un tramo sin separadores se corta cada tantos caracteres', () => {
+    expect(wrapCode('ABCDEFGHIJKLMNOPQRS', 9)).toBe('ABCDEFGHI\nJKLMNOPQR\nS')
   })
 })
