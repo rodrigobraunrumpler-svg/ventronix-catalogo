@@ -5,6 +5,8 @@ import { invalid, unexpected } from '@/features/catalog/action-errors'
 import type { ActionResult } from '@/lib/action-result'
 import { withOwner } from '@/lib/auth/with-owner'
 import { isValidRuc } from '@/lib/peru'
+import { documentInputSchema, type GeneratedDocument } from './document/input'
+import { createProformaDocument } from './document/service'
 import type { RucLookupResult } from './ruc'
 import { getRucProvider } from './ruc-provider'
 
@@ -29,5 +31,16 @@ export async function lookupRuc(ruc: unknown): Promise<ActionResult<RucLookupRes
     if (!parsed.success) return invalid(parsed.error)
     const result = await getRucProvider().lookup(parsed.data, AbortSignal.timeout(5000))
     return { ok: true, data: result }
+  })
+}
+
+// PDF de la proforma (spec del documento §3): la cuenta autorizada, datos validados y nada guardado.
+export async function generateProformaDocument(
+  input: unknown,
+): Promise<ActionResult<GeneratedDocument>> {
+  return withOwner(async ({ supabase }) => {
+    const parsed = documentInputSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+    return createProformaDocument(supabase, parsed.data)
   })
 }
