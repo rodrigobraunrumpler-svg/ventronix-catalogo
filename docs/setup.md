@@ -48,7 +48,7 @@ Abre `http://localhost:3000`; la raíz redirige a `/products`.
 | `pnpm validate`         | Lint, tipos, formato, pruebas y build de producción.                      |
 | `pnpm db:push`          | Aplica las migraciones al Supabase de producción (ver `deployment.md`).   |
 
-`pnpm test:e2e` necesita el navegador de Playwright una sola vez (`pnpm exec playwright install chromium`), el Supabase local en marcha y `.env.development.local`. Sus cuentas de prueba se crean solas en el Supabase local.
+`pnpm test:e2e` necesita el navegador de Playwright una sola vez (`pnpm exec playwright install chromium`), el Supabase local en marcha y `.env.development.local`. Sus cuentas de prueba se crean solas en el Supabase local. Arranca su propio `pnpm dev` en el puerto 4100, así que nunca usa la app del puerto 3000, aunque tengas `pnpm start` abierto con el Supabase real. Next permite un solo `pnpm dev` por carpeta: si tienes uno abierto, ciérralo antes de lanzar las e2e.
 
 ## Supabase local (desarrollo y pruebas)
 

@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = 'http://localhost:3000'
+// Puerto propio: las e2e nunca reutilizan la app del puerto 3000, que puede estar en `pnpm start`
+// conectada al Supabase real. `pnpm dev` usa siempre .env.development.local (Supabase local).
+const port = 4100
+const baseURL = `http://localhost:${port}`
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -25,7 +28,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
+    command: `pnpm dev --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
