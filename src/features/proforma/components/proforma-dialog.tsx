@@ -1,6 +1,6 @@
 'use client'
 
-import { format } from 'date-fns'
+import { Check } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -34,9 +34,6 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
     : company.isError || !company.data
       ? { status: 'error' }
       : { status: 'ready', profile: company.data }
-  const saved = draft.updatedAt
-    ? `Borrador guardado a las ${format(new Date(draft.updatedAt), 'HH:mm')}`
-    : 'Borrador guardado'
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -50,13 +47,15 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
             target.focus()
           }
         }}
-        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:max-w-none max-sm:rounded-none sm:max-w-[1040px]"
+        className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-2xl p-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:max-w-none max-sm:rounded-none sm:max-w-[980px] has-[[data-view=ready]]:sm:max-w-[520px] [&:has([data-view=ready])_[data-slot=dialog-header]]:sr-only"
       >
-        <DialogHeader className="border-b px-6 pt-5 pr-12 pb-4">
+        <DialogHeader className="gap-1 border-b px-6 pt-5 pr-14 pb-4">
           <DialogTitle className="text-lg font-bold">Completar proforma</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="flex items-center gap-1.5 text-[13px]">
+            {/* El borrador se guarda en cada cambio (spec §4.5). */}
+            <Check className="size-3.75 shrink-0 text-ring" aria-hidden />
             {draft.number ? `${formatProformaNumber(draft.number)} · ` : ''}
-            {saved}
+            Se guarda sola mientras la completas.
           </DialogDescription>
         </DialogHeader>
         <ProformaPanel

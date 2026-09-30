@@ -1,5 +1,6 @@
 'use client'
 
+import { FileText } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { generateBlocker, type CompanyStatus } from '../readiness'
@@ -19,8 +20,8 @@ export type ProformaEditorProps = {
   error?: string | null
 }
 
-// Productos, cliente y resumen en una sola vista (spec §4.3). «Generar» explica por qué no se
-// puede todavía, con el motivo debajo.
+// Productos y cliente a la izquierda; el resumen con «Generar proforma» a la derecha (spec §4.3 y
+// prototipo). Mientras no se pueda generar, el motivo va debajo del botón.
 export function ProformaEditor({
   company,
   prices,
@@ -35,46 +36,47 @@ export function ProformaEditor({
   const defaultValidity = company.status === 'ready' ? company.profile.default_validity_days : null
 
   return (
-    <>
-      <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="grid content-start gap-6 p-5 sm:p-6">
-          <ProformaLines prices={prices} onContinue={onContinue} />
-        </div>
-        <div className="grid content-start gap-6 border-t p-5 sm:p-6 lg:border-t-0 lg:border-l">
-          <ProformaClient lookupRuc={lookupRuc} defaultValidityDays={defaultValidity} />
-          <ProformaSummary />
-        </div>
+    <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-5 pt-5 pb-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="flex min-w-0 flex-col gap-5">
+        <ProformaLines prices={prices} onContinue={onContinue} />
+        <ProformaClient lookupRuc={lookupRuc} defaultValidityDays={defaultValidity} />
       </div>
-      <div className="grid gap-2 border-t bg-background/60 px-5 py-4 sm:justify-items-end sm:px-6">
+      <ProformaSummary>
         <Button
           id="generate-proforma"
+          className="h-11.5 w-full text-[15px] font-bold"
           disabled={blocker !== null || generating}
           aria-describedby={error || blocker ? 'generate-reason' : undefined}
           onClick={onGenerate}
         >
+          <FileText className="size-4.5" aria-hidden />
           {generating ? 'Generando…' : 'Generar proforma'}
         </Button>
         {error ? (
-          <p id="generate-reason" role="alert" className="text-sm text-destructive sm:text-right">
+          <p id="generate-reason" role="alert" className="text-xs leading-normal text-destructive">
             {error}
           </p>
         ) : blocker ? (
-          <p id="generate-reason" className="text-sm text-muted-foreground sm:text-right">
+          <p id="generate-reason" className="text-xs leading-normal text-muted-foreground">
             {blocker.message}
             {blocker.companyLink ? (
               <>
                 {' '}
                 <Link
                   href="/company"
-                  className="font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-2"
+                  className="font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3"
                 >
                   Ir a Empresa
                 </Link>
               </>
             ) : null}
           </p>
-        ) : null}
-      </div>
-    </>
+        ) : (
+          <p className="text-xs leading-normal text-muted-foreground">
+            Recibe su número correlativo al generarla.
+          </p>
+        )}
+      </ProformaSummary>
+    </div>
   )
 }

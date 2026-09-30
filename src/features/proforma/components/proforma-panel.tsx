@@ -1,6 +1,6 @@
 'use client'
 
-import { CircleCheck } from 'lucide-react'
+import { Check, Pencil, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
@@ -49,22 +49,32 @@ export function ProformaPanel({ reserveNumber, onFinish, ...editor }: ProformaPa
 
   if (view === 'ready' && draft.number !== null) {
     const totals = totalsFromText(draft)
+    // data-view: la ventana se estrecha y oculta su cabecera mientras se muestra esta vista.
     return (
-      <div className="grid justify-items-center gap-3 px-6 py-12 text-center">
-        <span className="grid size-13 place-items-center rounded-full bg-primary/15 text-ring">
-          <CircleCheck className="size-6" aria-hidden />
+      <div data-view="ready" className="grid justify-items-center gap-2 px-8 pt-9 pb-7 text-center">
+        <span className="mb-1.5 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground">
+          <Check className="size-7" strokeWidth={2.2} aria-hidden />
         </span>
-        <p role="status" className="text-xl font-extrabold">
+        <p role="status" className="text-xl font-extrabold text-foreground">
           Proforma {formatProformaNumber(draft.number)} lista
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="mb-3.5 text-muted-foreground">
           {draft.client.name} · Total S/ {totals ? formatCents(totals.total) : '—'}
         </p>
-        <div className="mt-2 flex flex-wrap justify-center gap-2">
-          <Button variant="outline" autoFocus onClick={() => setView('edit')}>
+        <div className="grid w-full gap-2.5 sm:grid-cols-2">
+          <Button
+            variant="outline"
+            className="h-11.5 text-[15px] font-bold"
+            autoFocus
+            onClick={() => setView('edit')}
+          >
+            <Pencil aria-hidden />
             Corregir
           </Button>
-          <Button onClick={startNew}>Nueva proforma</Button>
+          <Button variant="ghost" className="h-11.5 text-sm font-semibold" onClick={startNew}>
+            <Plus aria-hidden />
+            Nueva proforma
+          </Button>
         </div>
       </div>
     )

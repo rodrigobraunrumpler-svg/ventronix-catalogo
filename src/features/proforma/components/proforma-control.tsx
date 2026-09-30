@@ -49,11 +49,12 @@ export function ProformaControl({ product }: { product: ProductListItem }) {
     <div
       role="group"
       aria-label={`Cantidad de ${product.name} en la proforma`}
-      className="inline-flex items-center rounded-lg border bg-card"
+      className="inline-flex items-center overflow-hidden rounded-[9px] border border-primary bg-card"
     >
       <Button
         variant="ghost"
         size="icon"
+        className="rounded-none"
         aria-label={
           line.quantity <= 1
             ? `Quitar ${product.name} de la proforma`
@@ -63,10 +64,13 @@ export function ProformaControl({ product }: { product: ProductListItem }) {
       >
         <Minus aria-hidden />
       </Button>
-      <span className="min-w-8 text-center text-sm font-bold tabular-nums">{line.quantity}</span>
+      <span className="grid h-9 min-w-9.5 place-items-center border-x bg-[#f6fbef] px-1 text-sm font-bold text-foreground tabular-nums">
+        {line.quantity}
+      </span>
       <Button
         variant="ghost"
         size="icon"
+        className="rounded-none"
         aria-label={`Una unidad más de ${product.name}`}
         disabled={line.quantity >= MAX_QUANTITY}
         onClick={add}

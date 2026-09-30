@@ -54,9 +54,9 @@ describe('ProformaEditor', () => {
     expect(summary.getByText('− S/ 426.00')).toBeVisible()
     expect(summary.getByText('S/ 8,094.00')).toBeVisible()
     expect(summary.getByText('S/ 8,114.00')).toBeVisible()
-    expect(
-      summary.getByText(/Op\. gravada S\/ 6,876\.27 · IGV \(18%\) S\/ 1,237\.73/),
-    ).toBeVisible()
+    expect(summary.getByText('Precios incluyen IGV')).toBeVisible()
+    expect(summary.getByText('S/ 6,876.27')).toBeVisible()
+    expect(summary.getByText('S/ 1,237.73')).toBeVisible()
     expect(screen.getByText('S/ 5,180.00')).toBeVisible()
   })
 

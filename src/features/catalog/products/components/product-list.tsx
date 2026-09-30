@@ -230,7 +230,7 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
             className={cn(
               'border-b transition-colors last:border-b-0',
               findLine(draft, product.id)
-                ? 'bg-primary/10 hover:bg-primary/15'
+                ? 'bg-[#f6fbef] hover:bg-[#f1f8e6]'
                 : 'hover:bg-background/40',
             )}
           >
@@ -277,7 +277,7 @@ function ProductCards({ items, onEdit, onDelete }: RowsProps) {
           key={product.id}
           className={cn(
             'grid gap-2 border-t px-4 py-3.5',
-            findLine(draft, product.id) && 'bg-primary/10',
+            findLine(draft, product.id) && 'bg-[#f6fbef]',
           )}
         >
           <div className="flex items-start justify-between gap-3">

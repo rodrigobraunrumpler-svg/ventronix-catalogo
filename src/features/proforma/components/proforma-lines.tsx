@@ -1,6 +1,6 @@
 'use client'
 
-import { Minus, Plus, Trash2 } from 'lucide-react'
+import { Minus, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/features/catalog/money'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,7 @@ import { useProforma, useRemoveLine } from '../store'
 import { MAX_QUANTITY } from '../totals'
 
 const inlineAction =
-  'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-2'
+  'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3'
 
 export function ProformaLines({
   prices,
@@ -28,21 +28,27 @@ export function ProformaLines({
 }) {
   const { draft } = useProforma()
   return (
-    <section aria-labelledby="proforma-lines-title" className="grid gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h3 id="proforma-lines-title" className="text-sm font-bold">
+    <section aria-labelledby="proforma-lines-title">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <h3
+          id="proforma-lines-title"
+          className="flex items-center gap-2 text-sm font-bold text-foreground"
+        >
           Productos
+          <span className="rounded-full bg-muted px-2 font-mono text-xs font-medium text-muted-foreground">
+            {draft.lines.length}
+          </span>
         </h3>
-        <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={onContinue}>
+        <button type="button" className={cn(inlineAction, 'text-[13px]')} onClick={onContinue}>
           Seguir eligiendo productos
-        </Button>
+        </button>
       </div>
       {draft.lines.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-          Aún no hay productos. Vuelve a la lista y pulsa «Añadir».
+        <p className="rounded-xl border border-dashed border-input p-6 text-center text-muted-foreground">
+          La proforma está vacía. Pulsa «Seguir eligiendo productos» y añádelos desde la lista.
         </p>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid rounded-xl border">
           {draft.lines.map((line) => (
             <LineRow
               key={line.productId}
@@ -57,6 +63,8 @@ export function ProformaLines({
   )
 }
 
+// PC: nombre, cantidad, precio, total y quitar en una fila (prototipo). Móvil: el nombre arriba y
+// los controles debajo.
 function LineRow({
   line,
   currentPrice,
@@ -84,35 +92,43 @@ function LineRow({
     update((current) => setQuantity(current, line.productId, quantity))
 
   return (
-    <li className="grid gap-2 rounded-lg border bg-card p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="line-clamp-2 font-semibold" title={line.name}>
-            {line.name}
-          </p>
-          <p className="font-mono text-xs text-muted-foreground">{line.code}</p>
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_118px_132px_104px_36px]">
+      <div className="min-w-0">
+        <p className="line-clamp-2 leading-snug font-semibold text-foreground" title={line.name}>
+          {line.name}
+        </p>
+        <div className="mt-0.75 flex flex-wrap items-center gap-2">
+          <span className="rounded-md border bg-background px-1.5 font-mono text-xs text-secondary-foreground">
+            {line.code}
+          </span>
+          {edited ? (
+            <span className="inline-flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+              <span className="whitespace-nowrap">
+                Catálogo S/ {formatPrice(line.catalogPrice)}
+              </span>
+              <button
+                type="button"
+                className={cn(inlineAction, 'text-xs')}
+                onClick={() => update((current) => restorePrice(current, line.productId))}
+              >
+                Restaurar
+              </button>
+            </span>
+          ) : null}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`Quitar ${line.name}`}
-          title="Quitar"
-          className="hover:bg-destructive/10 hover:text-destructive"
-          onClick={() => removeLine(line.productId)}
-        >
-          <Trash2 aria-hidden />
-        </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+
+      <div className="col-span-2 flex flex-wrap items-center gap-3 sm:contents">
         <div
           className={cn(
-            'inline-flex items-center rounded-lg border bg-card',
+            'inline-flex w-fit shrink-0 items-center overflow-hidden rounded-[10px] border border-input bg-card',
             quantityProblem && 'border-destructive',
           )}
         >
           <Button
             variant="ghost"
             size="icon"
+            className="h-9.5 w-8.5 rounded-none"
             aria-label={`Una unidad menos de ${line.name}`}
             disabled={line.quantity <= 1}
             onClick={() => change(line.quantity - 1)}
@@ -131,11 +147,12 @@ function LineRow({
               const digits = event.target.value.replace(/\D/g, '').slice(0, 5)
               change(digits === '' ? 0 : Number(digits))
             }}
-            className="h-9 w-14 bg-transparent text-center font-semibold tabular-nums outline-none"
+            className="h-9.5 w-12 border-x bg-transparent text-center font-bold text-foreground tabular-nums outline-none"
           />
           <Button
             variant="ghost"
             size="icon"
+            className="h-9.5 w-8.5 rounded-none"
             aria-label={`Una unidad más de ${line.name}`}
             disabled={line.quantity >= MAX_QUANTITY}
             onClick={() => change(line.quantity + 1)}
@@ -145,11 +162,11 @@ function LineRow({
         </div>
         <div
           className={cn(
-            'flex h-9 overflow-hidden rounded-lg border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
+            'flex h-10 min-w-0 overflow-hidden rounded-[10px] border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 max-sm:w-33',
             priceProblem && 'border-destructive ring-3 ring-destructive/20',
           )}
         >
-          <span className="grid place-items-center border-r bg-muted px-2.5 text-xs font-semibold text-muted-foreground">
+          <span className="grid place-items-center border-r bg-muted px-2.25 text-[13px] font-semibold text-muted-foreground">
             S/
           </span>
           <input
@@ -163,42 +180,44 @@ function LineRow({
             onChange={(event) =>
               update((current) => setUnitPrice(current, line.productId, event.target.value))
             }
-            className="w-28 min-w-0 bg-transparent px-2.5 text-right tabular-nums outline-none"
+            className="w-full min-w-0 bg-transparent px-2.25 text-foreground tabular-nums outline-none"
           />
         </div>
-        <p className="ml-auto text-right whitespace-nowrap tabular-nums">
-          <span className="mr-1 text-xs text-muted-foreground">Total</span>
-          <span className="font-bold">{total}</span>
-        </p>
+        <span className="ml-auto font-bold whitespace-nowrap text-foreground tabular-nums sm:ml-0 sm:text-right">
+          {total}
+        </span>
       </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={`Quitar ${line.name}`}
+        title="Quitar"
+        className="col-start-2 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:col-start-auto sm:row-start-auto"
+        onClick={() => removeLine(line.productId)}
+      >
+        <X aria-hidden />
+      </Button>
+
       {quantityProblem ? (
-        <p id={`${id}-quantity-error`} className="text-xs font-medium text-destructive">
+        <p
+          id={`${id}-quantity-error`}
+          className="col-span-full text-xs font-medium text-destructive"
+        >
           Cantidad: {quantityProblem}
         </p>
       ) : null}
       {priceProblem ? (
-        <p id={`${id}-price-error`} className="text-xs font-medium text-destructive">
+        <p id={`${id}-price-error`} className="col-span-full text-xs font-medium text-destructive">
           {priceProblem}
         </p>
       ) : null}
-      {edited ? (
-        <p className="text-xs text-muted-foreground">
-          Catálogo S/ {formatPrice(line.catalogPrice)} ·{' '}
-          <button
-            type="button"
-            className={inlineAction}
-            onClick={() => update((current) => restorePrice(current, line.productId))}
-          >
-            Restaurar
-          </button>
-        </p>
-      ) : null}
       {newPrice ? (
-        <p className="text-xs text-amber-800">
+        <p className="col-span-full text-xs text-amber-800">
           El precio del catálogo cambió a S/ {formatPrice(newPrice)} ·{' '}
           <button
             type="button"
-            className={inlineAction}
+            className={cn(inlineAction, 'text-xs')}
             onClick={() =>
               update((current) => applyCatalogPrice(current, line.productId, newPrice))
             }
@@ -208,7 +227,7 @@ function LineRow({
         </p>
       ) : null}
       {missing ? (
-        <p className="text-xs text-amber-800">
+        <p className="col-span-full text-xs text-amber-800">
           Ya no está en el catálogo. Puedes quitarlo o mantenerlo con estos datos.
         </p>
       ) : null}
