@@ -4,6 +4,9 @@ const baseURL = 'http://localhost:3000'
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  globalSetup: './tests/e2e/global-setup.ts',
+  // Comparten la base de datos y las cuentas locales: una prueba a la vez.
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   use: { baseURL, trace: 'on-first-retry' },
   projects: [

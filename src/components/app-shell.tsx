@@ -4,28 +4,14 @@ import { Package } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { Brand } from '@/components/brand'
+import { SignOutButton } from '@/features/auth/components/sign-out-button'
 import { cn } from '@/lib/utils'
 
 // Un único destino por ahora (spec §7); Proformas se añadirá cuando exista.
 const navItems = [{ href: '/products', label: 'Productos', icon: Package }]
 
-function Brand() {
-  return (
-    <div className="flex items-center gap-3 px-2">
-      <span className="grid size-[38px] place-items-center rounded-[11px] bg-sidebar-primary text-sidebar-primary-foreground">
-        <Package className="size-5" aria-hidden />
-      </span>
-      <span className="grid leading-tight">
-        <span className="text-[17px] font-extrabold tracking-[-0.02em] text-foreground">
-          Catálogo
-        </span>
-        <span className="text-xs font-medium text-muted-foreground">Gestión comercial</span>
-      </span>
-    </div>
-  )
-}
-
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ email, children }: { email: string; children: ReactNode }) {
   const pathname = usePathname()
 
   return (
@@ -50,22 +36,29 @@ export function AppShell({ children }: { children: ReactNode }) {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex h-[42px] items-center gap-3 rounded-[10px] px-3 font-semibold transition-colors',
+                  'flex h-10.5 items-center gap-3 rounded-[10px] px-3 font-semibold transition-colors',
                   active
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'hover:bg-sidebar-accent/60',
                 )}
               >
-                <Icon className="size-[18px]" aria-hidden />
+                <Icon className="size-4.5" aria-hidden />
                 {label}
               </Link>
             )
           })}
         </nav>
+        <div className="mt-auto grid gap-1 rounded-xl border bg-background/60 p-2">
+          <p className="truncate px-2 pt-1 text-xs text-muted-foreground" title={email}>
+            {email}
+          </p>
+          <SignOutButton />
+        </div>
       </aside>
       <div className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-card px-4 lg:hidden">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card px-4 lg:hidden">
           <Brand />
+          <SignOutButton compact />
         </header>
         <main id="main" tabIndex={-1} className="px-4 py-6 outline-none sm:px-6 lg:px-10 lg:py-8">
           {children}
