@@ -6,8 +6,8 @@
 //
 // La cadena se copia en Supabase: botón Connect → Session pooler. Es la de la base de datos
 // (postgresql://…), no la URL de la API de .env.local. Para no pegarla cada vez, guárdala en
-// .env.local como SUPABASE_DB_URL tal cual la da Supabase, con [YOUR-PASSWORD]: la contraseña se
-// pide al ejecutar y nunca se guarda en archivos ni en el historial de la terminal.
+// .env.local como DATABASE_URL. Si la dejas con [YOUR-PASSWORD], la contraseña se pide al ejecutar
+// y no queda en ningún archivo; si la pones completa, queda en .env.local (no se versiona).
 import { spawnSync } from 'node:child_process'
 import { stdin, stdout } from 'node:process'
 import { createInterface } from 'node:readline/promises'
@@ -80,7 +80,7 @@ function supabase(args) {
 async function main() {
   if (!stdin.isTTY) throw new Error('Ejecuta pnpm db:push en una terminal interactiva.')
   const connection =
-    process.env.SUPABASE_DB_URL ??
+    process.env.DATABASE_URL ??
     (await ask('Cadena de conexión de la base (Supabase → Connect → Session pooler):\n> '))
   const password = connection.includes(PLACEHOLDER)
     ? await askHidden('Contraseña de la base de datos (no se muestra): ')

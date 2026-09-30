@@ -49,7 +49,7 @@ pnpm db:push
 
 El script pide la cadena de conexión de la base y la contraseña, que no se muestra ni se guarda. La cadena se copia en Supabase, en el botón **Connect → Session pooler**: empieza por `postgresql://` y no es la URL de la API de `.env.local`.
 
-Antes de aplicar nada, el script comprueba que la cadena sea del mismo proyecto que `.env.local` y muestra las migraciones pendientes (`--dry-run`). Solo las aplica si escribes «si». Para no pegar la cadena cada vez, guárdala en `.env.local` como `SUPABASE_DB_URL`, tal cual la da Supabase, con `[YOUR-PASSWORD]`.
+Antes de aplicar nada, el script comprueba que la cadena sea del mismo proyecto que `.env.local` y muestra las migraciones pendientes (`--dry-run`). Solo las aplica si escribes «si». Para no pegar la cadena cada vez, guárdala en `.env.local` como `DATABASE_URL`. Con `[YOUR-PASSWORD]` dentro, la contraseña se pide cada vez; completa, queda en `.env.local`, que no se versiona. No la pongas en Vercel: la app no la usa.
 
 Por debajo usa `supabase db push`, que solo aplica las migraciones de `supabase/migrations` que el proyecto aún no tiene registradas: nunca las repite ni borra datos. La primera vez aplica las tres del catálogo (tablas, acceso y búsqueda).
 
