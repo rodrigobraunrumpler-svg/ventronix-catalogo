@@ -138,12 +138,12 @@ Al abrir la ventana se compara cada línea con el catálogo actual (sección 4.5
 Tabla nueva de **una sola fila**, `company_profile`, con los permisos del catálogo (solo la cuenta autorizada lee y escribe):
 
 - **Datos:** razón social, nombre comercial y RUC (11 dígitos, con dígito verificador).
-- **Contacto:** dirección, uno o dos teléfonos y correo.
+- **Contacto:** dirección, teléfonos (una lista, al menos uno) y correo.
 - **Condiciones:** condición de pago y política de devoluciones (texto), y validez por defecto de la oferta (1 a 365 días; 7 al crearla).
 - **Cuentas bancarias:** una lista con banco, número de cuenta, CCI (20 dígitos) y titular opcional (por defecto, la razón social). Se pueden añadir, editar, quitar y ordenar; el documento las muestra en ese orden.
-- **Yape y Plin:** un número para cada uno, opcionales (9 dígitos que empiezan por 9). Si son el mismo, el documento muestra «Yape / Plin: 9XX XXX XXX».
+- **Yape y Plin:** una lista de números (9 dígitos que empiezan por 9), opcional. En cada número se elige si es Yape, Plin o ambos; el documento los muestra como «Yape: …», «Plin: …» o «Yape / Plin: …».
 
-Se edita en una pantalla nueva **«Empresa»** del menú: un formulario por secciones (Datos, Contacto, Condiciones y Pagos), con los errores junto a cada campo y un botón «Guardar cambios». Son obligatorios la razón social, el RUC, la dirección y un teléfono. Si falta alguno, «Generar» lo indica y enlaza a esa pantalla, porque el documento los necesita.
+Se edita en una pantalla nueva **«Empresa»** del menú: un formulario por secciones (Datos, Contacto, Condiciones y Pagos), con los errores junto a cada campo y un botón «Guardar cambios». Son obligatorios la razón social, el RUC, la dirección y al menos un teléfono. A la derecha, una vista previa muestra cómo saldrán estos datos en la proforma. Si falta alguno, «Generar» lo indica y enlaza a esa pantalla, porque el documento los necesita.
 
 Los cambios valen para las proformas que se generen después. Las ya enviadas no cambian, porque no se guardan.
 
@@ -185,7 +185,7 @@ Migración que activa la extensión `unaccent` de Postgres y cambia `search_prod
 - **Unitarias:** cálculos con los ejemplos E1–E5, módulo de IGV en sus modos, validaciones (cantidad, precio, %, envío, RUC con dígito verificador, DNI, celular, CCI de 20 dígitos, Yape y Plin).
 - **Componentes:** «Añadir» y `[− n +]` en la lista, validaciones de la ventana, borrador con aviso de precio cambiado, «Deshacer».
 - **Integración (Supabase local):** permisos de `company_profile`, guardar y leer sus cuentas bancarias, función de numeración y búsqueda sin tildes.
-- **E2E de la pantalla «Empresa»:** completar los datos, añadir y quitar cuentas, y ver que «Generar» deja de pedirlos.
+- **E2E de la pantalla «Empresa»:** completar los datos, añadir y quitar cuentas, teléfonos y números de Yape o Plin, y ver que «Generar» deja de pedirlos.
 - **E2E (escritorio y móvil):** añadir desde la lista, completar con RUC (proveedor de prueba), generar, corregir conservando el número, nueva proforma y error sin conexión.
 
 ## 12. Pendiente de información externa
