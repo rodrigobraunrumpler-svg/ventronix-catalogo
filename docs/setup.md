@@ -26,6 +26,12 @@ La app solo necesita la URL y la clave publicable de Supabase (`.env.example`). 
 
 En desarrollo, Next.js da prioridad a `.env.development.local`, así que `pnpm dev` nunca toca los datos reales.
 
+## Consulta de RUC
+
+La ventana «Completar proforma» consulta SUNAT con [Decolecta](https://decolecta.com) al escribir un RUC de 11 dígitos. La clave va en `DECOLECTA_TOKEN`, solo del servidor (nunca con `NEXT_PUBLIC_`), en `.env.development.local` o en `.env.local`. Sin ella, la consulta dice que no está disponible y los datos se escriben a mano. El plan gratuito da 1 000 consultas al mes.
+
+Las pruebas e2e no usan el servicio real: Playwright arranca la app con `RUC_PROVIDER=stub`, que responde con datos de prueba (`20000000001` activo, `20000000010` de baja y no habido, `20000000036` sin servicio; cualquier otro RUC válido, no encontrado). Ese proveedor nunca se usa en producción.
+
 ## Arranque
 
 ```bash

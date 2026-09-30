@@ -68,8 +68,9 @@ Crea la cuenta con `pnpm owner:create`, usando la URL de producción y la clave 
    | -------------------------------------- | ------------------------------------- |
    | `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto de producción        |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave publicable (`sb_publishable_…`) |
+   | `DECOLECTA_TOKEN`                      | Clave de api.decolecta.com (RUC)      |
 
-   No añadas la clave secreta ni ninguna otra variable.
+   No añadas la clave secreta de Supabase ni ninguna otra variable. `DECOLECTA_TOKEN` es opcional y solo la lee el servidor: sin ella, el RUC del cliente se escribe a mano.
 
 3. Despliega la rama `main`. A partir de ahí, cada merge a `main` se publica en producción.
 4. Opcional: añade tu dominio en Settings → Domains y actualiza la Site URL en Supabase.
@@ -81,12 +82,16 @@ Las variables solo existen en Production. Por eso los despliegues de preview (ra
 
 ## 3. Comprobación después de publicar
 
+Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplica las migraciones nuevas con `pnpm db:push`: búsqueda sin tildes, datos de la empresa y numeración de proformas.
+
 Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba despliegue» y el producto `PRUEBA-001`, y bórralos al terminar.
 
 - [ ] `/products` sin sesión lleva a `/login`.
 - [ ] La cuenta inicia sesión, y una contraseña incorrecta muestra el mensaje genérico.
 - [ ] Crear, editar, buscar, filtrar y borrar funcionan; una categoría con productos no se puede borrar.
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
+- [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
+- [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.
 - [ ] El código del navegador no contiene ninguna clave secreta. Con las variables de producción en `.env.local`, ejecuta:
       `pnpm build && (grep -rEo 'sb_secret_[A-Za-z0-9_-]{20,}' .next/static || echo "sin claves secretas")`
 
