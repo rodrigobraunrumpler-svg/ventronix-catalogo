@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { beforeEach, expect, it } from 'vitest'
-import { adminClient, localSupabase } from '../support/local-supabase'
+import { adminClient, localSupabase, signedInClient } from '../support/local-supabase'
 
 const email = 'script-owner@catalogo.test'
 
@@ -10,7 +10,7 @@ async function findUser() {
   return data.users.find((user) => user.email === email)
 }
 
-function runScript() {
+function runScript(password = 'script-owner-clave-123') {
   const { url, secretKey } = localSupabase()
   execFileSync('node', ['scripts/create-owner.mjs'], {
     encoding: 'utf8',
@@ -19,7 +19,7 @@ function runScript() {
       SUPABASE_URL: url,
       SUPABASE_SECRET_KEY: secretKey,
       OWNER_EMAIL: email,
-      OWNER_PASSWORD: 'script-owner-clave-123',
+      OWNER_PASSWORD: password,
     },
   })
 }
@@ -42,4 +42,10 @@ it('vuelve a asignar la marca a una cuenta existente', async () => {
   })
   runScript()
   expect((await findUser())?.app_metadata.catalog_access).toBe('owner')
+})
+
+it('con OWNER_PASSWORD fija una contraseña nueva a una cuenta existente', async () => {
+  runScript()
+  runScript('script-owner-nueva-456')
+  await expect(signedInClient(email, 'script-owner-nueva-456')).resolves.toBeDefined()
 })

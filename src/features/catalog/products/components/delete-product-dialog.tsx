@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import type { ProductListItem } from '../../types'
+import { useReturnFocus } from '@/lib/use-return-focus'
 
 type DeleteProductDialogProps = {
   product: ProductListItem | null
@@ -22,6 +23,7 @@ type DeleteProductDialogProps = {
 // Confirmación con código y nombre (plan, tarea 5).
 export function DeleteProductDialog({ product, onConfirm, onClose }: DeleteProductDialogProps) {
   const [pending, setPending] = useState(false)
+  const returnFocus = useReturnFocus()
 
   async function confirm() {
     if (!product) return
@@ -35,7 +37,7 @@ export function DeleteProductDialog({ product, onConfirm, onClose }: DeleteProdu
 
   return (
     <AlertDialog open={product !== null} onOpenChange={(open) => !open && !pending && onClose()}>
-      <AlertDialogContent>
+      <AlertDialogContent {...returnFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle>Eliminar producto</AlertDialogTitle>
           <AlertDialogDescription>

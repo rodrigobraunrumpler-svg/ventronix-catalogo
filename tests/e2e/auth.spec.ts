@@ -32,7 +32,7 @@ test('una cuenta sin autorización no entra al catálogo', async ({ page }) => {
 test('la cuenta autorizada entra y sale; volver atrás no muestra el catálogo', async ({ page }) => {
   await login(page, e2eUsers.owner.email, e2eUsers.owner.password)
   await expect(page).toHaveURL(/\/products$/)
-  await expect(page.getByRole('heading', { name: 'Productos' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Productos', exact: true })).toBeVisible()
 
   // Otra URL para que «atrás» vuelva a una página del catálogo (la misma URL reemplaza la entrada).
   await page.goto('/products?desde=historial')
@@ -41,7 +41,7 @@ test('la cuenta autorizada entra y sale; volver atrás no muestra el catálogo',
 
   await page.goBack()
   await expect(page).toHaveURL(/\/login$/)
-  await expect(page.getByRole('heading', { name: 'Productos' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Productos', exact: true })).toHaveCount(0)
 })
 
 test('una sesión inválida vuelve al acceso', async ({ page, context }) => {

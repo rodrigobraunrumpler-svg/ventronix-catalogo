@@ -86,16 +86,16 @@ OWNER_EMAIL=<correo> OWNER_PASSWORD=<contraseña> \
 pnpm owner:create
 ```
 
-La clave secreta se escribe solo en ese comando: nunca en archivos del repositorio ni en variables `NEXT_PUBLIC_`. `OWNER_PASSWORD` solo hace falta al crear la cuenta.
+La clave secreta se escribe solo en ese comando: nunca en archivos del repositorio ni en variables `NEXT_PUBLIC_`. `OWNER_PASSWORD` es obligatorio al crear la cuenta; si la cuenta ya existe y lo omites, solo se reasigna la marca.
 
 En el proyecto de producción, además:
 
 - Desactiva el registro de usuarios: Authentication → Sign In / Providers → «Allow new users to sign up».
 - Mantén desactivado el inicio de sesión anónimo.
 
-**Recuperación:** desde el panel de Supabase (Authentication → Users → la cuenta) se puede fijar una contraseña nueva. No hay flujo de correo de recuperación en esta entrega.
+**Recuperación (contraseña olvidada):** ejecuta el mismo comando con el correo de la cuenta y la contraseña nueva en `OWNER_PASSWORD`; el script la fija y mantiene la marca. No hay flujo de recuperación por correo en esta entrega.
 
-**Revocar el acceso:** quitar la marca impide nuevas sesiones, pero una sesión ya abierta conserva su token hasta que caduca (1 hora por defecto). Para cortarla al momento, cierra también sus sesiones desde el panel o elimina la cuenta.
+**Revocar el acceso:** elimina la cuenta en el panel de Supabase (Authentication → Users). Así ya no puede iniciar sesión ni renovar la sesión, pero el token de acceso ya emitido sigue siendo válido hasta que caduca (1 hora por defecto).
 
 ## Hooks de Git
 

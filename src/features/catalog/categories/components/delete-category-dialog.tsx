@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import type { CategoryListItem } from '../../types'
+import { useReturnFocus } from '@/lib/use-return-focus'
 
 type DeleteCategoryDialogProps = {
   category: CategoryListItem | null
@@ -21,6 +22,7 @@ type DeleteCategoryDialogProps = {
 
 export function DeleteCategoryDialog({ category, onConfirm, onClose }: DeleteCategoryDialogProps) {
   const [pending, setPending] = useState(false)
+  const returnFocus = useReturnFocus()
 
   async function confirm() {
     if (!category) return
@@ -34,7 +36,7 @@ export function DeleteCategoryDialog({ category, onConfirm, onClose }: DeleteCat
 
   return (
     <AlertDialog open={category !== null} onOpenChange={(open) => !open && !pending && onClose()}>
-      <AlertDialogContent>
+      <AlertDialogContent {...returnFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle>Eliminar categoría</AlertDialogTitle>
           <AlertDialogDescription>

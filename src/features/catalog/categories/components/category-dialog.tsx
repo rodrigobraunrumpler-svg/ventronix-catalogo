@@ -11,6 +11,7 @@ import {
 import type { CategoryListItem } from '../../types'
 import { useCategoryMutations } from '../hooks'
 import { CategoryForm } from './category-form'
+import { useReturnFocus } from '@/lib/use-return-focus'
 
 export type CategoryDialogState =
   { mode: 'create' } | { mode: 'rename'; category: CategoryListItem } | null
@@ -24,10 +25,11 @@ export function CategoryDialog({
   onClose: () => void
 }) {
   const { create, rename } = useCategoryMutations()
+  const returnFocus = useReturnFocus()
 
   return (
     <Dialog open={state !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent {...returnFocus}>
         <DialogHeader>
           <DialogTitle>
             {state?.mode === 'rename' ? 'Renombrar categoría' : 'Nueva categoría'}

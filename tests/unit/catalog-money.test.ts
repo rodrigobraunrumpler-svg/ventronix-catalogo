@@ -20,6 +20,13 @@ describe('precio unitario', () => {
   )
 })
 
+it('explica el formato esperado con un ejemplo', () => {
+  const result = unitPriceSchema.safeParse('12,345')
+  expect(result.error?.issues[0].message).toBe(
+    'Escribe solo números con hasta dos decimales, por ejemplo 1250.50.',
+  )
+})
+
 describe('presentación del precio', () => {
   it.each([
     ['890.00', '890.00'],

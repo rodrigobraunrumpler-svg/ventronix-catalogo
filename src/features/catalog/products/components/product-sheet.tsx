@@ -12,6 +12,7 @@ import { useCategoryOptions } from '../../categories/hooks'
 import type { ProductListItem } from '../../types'
 import { useCatalogFilters, useProduct, useProductMutations } from '../hooks'
 import { ProductForm } from './product-form'
+import { useReturnFocus } from '@/lib/use-return-focus'
 
 export type ProductSheetState =
   { mode: 'create' } | { mode: 'edit'; product: ProductListItem } | null
@@ -29,6 +30,7 @@ export function ProductSheet({ state, onClose, onCreateCategory }: ProductSheetP
   const current = useProduct(editing ? state.product.id : null)
   const [{ category: selectedCategory }] = useCatalogFilters()
   const { create, update } = useProductMutations()
+  const returnFocus = useReturnFocus()
 
   const categories = options.data ?? []
   const defaultCategoryId = categories.some((c) => c.id === selectedCategory)
@@ -41,7 +43,7 @@ export function ProductSheet({ state, onClose, onCreateCategory }: ProductSheetP
 
   return (
     <Sheet open={state !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-[540px]">
+      <SheetContent {...returnFocus} side="right" className="w-full gap-0 p-0 sm:max-w-[540px]">
         <SheetHeader className="border-b px-6 py-5">
           <SheetTitle className="text-lg font-bold">
             {editing ? 'Editar producto' : 'Nuevo producto'}

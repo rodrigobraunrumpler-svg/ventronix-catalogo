@@ -236,3 +236,79 @@ test('al borrar el último producto de la última página vuelve a la anterior',
   await expect(list.getByText('Mostrando 1–20 de 20 productos')).toBeVisible()
   await expect(page).not.toHaveURL(/page=2/)
 })
+
+test('flujo completo: categoría, producto, búsqueda, edición, borrados y salida', async ({
+  page,
+}) => {
+  await seed([])
+  await login(page)
+  const card = categoriesCard(page)
+  const list = productList(page)
+
+  await card.getByRole('button', { name: 'Nueva categoría' }).click()
+  await page.getByLabel('Nombre de la categoría').fill('Laptops')
+  await page.getByRole('button', { name: 'Crear categoría' }).click()
+  await expect(card.getByRole('button', { name: /^Laptops/ })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Nuevo producto' }).click()
+  const create = page.getByRole('dialog', { name: 'Nuevo producto' })
+  await create.getByLabel('Código').fill('lap-100')
+  await create.getByLabel('Nombre del producto').fill('Laptop de prueba')
+  await create.getByLabel('Categoría').selectOption({ label: 'Laptops' })
+  await create.getByLabel('Precio unitario').fill('2590')
+  await create.getByRole('button', { name: 'Crear producto' }).click()
+  await expect(list.getByText('Laptop de prueba').filter({ visible: true })).toBeVisible()
+
+  await list.getByLabel('Buscar por nombre o código').fill('LAP-100')
+  await expect(list.getByText('Mostrando 1–1 de 1 producto')).toBeVisible()
+  await card.getByRole('button', { name: /^Laptops/ }).click()
+  await expect(page).toHaveURL(/category=/)
+  await expect(list.getByText('Mostrando 1–1 de 1 producto')).toBeVisible()
+
+  await list.getByRole('button', { name: 'Editar Laptop de prueba' }).click()
+  const edit = page.getByRole('dialog', { name: 'Editar producto' })
+  await edit.getByLabel('Precio unitario').fill('2490,9')
+  await edit.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(list.getByText('2,490.90').filter({ visible: true })).toBeVisible()
+
+  await card.getByRole('button', { name: 'Eliminar Laptops' }).click()
+  await expect(
+    page.getByText('«Laptops» tiene 1 producto. Muévelo o elimínalo primero.'),
+  ).toBeVisible()
+
+  await list.getByRole('button', { name: 'Eliminar Laptop de prueba' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar producto' }).click()
+  await expect(list.getByText('No encontramos productos')).toBeVisible()
+
+  await card.getByRole('button', { name: 'Eliminar Laptops' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar' }).click()
+  await expect(card.getByText('Aún no hay categorías.')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+})
+
+test('se puede usar con el teclado', async ({ page }) => {
+  await seed(['Laptops'])
+  await page.goto('/login')
+  await page.getByLabel('Correo').focus()
+  await page.keyboard.type(e2eUsers.owner.email)
+  await page.keyboard.press('Tab')
+  await page.keyboard.type(e2eUsers.owner.password)
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/products/)
+
+  const card = categoriesCard(page)
+  await card.getByRole('button', { name: /^Laptops/ }).focus()
+  await page.keyboard.press('Enter')
+  await expect(card.getByRole('button', { name: /^Laptops/ })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await page.keyboard.press('Tab')
+  await expect(card.getByRole('button', { name: 'Renombrar Laptops' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByLabel('Nombre de la categoría')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(card.getByRole('button', { name: 'Renombrar Laptops' })).toBeFocused()
+})

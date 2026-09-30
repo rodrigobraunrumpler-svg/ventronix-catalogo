@@ -6,8 +6,8 @@
 //   OWNER_EMAIL=<correo> OWNER_PASSWORD=<contraseña> \
 //   pnpm owner:create
 //
-// OWNER_PASSWORD solo hace falta para crear la cuenta. La clave secreta nunca se guarda en el
-// repositorio ni en variables NEXT_PUBLIC_.
+// OWNER_PASSWORD es obligatorio al crear la cuenta; en una cuenta existente fija esa contraseña
+// (recuperación). La clave secreta nunca se guarda en el repositorio ni en variables NEXT_PUBLIC_.
 import { createClient } from '@supabase/supabase-js'
 
 const { SUPABASE_URL, SUPABASE_SECRET_KEY, OWNER_EMAIL, OWNER_PASSWORD } = process.env
@@ -30,9 +30,14 @@ const existing = data.users.find((user) => user.email?.toLowerCase() === email)
 if (existing) {
   const { error: updateError } = await admin.auth.admin.updateUserById(existing.id, {
     app_metadata: { ...existing.app_metadata, catalog_access: 'owner' },
+    password: OWNER_PASSWORD || undefined,
   })
   if (updateError) throw updateError
-  console.log(`Marca de acceso asignada a ${email}.`)
+  console.log(
+    OWNER_PASSWORD
+      ? `Marca de acceso y contraseña nueva asignadas a ${email}.`
+      : `Marca de acceso asignada a ${email}.`,
+  )
 } else {
   if (!OWNER_PASSWORD) {
     console.error('Para crear la cuenta hace falta OWNER_PASSWORD.')
