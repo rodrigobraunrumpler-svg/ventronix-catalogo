@@ -1,0 +1,13 @@
+pnpm-lock.yaml
+next-env.d.ts
+.next
+playwright-report
+test-results
+.superpowers
+# Documentos del proyecto y prototipo HTML: se editan a mano, no se reformatean.
+PROJECT_CONTEXT.md
+docs/superpowers
+prototype
+# Generados por Next.js (`next dev` los reescribe).
+AGENTS.md
+CLAUDE.md
