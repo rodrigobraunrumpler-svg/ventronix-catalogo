@@ -31,3 +31,18 @@ export async function sqlState(query: Promise<unknown>) {
     return (error as { code?: string }).code
   }
 }
+
+// Deja la fila única de company_profile como la crea la migración: vacía.
+export async function resetCompanyProfile(client: Client) {
+  await client.query('delete from public.company_profile')
+  await client.query('insert into public.company_profile default values')
+}
+
+// Solo lo obligatorio de una empresa ficticia, para las pruebas que generan proformas.
+export async function fillCompanyProfile(client: Client) {
+  await client.query(
+    `update public.company_profile
+        set legal_name = 'Empresa de Pruebas S.A.C.', ruc = '20000000001',
+            address = 'Av. Prueba 123, Huamanga', phones = array['066 312345']`,
+  )
+}

@@ -44,6 +44,54 @@ export type Database = {
         }
         Relationships: []
       }
+      company_profile: {
+        Row: {
+          address: string | null
+          bank_accounts: NonNullable<Json>
+          default_validity_days: number
+          email: string | null
+          id: boolean
+          legal_name: string | null
+          payment_terms: string | null
+          phones: string[]
+          return_policy: string | null
+          ruc: string | null
+          trade_name: string | null
+          updated_at: string
+          wallets: NonNullable<Json>
+        }
+        Insert: {
+          address?: string | null
+          bank_accounts?: NonNullable<Json>
+          default_validity_days?: number
+          email?: string | null
+          id?: boolean
+          legal_name?: string | null
+          payment_terms?: string | null
+          phones?: string[]
+          return_policy?: string | null
+          ruc?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          wallets?: NonNullable<Json>
+        }
+        Update: {
+          address?: string | null
+          bank_accounts?: NonNullable<Json>
+          default_validity_days?: number
+          email?: string | null
+          id?: boolean
+          legal_name?: string | null
+          payment_terms?: string | null
+          phones?: string[]
+          return_policy?: string | null
+          ruc?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          wallets?: NonNullable<Json>
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category_id: string
