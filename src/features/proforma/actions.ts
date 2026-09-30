@@ -4,8 +4,10 @@ import { z } from 'zod'
 import { invalid, unexpected } from '@/features/catalog/action-errors'
 import type { ActionResult } from '@/lib/action-result'
 import { withOwner } from '@/lib/auth/with-owner'
+import { getWhatsAppProvider } from '@/features/whatsapp/provider'
 import { isValidRuc } from '@/lib/peru'
 import { documentInputSchema, type GeneratedDocument } from './document/input'
+import { sendProformaDocument } from './document/send'
 import { createProformaDocument } from './document/service'
 import type { RucLookupResult } from './ruc'
 import { getRucProvider } from './ruc-provider'
@@ -42,5 +44,17 @@ export async function generateProformaDocument(
     const parsed = documentInputSchema.safeParse(input)
     if (!parsed.success) return invalid(parsed.error)
     return createProformaDocument(supabase, parsed.data)
+  })
+}
+
+// Envío automático por WhatsApp (spec de WhatsApp §4). Conecta, envía y guarda la sesión: hasta
+// un minuto (maxDuration de Productos).
+export async function sendProformaByWhatsApp(
+  input: unknown,
+): Promise<ActionResult<{ phone: string }>> {
+  return withOwner(async ({ supabase }) => {
+    const parsed = documentInputSchema.safeParse(input)
+    if (!parsed.success) return invalid(parsed.error)
+    return sendProformaDocument(supabase, parsed.data, getWhatsAppProvider(supabase))
   })
 }

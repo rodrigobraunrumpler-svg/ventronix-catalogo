@@ -1,4 +1,6 @@
 ignoredBuiltDependencies:
+  - baileys
+  - protobufjs
   - sharp
   - unrs-resolver
 onlyBuiltDependencies:
