@@ -19,7 +19,8 @@ type Store = {
   subscribe: (listener: () => void) => () => void
   getDraft: () => ProformaDraft
   getMessage: () => string
-  update: (change: (draft: ProformaDraft) => ProformaDraft) => void
+  // Devuelve la proforma ya guardada, para anunciar lo que de verdad quedó.
+  update: (change: (draft: ProformaDraft) => ProformaDraft) => ProformaDraft
   announce: (message: string) => void
 }
 
@@ -44,6 +45,7 @@ function createStore(): Store {
       draft = { ...change(getDraft()), updatedAt: new Date().toISOString() }
       saveDraft(PROFORMA_DRAFT_KEY, draft)
       notify()
+      return draft
     },
     announce(text) {
       message = text

@@ -3,7 +3,7 @@
 import { Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ProductListItem } from '@/features/catalog/types'
-import { addProduct, findLine, setQuantity, unitsText } from '../draft'
+import { addProduct, findLine, quantityMessage, setQuantity } from '../draft'
 import { useProforma, useRemoveLine } from '../store'
 import { MAX_QUANTITY } from '../totals'
 
@@ -14,9 +14,12 @@ export function ProformaControl({ product }: { product: ProductListItem }) {
   const line = findLine(draft, product.id)
 
   function add() {
-    update((current) => addProduct(current, product))
-    const next = Math.min((line?.quantity ?? 0) + 1, MAX_QUANTITY)
-    announce(`${product.name}: ${unitsText(next)} en la proforma`)
+    announce(
+      quantityMessage(
+        update((current) => addProduct(current, product)),
+        product,
+      ),
+    )
   }
 
   function decrease() {
@@ -24,8 +27,8 @@ export function ProformaControl({ product }: { product: ProductListItem }) {
       removeLine(product.id)
       return
     }
-    update((current) => setQuantity(current, product.id, line.quantity - 1))
-    announce(`${product.name}: ${unitsText(line.quantity - 1)} en la proforma`)
+    const next = update((current) => setQuantity(current, product.id, line.quantity - 1))
+    announce(quantityMessage(next, product))
   }
 
   if (!line) {

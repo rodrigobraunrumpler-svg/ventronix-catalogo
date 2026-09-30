@@ -8,7 +8,7 @@ import type { ProductFilters } from '@/features/catalog/types'
 import { settle } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
 import { lookupRuc } from './actions'
-import { addProduct, findLine, unitsText } from './draft'
+import { addProduct, quantityMessage } from './draft'
 import { getCurrentPrices } from './queries'
 import type { RucLookupResult } from './ruc'
 import { useProforma } from './store'
@@ -17,7 +17,7 @@ import { useProforma } from './store'
 // consulta que la lista, así que no espera la pausa de 300 ms y comparte la caché.
 export function useAddSingleResult() {
   const queryClient = useQueryClient()
-  const { draft, update, announce } = useProforma()
+  const { update, announce } = useProforma()
   return async (filters: ProductFilters) => {
     if (normalizeSearch(filters.search) === '') return
     const page = await queryClient
@@ -28,9 +28,12 @@ export function useAddSingleResult() {
       .catch(() => null)
     if (page?.total !== 1) return
     const [product] = page.items
-    update((current) => addProduct(current, product))
-    const quantity = (findLine(draft, product.id)?.quantity ?? 0) + 1
-    announce(`${product.name}: ${unitsText(quantity)} en la proforma`)
+    announce(
+      quantityMessage(
+        update((current) => addProduct(current, product)),
+        product,
+      ),
+    )
   }
 }
 

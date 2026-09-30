@@ -137,5 +137,9 @@ export const unitCount = (draft: ProformaDraft) =>
 export const unitsText = (quantity: number) =>
   `${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}`
 
+// Aviso para lectores de pantalla con las unidades de un producto en esta proforma.
+export const quantityMessage = (draft: ProformaDraft, product: { id: string; name: string }) =>
+  `${product.name}: ${unitsText(findLine(draft, product.id)?.quantity ?? 0)} en la proforma`
+
 // Clave del borrador en el navegador (prefijo de src/lib/drafts.ts, que se borra al cerrar sesión).
 export const PROFORMA_DRAFT_KEY = 'proforma'
