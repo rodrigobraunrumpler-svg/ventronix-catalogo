@@ -26,6 +26,8 @@ export default defineConfig({
           name: 'integration',
           environment: 'node',
           include: ['tests/integration/**/*.test.ts'],
+          // Comparten la base de datos local: un archivo a la vez.
+          fileParallelism: false,
         },
       },
     ],

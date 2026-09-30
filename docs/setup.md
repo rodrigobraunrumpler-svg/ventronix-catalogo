@@ -40,6 +40,21 @@ Abre `http://localhost:3000`; la raíz redirige a `/products`.
 
 `pnpm test:e2e` necesita el navegador de Playwright una sola vez: `pnpm exec playwright install chromium`.
 
+## Supabase local (desarrollo y pruebas)
+
+El desarrollo y las pruebas de integración usan un Supabase local en Docker, nunca el proyecto de producción: las pruebas borran datos.
+
+```bash
+# Arranca base de datos, Auth, API REST y gateway (sin servicios que el catálogo no usa)
+pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+pnpm exec supabase db reset   # recrea la base local y aplica supabase/migrations
+pnpm test:integration         # pruebas contra la base local
+pnpm exec supabase stop       # detiene los contenedores
+```
+
+Las pruebas de integración se conectan a `postgresql://postgres:postgres@127.0.0.1:54322/postgres`. `TEST_DATABASE_URL` permite cambiarla, pero solo acepta `localhost` o `127.0.0.1`.
+
 ## Hooks de Git
 
 El hook `pre-commit` ejecuta lint-staged: ESLint y Prettier sobre los archivos preparados. No se usa Commitlint mientras no se adopte Conventional Commits.
