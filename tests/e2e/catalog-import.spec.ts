@@ -120,13 +120,27 @@ test('se entra desde Productos y cada intención descarga su archivo', async ({ 
   await expectNoHorizontalScroll(page)
   await capture(page, 'pasos')
   if (test.info().project.name === 'desktop') {
-    // En PC el paso 3 va bajo el paso 1, junto a la guía: la zona de carga se ve sin bajar tanto.
-    const guide = await box(
-      page.getByRole('heading', { name: /Paso 2/ }).locator('xpath=ancestor::li[1]'),
-    )
-    const zone = await box(page.getByRole('button', { name: /Arrastra tu Excel/ }))
-    expect(zone.x + zone.width).toBeLessThanOrEqual(guide.x)
-    expect(zone.y).toBeLessThan(guide.y + guide.height)
+    // En PC la pantalla ocupa todo el contenedor, como Productos: los tres pasos en una fila y la guía
+    // de la plantilla debajo, a todo el ancho, con su tabla entera (sin barra propia).
+    for (const width of [1024, 1280, 1440, 1920, 2338]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const steps = await Promise.all(
+        [/^Paso 1/, /^Paso 2/, /^Paso 3/].map((name) => box(page.getByRole('heading', { name }))),
+      )
+      // Con 1024 px y el menú abierto no caben en una fila: van uno debajo de otro.
+      expect(new Set(steps.map((step) => Math.round(step.y))).size).toBe(width >= 1280 ? 1 : 3)
+      const table = page.getByRole('table', {
+        name: 'Ejemplo de la hoja Productos de la plantilla',
+      })
+      expect(
+        await table.locator('..').evaluate((element) => element.scrollWidth - element.clientWidth),
+      ).toBeLessThanOrEqual(0)
+      const main = await box(page.locator('main'))
+      const banner = await box(page.locator('main header > div'))
+      expect(main.x + main.width - (banner.x + banner.width)).toBeLessThanOrEqual(41)
+      await expectNoHorizontalScroll(page)
+    }
+    await page.setViewportSize({ width: 1440, height: 900 })
   }
 
   // Con productos, propone actualizarlos: el botón principal es el catálogo completo.

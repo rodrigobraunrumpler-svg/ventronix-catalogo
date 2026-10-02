@@ -22,37 +22,28 @@ import { useDownload } from '../use-download'
 import type { Intent } from './import-intro'
 
 // Un paso numerado (spec §6.11): aquí la numeración sí es una secuencia. La línea que une los pasos
-// es decorativa y va en el hueco entre tarjetas, hasta el centro del círculo (24 + 18 px).
-function Step({
-  number,
-  title,
-  className,
-  children,
-}: {
-  number: number
-  title: string
-  className?: string
-  children: ReactNode
-}) {
+// es decorativa y va en el hueco entre tarjetas, hasta el centro del círculo (24 + 18 px): vertical
+// cuando van uno debajo de otro y horizontal cuando comparten fila.
+function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
   return (
     <li
       className={cn(
         'relative grid min-w-0 content-start gap-4 rounded-[16px] border bg-card p-6',
         number > 1 &&
-          'before:absolute before:-top-4 before:left-[41px] before:h-4 before:w-0.5 before:bg-[#c8ec9e]',
-        className,
+          'before:absolute before:-top-4 before:left-[41px] before:h-4 before:w-0.5 before:bg-[#c8ec9e] @4xl:before:top-[41px] @4xl:before:-left-4 @4xl:before:h-0.5 @4xl:before:w-4',
       )}
     >
-      <h2 className="flex items-center gap-3 text-lg font-bold">
+      {/* Arriba y no centrado: si el título se parte, el círculo sigue en la línea de los demás. */}
+      <h2 className="flex items-start gap-3 text-lg font-bold">
         <span
           aria-hidden
           className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-base font-extrabold text-primary-foreground"
         >
           {number}
         </span>
-        <span>
-          <span className="sr-only">Paso {number}: </span>
-          {title}
+        {/* El espacio va fuera del texto oculto: dentro, algunos lectores lo recortan. */}
+        <span className="pt-1">
+          <span className="sr-only">Paso {number}:</span> {title}
         </span>
       </h2>
       {children}
@@ -60,31 +51,28 @@ function Step({
   )
 }
 
-// Los tres pasos (spec §6.2): en PC el 1 y el 3 a la izquierda, uno sobre otro, y la guía del 2, más
-// alta, a la derecha. Así no queda un hueco junto a la guía y la zona de carga se ve sin bajar tanto.
-// En móvil van uno debajo de otro.
+// Los tres pasos (spec §6.2) llenan el ancho de la pantalla: en una fila cuando el contenedor tiene
+// sitio (se mide el contenedor, no la ventana, porque el menú lateral se puede plegar) y uno debajo de
+// otro si no. La guía de cada columna va después, a todo el ancho, para que su tabla quepa entera.
 export function ImportSteps({ intent, upload }: { intent: Intent; upload: ReactNode }) {
   return (
-    <div className="grid gap-3">
+    <div className="@container grid gap-4">
       <p className="flex items-center gap-2 text-[13px] text-muted-foreground md:hidden">
         <Monitor className="size-4 shrink-0" aria-hidden />
         Es más cómodo desde una PC.
       </p>
-      <ol className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-start">
+      <ol className="grid gap-4 @4xl:grid-cols-3">
         <Step number={1} title="Descarga el archivo">
           <DownloadStep intent={intent} />
         </Step>
-        <Step
-          number={2}
-          title={intent === 'create' ? 'Complétalo' : 'Cambia lo que necesites'}
-          className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:before:top-[41px] lg:before:-left-4 lg:before:h-0.5 lg:before:w-4"
-        >
-          <TemplateGuide intent={intent} />
+        <Step number={2} title={intent === 'create' ? 'Complétalo' : 'Cámbialo'}>
+          <FillStep intent={intent} />
         </Step>
-        <Step number={3} title="Súbelo" className="lg:col-start-1 lg:row-start-2">
+        <Step number={3} title="Súbelo">
           {upload}
         </Step>
       </ol>
+      <TemplateGuide intent={intent} />
     </div>
   )
 }
@@ -208,6 +196,16 @@ const RULES: Record<ImportColumn, ReactNode> = {
   ),
 }
 
+// Ninguna ficha queda sola en su fila: en dos columnas la última ocupa las dos; en seis, tres fichas
+// arriba y dos abajo; en cinco, todas en una fila, como la tabla.
+const RULE_SPANS = [
+  '@5xl:col-span-2 @7xl:col-span-1',
+  '@5xl:col-span-2 @7xl:col-span-1',
+  '@5xl:col-span-2 @7xl:col-span-1',
+  '@5xl:col-span-3 @7xl:col-span-1',
+  '@2xl:col-span-2 @5xl:col-span-3 @7xl:col-span-1',
+]
+
 // Dos filas como las de la hoja «Productos», con el formato de precio de la plantilla.
 const EXAMPLE_ROWS: Record<ImportColumn, string>[] = [
   {
@@ -233,9 +231,39 @@ const TIPS = [
   'Puedes dejar filas vacías: se ignoran.',
 ]
 
-// Paso 2 (spec §6.4): maqueta de la plantilla con aspecto de Excel. Cada título es un botón que
-// resalta su columna y su regla al pasar el cursor, enfocarlo o tocarlo; las reglas también están
-// siempre visibles debajo, como texto, para el teclado y los lectores de pantalla.
+const FILL_TEXT: Record<Intent, string> = {
+  create:
+    'Completa la hoja «Productos» desde la fila 2. Código es obligatorio; un producto nuevo también necesita Nombre, Categoría y Precio con IGV.',
+  update:
+    'Lo que no cambies se queda igual. Tu catálogo trae las columnas de la plantilla y algunas más, que se ignoran al subirlo.',
+}
+
+// Paso 2 (spec §6.4): lo esencial y los consejos; la regla de cada columna está en la guía, debajo.
+function FillStep({ intent }: { intent: Intent }) {
+  return (
+    <div className="grid content-start gap-4">
+      <p className="text-sm text-muted-foreground">{FILL_TEXT[intent]}</p>
+      <ul className="grid gap-1.5 text-sm text-muted-foreground">
+        {TIPS.map((tip) => (
+          <li key={tip} className="flex gap-2">
+            <Check className="mt-0.5 size-4 shrink-0 text-ring" aria-hidden />
+            {tip}
+          </li>
+        ))}
+      </ul>
+      <a
+        href="#import-guide"
+        className="justify-self-start text-sm font-semibold underline decoration-primary decoration-2 underline-offset-4 hover:text-ring"
+      >
+        Ver la guía de cada columna
+      </a>
+    </div>
+  )
+}
+
+// Guía de la plantilla (spec §6.4), a todo el ancho: maqueta de la hoja con aspecto de Excel. Cada
+// título es un botón que resalta su columna y su regla al pasar el cursor, enfocarlo o tocarlo; las
+// reglas también están siempre visibles debajo, como texto, para el teclado y los lectores de pantalla.
 export function TemplateGuide({ intent }: { intent: Intent }) {
   const titles = templateTitles()
   const [active, setActive] = useState<ImportColumn | null>(null)
@@ -246,13 +274,22 @@ export function TemplateGuide({ intent }: { intent: Intent }) {
     onMouseLeave: () => setActive(null),
   })
   return (
-    <div className="grid min-w-0 content-start gap-4">
-      {intent === 'update' ? (
+    <section
+      id="import-guide"
+      aria-labelledby="import-guide-title"
+      className="@container grid min-w-0 scroll-mt-24 gap-4 rounded-[16px] border bg-card p-6"
+    >
+      <div className="grid gap-1">
+        <h2 id="import-guide-title" className="text-lg font-bold">
+          Guía de la plantilla
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Tu catálogo trae las mismas columnas que la plantilla, con algunas más que se ignoran al
-          subirlo.
+          {intent === 'create'
+            ? 'Así se ve la hoja «Productos».'
+            : 'Tu catálogo usa estas mismas columnas.'}{' '}
+          Pasa el cursor por un título, o tócalo, para ver su regla.
         </p>
-      ) : null}
+      </div>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
           <caption className="sr-only">Ejemplo de la hoja Productos de la plantilla</caption>
@@ -294,7 +331,7 @@ export function TemplateGuide({ intent }: { intent: Intent }) {
                     onFocus={() => setActive(column)}
                     onBlur={() => setActive(null)}
                     onClick={() => setActive(column)}
-                    className="w-full cursor-help px-2.5 py-2 text-left font-bold whitespace-nowrap text-white outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-inset"
+                    className="w-full cursor-help px-2.5 py-2 text-left font-bold text-white outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-inset"
                   >
                     {titles[column]}
                   </button>
@@ -315,8 +352,10 @@ export function TemplateGuide({ intent }: { intent: Intent }) {
                   <td
                     key={column}
                     className={cn(
-                      'border-t border-r px-2.5 py-1.5 whitespace-nowrap last:border-r-0',
-                      column === 'price' && 'text-right tabular-nums',
+                      'border-t border-r px-2.5 py-1.5 last:border-r-0',
+                      // Los textos se parten para que la tabla quepa; un código o un precio, nunca.
+                      column === 'code' && 'whitespace-nowrap',
+                      column === 'price' && 'text-right whitespace-nowrap tabular-nums',
                       active === column && 'bg-[#f6fbef]',
                     )}
                   >
@@ -328,28 +367,28 @@ export function TemplateGuide({ intent }: { intent: Intent }) {
           </tbody>
         </table>
       </div>
-      <ul className="grid gap-1.5">
-        {IMPORT_COLUMNS.map((column) => (
+      {/* Una ficha por columna: en una pantalla ancha, las cinco en una fila, como la tabla. */}
+      <ul className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-6 @7xl:grid-cols-5">
+        {IMPORT_COLUMNS.map((column, index) => (
           <li
             key={column}
             id={ruleId(column)}
             {...highlight(column)}
             data-active={active === column || undefined}
-            className="rounded-lg border border-transparent px-3 py-2 text-sm transition-colors data-active:border-ring/40 data-active:bg-[#f6fbef] motion-reduce:transition-none"
+            className={cn(
+              'grid content-start gap-1 rounded-[12px] border bg-background/60 px-4 py-3 text-sm transition-colors data-active:border-ring data-active:bg-[#f6fbef] motion-reduce:transition-none',
+              RULE_SPANS[index],
+            )}
           >
-            <span className="font-semibold">{titles[column]}:</span> {RULES[column]}
+            <span className="font-semibold">
+              {titles[column]}
+              <span className="sr-only">: </span>
+            </span>
+            <span className="text-muted-foreground">{RULES[column]}</span>
           </li>
         ))}
       </ul>
-      <ul className="grid gap-1.5 text-sm text-muted-foreground">
-        {TIPS.map((tip) => (
-          <li key={tip} className="flex gap-2">
-            <Check className="mt-0.5 size-4 shrink-0 text-ring" aria-hidden />
-            {tip}
-          </li>
-        ))}
-      </ul>
-    </div>
+    </section>
   )
 }
 

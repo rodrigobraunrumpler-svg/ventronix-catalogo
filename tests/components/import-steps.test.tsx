@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DownloadStep,
+  ImportSteps,
   TemplateGuide,
   UploadStep,
 } from '@/features/catalog/import/components/import-steps'
@@ -97,16 +98,39 @@ describe('Paso 1: descarga el archivo', () => {
   })
 })
 
+describe('los pasos', () => {
+  it('van en orden, el paso 2 trae los consejos y la guía de cada columna va después', () => {
+    render(<ImportSteps intent="create" upload={<p>Zona de carga</p>} />)
+    const headings = [
+      'Paso 1: Descarga el archivo',
+      'Paso 2: Complétalo',
+      'Paso 3: Súbelo',
+      'Guía de la plantilla',
+    ].map((name) => screen.getByRole('heading', { level: 2, name }))
+    headings.reduce((previous, current) => {
+      expect(
+        previous.compareDocumentPosition(current) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      return current
+    })
+    expect(screen.getByText('Puedes dejar filas vacías: se ignoran.')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Ver la guía de cada columna' })).toHaveAttribute(
+      'href',
+      '#import-guide',
+    )
+  })
+})
+
 describe('Paso 2: la guía de la plantilla', () => {
-  it('muestra la maqueta, las reglas de cada columna y los consejos', async () => {
+  it('muestra la maqueta y las reglas de cada columna', async () => {
     render(<TemplateGuide intent="create" />)
+    expect(screen.getByRole('heading', { name: 'Guía de la plantilla' })).toBeVisible()
     expect(
       screen.getByRole('table', { name: 'Ejemplo de la hoja Productos de la plantilla' }),
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Precio con IGV (S/)' })).toBeVisible()
     expect(screen.getByText('LAP-001')).toBeVisible()
     expect(screen.getByText(/Siempre obligatorio/)).toBeVisible()
-    expect(screen.getByText('Puedes dejar filas vacías: se ignoran.')).toBeVisible()
 
     const code = screen.getByRole('button', { name: 'Código' })
     expect(code).toHaveAccessibleDescription(/Siempre obligatorio y único, hasta 64 caracteres/)

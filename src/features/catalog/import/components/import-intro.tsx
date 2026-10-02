@@ -225,7 +225,7 @@ export function ImportFaq() {
                 aria-hidden
               />
             </summary>
-            <p className="pb-4 text-sm text-muted-foreground">{answer}</p>
+            <p className="max-w-[80ch] pb-4 text-sm text-muted-foreground">{answer}</p>
           </details>
         ))}
       </div>

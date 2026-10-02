@@ -306,7 +306,7 @@ export function ImportScreen({ hasProducts }: { hasProducts: boolean }) {
 
   if (stage === 'done' && outcome) {
     return (
-      <div className="grid max-w-[1200px] gap-8">
+      <div className="grid gap-8">
         <ImportHeader />
         <ImportResult
           outcome={outcome}
@@ -320,7 +320,7 @@ export function ImportScreen({ hasProducts }: { hasProducts: boolean }) {
 
   if ((stage === 'preview' || stage === 'importing') && preview) {
     return (
-      <div className="grid max-w-[1200px] gap-8">
+      <div className="grid gap-8">
         <ImportHeader />
         <PreviewStage
           preview={preview}
@@ -340,7 +340,7 @@ export function ImportScreen({ hasProducts }: { hasProducts: boolean }) {
   }
 
   return (
-    <div className="grid max-w-[1200px] gap-8">
+    <div className="grid gap-8">
       <ImportHeader />
       <IntentCards value={intent} onChange={setIntent} />
       <ImportSteps
