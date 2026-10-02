@@ -10,7 +10,7 @@ import { catalogKeys } from '../query-keys'
 import { searchParsers } from '../search-params'
 import type { ProductInput } from '../types'
 import { createProduct, deleteProduct, updateProduct } from './actions'
-import { getProduct, listProducts } from './queries'
+import { getCatalogStats, getProduct, listProducts } from './queries'
 
 // Tras un cambio correcto se refrescan los productos y los contadores de las categorías.
 export function useProductMutations() {
@@ -74,4 +74,11 @@ export function useProducts() {
       placeholderData: keepPreviousData,
     }),
   }
+}
+
+export function useCatalogStats() {
+  return useQuery({
+    queryKey: catalogKeys.stats,
+    queryFn: () => getCatalogStats(createClient()),
+  })
 }

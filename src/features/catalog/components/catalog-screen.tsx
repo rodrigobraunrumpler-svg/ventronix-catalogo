@@ -10,6 +10,7 @@ import { ProformaProvider } from '@/features/proforma/store'
 import { clearDraft } from '@/lib/drafts'
 import { CategoryDialog, type CategoryDialogState } from '../categories/components/category-dialog'
 import { CategoryPanel } from '../categories/components/category-panel'
+import { CatalogSummary } from '../products/components/catalog-stats'
 import { DeleteProductDialog } from '../products/components/delete-product-dialog'
 import { ProductDetail } from '../products/components/product-detail'
 import { ProductList } from '../products/components/product-list'
@@ -64,9 +65,12 @@ export function CatalogScreen() {
       <div className="grid gap-6 lg:short:gap-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="grid gap-1.5">
-            <h1 className="text-[28px] leading-tight font-extrabold tracking-[-0.02em]">
-              Productos
-            </h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <h1 className="text-[28px] leading-tight font-extrabold tracking-[-0.02em]">
+                Productos
+              </h1>
+              <CatalogSummary />
+            </div>
             {/* En una pantalla baja se omite: ese alto es mejor para la lista. */}
             <p className="text-sm text-muted-foreground lg:short:hidden">
               Tu catálogo y sus categorías, en un mismo lugar.

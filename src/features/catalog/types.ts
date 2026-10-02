@@ -57,3 +57,6 @@ export type ProductPage = {
   page: number
   pageSize: number
 }
+
+// Cifras de los indicadores de la cabecera (spec del Excel §4.1).
+export type CatalogStats = { products: number; createdThisMonth: number; updatedLast7Days: number }

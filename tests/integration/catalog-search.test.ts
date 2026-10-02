@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { listProducts } from '@/features/catalog/products/queries'
+import { getCatalogStats, listProducts } from '@/features/catalog/products/queries'
 import { ensureUser, signedInClient } from '../support/local-supabase'
 import { connect, resetCatalog } from './db'
 
@@ -143,5 +143,21 @@ describe('fecha y orden desde el código', () => {
       filters({ dateFrom: '2026-10-01', dateTo: '2026-10-01', sort: 'price-desc' }),
     )
     expect(codes(result)).toEqual(['CARO', 'BARATO'])
+  })
+})
+
+describe('indicadores desde el código', () => {
+  it('getCatalogStats traduce las cifras de la base', async () => {
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price, created_at, updated_at)
+       values ('VIEJO', 'Viejo', $1, 10, '2020-01-01T10:00:00-05:00', '2020-01-01T10:00:00-05:00'),
+              ('NUEVO', 'Nuevo', $1, 10, now(), now())`,
+      [laptops],
+    )
+    expect(await getCatalogStats(supabase)).toEqual({
+      products: 2,
+      createdThisMonth: 1,
+      updatedLast7Days: 1,
+    })
   })
 })

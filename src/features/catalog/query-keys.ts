@@ -7,4 +7,6 @@ export const catalogKeys = {
   products: ['catalog', 'products'] as const,
   productList: (query: ProductQuery) => ['catalog', 'products', 'list', query] as const,
   product: (id: string) => ['catalog', 'products', 'detail', id] as const,
+  // Bajo «products»: lo que refresca la lista refresca también los indicadores.
+  stats: ['catalog', 'products', 'stats'] as const,
 }

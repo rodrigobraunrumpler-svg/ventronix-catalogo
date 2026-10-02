@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { Database } from '@/lib/supabase/database.types'
 import { unitPriceSchema } from '../money'
 import { normalizeSearch } from '../search-pattern'
-import type { Product, ProductListItem, ProductPage, ProductQuery } from '../types'
+import type { CatalogStats, Product, ProductListItem, ProductPage, ProductQuery } from '../types'
 
 type Client = SupabaseClient<Database>
 
@@ -88,5 +88,22 @@ export async function listProducts(
     page: query.page,
     pageSize: PAGE_SIZE,
     items: parsed.items.map(toListItem),
+  }
+}
+
+const statsSchema = z.object({
+  products: z.number().int().nonnegative(),
+  created_this_month: z.number().int().nonnegative(),
+  updated_last_7_days: z.number().int().nonnegative(),
+})
+
+export async function getCatalogStats(supabase: Client): Promise<CatalogStats> {
+  const { data, error } = await supabase.rpc('catalog_stats')
+  if (error) throw error
+  const stats = statsSchema.parse(data)
+  return {
+    products: stats.products,
+    createdThisMonth: stats.created_this_month,
+    updatedLast7Days: stats.updated_last_7_days,
   }
 }
