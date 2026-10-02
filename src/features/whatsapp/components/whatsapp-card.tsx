@@ -165,7 +165,7 @@ function LinkDialog({
               autoComplete="tel-national"
               placeholder="987 654 321"
               aria-invalid={phoneError ? true : undefined}
-              aria-describedby={phoneError ? `${id}-phone-error` : `${id}-risk`}
+              aria-describedby={phoneError ? `${id}-phone-error` : undefined}
               onChange={(event) => setPhone(event.target.value)}
             />
             {phoneError ? (
@@ -173,10 +173,6 @@ function LinkDialog({
                 {phoneError}
               </p>
             ) : null}
-            <p id={`${id}-risk`} className="text-xs leading-normal text-muted-foreground">
-              WhatsApp no permite oficialmente este tipo de envío: con un uso normal el riesgo es
-              bajo, pero podría bloquear el número. Si prefieres, prueba antes con uno secundario.
-            </p>
           </form>
         ) : (
           <div className="grid gap-3">
