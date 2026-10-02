@@ -165,9 +165,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      catalog_stats: { Args: Record<PropertyKey, never>; Returns: Json }
+      export_products: {
+        Args: {
+          category?: string
+          date_by?: string
+          date_from?: string
+          date_to?: string
+          max_rows?: number
+          search?: string
+          sort?: string
+        }
+        Returns: Json
+      }
+      filter_products: {
+        Args: {
+          category?: string
+          date_by?: string
+          date_from?: string
+          date_to?: string
+          search?: string
+          sort?: string
+        }
+        Returns: {
+          category_id: string
+          category_name: string
+          code: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          sort_position: number
+          unit_price: number
+          updated_at: string
+        }[]
+      }
       next_proforma_number: { Args: Record<PropertyKey, never>; Returns: number }
       search_products: {
-        Args: { category?: string; page?: number; page_size?: number; search?: string }
+        Args: {
+          category?: string
+          date_by?: string
+          date_from?: string
+          date_to?: string
+          page?: number
+          page_size?: number
+          search?: string
+          sort?: string
+        }
         Returns: Json
       }
     }
