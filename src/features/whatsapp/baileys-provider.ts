@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import makeWASocket, {
+  Browsers,
   DisconnectReason,
   generateMessageIDV2,
   isJidBroadcast,
@@ -56,12 +57,13 @@ export const ignoredChat = (jid: string) =>
   Boolean(isJidBroadcast(jid) || isJidGroup(jid) || isJidNewsletter(jid))
 
 // Solo lo necesario para enviar: sin historial, sin aparecer «en línea» y sin consultas iniciales.
-// En el teléfono, Dispositivos vinculados la muestra como «Google Chrome (Proformas Ventronix)»: el
-// sistema (browser[0]) es el nombre de la app. Se fija al vincular.
+// El nombre del dispositivo es el estándar de Baileys («Google Chrome (Mac OS)» en el teléfono):
+// WhatsApp rechaza uno propio al vincular con código, sin avisar al teléfono, y el código no sirve.
+// https://github.com/WhiskeySockets/Baileys/pull/2559
 export const socketConfig = (state: AuthenticationState) => ({
   auth: state,
   logger,
-  browser: ['Proformas Ventronix', 'Chrome', '1.0.0'] as [string, string, string],
+  browser: Browsers.macOS('Chrome'),
   markOnlineOnConnect: false,
   syncFullHistory: false,
   shouldSyncHistoryMessage: () => false,

@@ -1,3 +1,4 @@
+import { Browsers } from 'baileys'
 import { describe, expect, it } from 'vitest'
 import { createAuthState } from '@/features/whatsapp/auth-state'
 import { ignoredChat, socketConfig } from '@/features/whatsapp/baileys-provider'
@@ -17,12 +18,8 @@ describe('ignoredChat', () => {
 })
 
 describe('socketConfig', () => {
-  it('en el teléfono sale como «Google Chrome (Proformas Ventronix)»', () => {
-    expect(socketConfig(createAuthState(null).state).browser).toEqual([
-      'Proformas Ventronix',
-      'Chrome',
-      '1.0.0',
-    ])
+  it('usa el nombre estándar: WhatsApp rechaza uno propio al vincular con código', () => {
+    expect(socketConfig(createAuthState(null).state).browser).toEqual(Browsers.macOS('Chrome'))
   })
 
   it('solo lo necesario para enviar: sin historial, sin «en línea» y sin chats de grupo', () => {
