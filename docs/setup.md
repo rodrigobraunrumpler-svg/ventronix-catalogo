@@ -124,3 +124,16 @@ En el proyecto de producción, además:
 ## Hooks de Git
 
 El hook `pre-commit` ejecuta lint-staged: ESLint y Prettier sobre los archivos preparados. No se usa Commitlint mientras no se adopte Conventional Commits.
+
+## Carga masiva desde Excel
+
+En **Productos → Carga masiva** (`/products/import`) se crean y actualizan muchos productos a la vez:
+
+1. Descarga la plantilla (productos nuevos) o tu catálogo (para cambiar los que ya tienes).
+2. Complétalo en Excel. Solo la columna **Código** es obligatoria: si el código ya existe, se actualiza ese producto; las columnas que no vengan se quedan como están.
+3. Súbelo y revisa la vista previa: qué se crea, qué cambia, qué se ignora y por qué.
+4. Importa. Es todo o nada: si algo falla, no se guarda nada. Nunca se borran productos.
+
+Al terminar se descarga un **comprobante**. Su hoja «Para revertir» trae los valores anteriores de los productos actualizados: súbela en Carga masiva para dejarlos como estaban.
+
+Límites: archivos `.xlsx` de hasta 4 MB y 5 000 productos (`src/features/catalog/import/options.ts`).

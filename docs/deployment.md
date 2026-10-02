@@ -83,7 +83,10 @@ Las variables solo existen en Production. Por eso los despliegues de preview (ra
 
 ## 3. Comprobación después de publicar
 
-Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplica las migraciones nuevas con `pnpm db:push`. La más reciente es `202610020001_product_list_filters.sql`: fecha y orden de la lista, Excel e indicadores.
+Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplica las migraciones nuevas con `pnpm db:push`. Las más recientes son:
+
+- `202610020001_product_list_filters.sql`: fecha y orden de la lista, Excel e indicadores.
+- `202610030001_product_import.sql`: la carga masiva. Añade las funciones `product_import_plan`, `preview_product_import` e `import_products`, solo para cuentas con sesión.
 
 Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba despliegue» y el producto `PRUEBA-001`, y bórralos al terminar.
 
@@ -93,6 +96,7 @@ Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba de
 - [ ] Los indicadores junto a «Productos» muestran cifras y cada uno aplica su filtro.
 - [ ] El filtro de fecha (registro o modificación) y el orden cambian la lista y se conservan al recargar.
 - [ ] El botón «Excel» descarga el reporte completo y la lista de precios con lo filtrado.
+- [ ] **Carga masiva:** en `/products/import`, descarga la plantilla, complétala con `PRUEBA-001` en la categoría «Prueba despliegue» y súbela. La vista previa lo muestra como «Nuevo». Impórtalo, descarga el comprobante y comprueba que «Ver productos» lo muestra. Bórralo al terminar.
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.
