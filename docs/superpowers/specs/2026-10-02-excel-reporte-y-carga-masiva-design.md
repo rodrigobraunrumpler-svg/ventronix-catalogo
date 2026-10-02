@@ -1,6 +1,6 @@
 # Filtro de fecha, orden, Excel y carga masiva de productos
 
-Fecha: 02-10-2026. Estado: **revisión 3**, revisada dos veces desde el lado del cliente; pendiente de aprobar este documento.
+Fecha: 02-10-2026. Estado: **revisión 4**. La fase 1 está implementada; la revisión 4 recoge lo que cambió al planificar la fase 2 (§0.1).
 
 Parte del módulo de productos ([spec del catálogo](2026-09-29-catalogo-design.md)). Reglas del proyecto: [PROJECT_CONTEXT.md](../../../PROJECT_CONTEXT.md).
 
@@ -37,6 +37,18 @@ Cada mejora lleva una prioridad: **[E]** esencial, porque sin ella el uso real t
 | 18 | *(rev. 3)* **«Copiar enlace de esta vista»** | Los filtros viven en la URL, así que guardar en favoritos o compartir «Laptops modificados esta semana» es un clic. | R | 1 |
 | 19 | *(rev. 3)* **Valor sin IGV** junto al precio con IGV en el reporte completo | Para contabilidad y para comparar con listas de proveedores sin IGV. | R | 1 |
 | 20 | *(rev. 3)* El indicador «modificados» aclara que **incluye los creados** | La cifra debe coincidir con la lista que abre, y el título lo explica para que no confunda. | E | 1 |
+
+### 0.1 Qué cambió al planificar la fase 2 (revisión 4)
+
+El [plan de la fase 2](../plans/2026-10-03-fase-2-carga-masiva.md) se revisó cinco veces. Estas decisiones cambian lo que dice esta spec; el detalle, con el porqué, está en el apéndice «Revisiones del plan».
+
+- La tabla de la vista previa se abre en Con errores, Para revisar, Se actualizan, Nuevos y, por último, Todas (§6.6).
+- Los porcentajes llevan punto decimal, como los precios: «+12.5 %» (§6.6).
+- Cada archivo nuevo empieza con las opciones por defecto (§6.6).
+- Avisos nuevos en la vista previa: las filas «Para revisar» y la columna «Valor sin IGV (S/)», que no se importa (§6.6).
+- Un corte de red durante la importación tiene su propio mensaje (§6.9).
+- `import_products` recibe el modo (§9.1) y el límite de la petición es de 4,5 MB (§9.2).
+- Los mensajes de precio ya no repiten la columna, y se quitan los caracteres invisibles (§9.3).
 
 ## 1. Objetivo
 
@@ -338,7 +350,9 @@ Muestra el botón principal según la intención de §6.2, con estados como los 
 - **Plantilla:** «Tiene las columnas listas, tus categorías en un desplegable y una hoja con instrucciones y ejemplos.»
 - **Mi catálogo:** es el reporte completo sin filtros. «Trae todos tus productos con su código: cambia lo que necesites y súbelo. Lo que no cambies se queda igual.»
 
-### 6.4 Paso 2: Complétala
+### 6.4 Paso 2: Complétalo
+
+El título es «Complétalo» o, si se actualiza, «Cambia lo que necesites».
 
 Una **maqueta de la plantilla**, una tabla HTML con aspecto de Excel: letras A–E, la fila de títulos con el estilo de la plantilla y dos filas de ejemplo.
 
@@ -359,7 +373,7 @@ Debajo van cuatro consejos breves:
 - «Para actualizar solo precios, deja las columnas Código y Precio con IGV y borra las demás.»
 - «Puedes dejar filas vacías: se ignoran.»
 
-### 6.5 Paso 3: Súbela
+### 6.5 Paso 3: Súbelo
 
 **Zona de carga.** Se puede arrastrar el archivo o hacer clic en ella: es un `button` real con un `input type="file"` oculto que acepta `.xlsx`.
 
@@ -379,7 +393,7 @@ Debajo van cuatro consejos breves:
 
 > «Tu archivo trae Código y Precio con IGV: solo se actualizarán los precios. El resto de los datos se mantiene.»
 
-**Opciones de importación**, arriba y siempre visibles. Al cambiarlas, la vista previa se recalcula:
+**Opciones de importación**, arriba y siempre visibles. Al cambiarlas, la vista previa se recalcula. Cada archivo nuevo empieza con las opciones por defecto, para que la hoja «Para revertir» nunca se suba con «No incluyen IGV» de la carga anterior:
 
 - **Los precios de este archivo:** «Incluyen IGV» (por defecto) o «No incluyen IGV: sumar 18 %».
   - Con la segunda, el detalle muestra el precio final: «S/ 1,000.00 + IGV → S/ 1,180.00».
@@ -399,22 +413,27 @@ Cada fila cuenta en una sola tarjeta, por este orden de prioridad: Con errores, 
 
 **Resumen visual:**
 
-- **Precios:** «Suben 150 (promedio +8,2 %) · Bajan 3 (promedio −4,0 %)», con una barra de dos colores proporcional.
+- **Precios:** «Suben 150 (promedio +8.2 %) · Bajan 3 (promedio −4.0 %)», con una barra de dos colores proporcional. Los porcentajes llevan punto decimal, como los precios.
 - **Por categoría:** una lista de barras horizontales con los productos del archivo en cada una. Las nuevas llevan la etiqueta «nueva» y las parecidas, «¿parecida?».
 
 **Categorías nuevas y parecidas** (§6.8), en un bloque propio y antes de la tabla, porque son decisiones que hay que tomar.
+
+**Avisos:**
+
+- Si hay filas «Para revisar»: «3 filas para revisar se importarán igual. Si alguna no es correcta, corrígela en el Excel y vuelve a subir el archivo.»
+- Si el archivo trae «Valor sin IGV (S/)» del reporte: «La columna «Valor sin IGV (S/)» no se importa: los precios se cambian en «Precio con IGV (S/)».»
 
 **Pestañas** (`Tabs` de `radix-ui`, igual que en Empresa):
 
 - Todas · Nuevos · Se actualizan · Para revisar · Sin cambios · Con errores.
 - Cada una lleva su contador.
-- Se abre en la primera pestaña con contenido de este orden: Con errores, Para revisar, Todas.
+- Se abre en la primera pestaña con contenido de este orden: Con errores, Para revisar, Se actualizan, Nuevos y Todas. Así, con el catálogo completo, unos pocos cambios no quedan entre miles de filas sin cambios.
 
 **Búsqueda** por código o nombre dentro de la vista previa, en el navegador.
 
 **Tabla** con columnas Fila (número de fila en Excel) · Estado · Código · Nombre · Categoría · Precio · Detalle:
 
-- Una actualización muestra en «Detalle» qué cambia: «Precio: S/ 1,200.00 → S/ 1,350.00 (+12,5 %)», «Nombre cambia», «Categoría: Laptops → Computadoras».
+- Una actualización muestra en «Detalle» qué cambia: «Precio: S/ 1,200.00 → S/ 1,350.00 (+12.5 %)», «Nombre cambia», «Categoría: Laptops → Computadoras».
 - Un aviso muestra su motivo en ámbar: «El precio baja un 90 %. ¿Es correcto?»
 - Un error muestra cada motivo en una línea: «Precio: escribe solo números con hasta dos decimales.»
 - **Paginación** de 50 filas: nunca se dibujan miles de filas de golpe.
@@ -426,8 +445,9 @@ Cada fila cuenta en una sola tarjeta, por este orden de prioridad: Con errores, 
   - Si hay 0, queda desactivado con el texto «No hay filas para importar.»
   - Si solo hay filas sin cambios: «Tu catálogo ya está al día con este archivo.»
   - Si quedan categorías parecidas sin decidir: «Decide 2 categorías antes de importar.»
-- Botón secundario «Elegir otro archivo».
-- Botón secundario **«Descargar simulación»**: el mismo Excel que el comprobante de §6.10, con el título «Simulación: todavía no se guardó nada». Sirve para revisarlo con calma o pasarlo a quien aprueba los precios.
+- Botón secundario «Elegir otro archivo». En la vista previa es la única forma de cambiar de archivo; «Cambiar archivo» queda en el chip del paso 3.
+- Botón secundario **«Descargar simulación»**: el mismo Excel que el comprobante de §6.10, sin la hoja «Para revertir» y con el título «Simulación: todavía no se guardó nada». Sirve para revisarlo con calma o pasarlo a quien aprueba los precios.
+- En el teléfono, los dos botones secundarios muestran solo su icono, con su nombre para los lectores de pantalla: la barra ocupa dos filas cortas.
 - Si hay errores:
   - Aviso: «3 filas con errores no se importarán. Corrígelas y vuelve a subir el archivo, o descárgalas aparte.»
   - Botón «Descargar filas con errores».
@@ -473,6 +493,8 @@ Si solo hay productos nuevos, no se pide confirmación.
 - El archivo y las decisiones (`categoryMap`) se vuelven a enviar, y el servidor lee y valida todo otra vez antes de guardar (§9.2).
 
 Si falla al guardar, nada queda a medias: «No se importó nada. Revisa tu conexión e inténtalo de nuevo; tu archivo sigue seleccionado.»
+
+Si se corta la red, no se sabe si la base alcanzó a guardar. Entonces se revisa el archivo otra vez y la vista previa muestra cómo quedó el catálogo: «Se cortó la conexión durante la importación. Revisamos tu archivo otra vez: la vista previa muestra cómo quedó tu catálogo.»
 
 ### 6.10 Resultado y comprobante
 
@@ -574,12 +596,13 @@ La asignación, la hoja y la categoría por defecto viajan con el archivo en cad
   - Para cada fila devuelve si es nueva, se actualiza o no cambia, con los valores actuales de las columnas presentes.
   - Indica si su nombre ya existe en otro producto con un código distinto.
   - Las categorías se comparan sin mayúsculas ni espacios, como el índice único `lower(btrim(name))`.
-- `public.import_products(rows jsonb, columns text[])`. En una sola llamada, que ya es una transacción:
+- `public.product_import_plan(rows jsonb, columns text[])`: el plan de cada fila (se crea, se actualiza o no cambia). Lo usan las otras dos funciones, así que la vista previa y la importación deciden igual.
+- `public.import_products(rows jsonb, columns text[], mode text default 'all')`. Con el modo en la base, «Solo actualizar» no crea un producto que otra pestaña borró entre la vista previa y la importación. En una sola llamada, que ya es una transacción:
   1. Comprueba que la cuenta es la dueña y que hay como máximo 5 000 filas.
   2. Guarda una foto de los valores actuales de los códigos afectados.
   3. Crea las categorías que faltan con `on conflict ((lower(btrim(name)))) do nothing`.
   4. Inserta los productos nuevos. Actualiza los existentes **solo en las columnas de `columns`**, y solo si algo cambia (`where … is distinct from …`). Las filas idénticas no se tocan y no cambian su `updated_at`.
-  5. Devuelve `{ created, updated, unchanged, categories_created, changes }`, donde `changes` lleva los valores anteriores y nuevos para el comprobante.
+  5. Devuelve `{ created, updated, unchanged, skipped, categories_created, changes, previous }`: `changes` lleva los valores anteriores y nuevos para el comprobante, y `previous`, los valores anteriores de cada producto actualizado para la hoja «Para revertir».
 - Las dos funciones son `security invoker`: las políticas RLS del dueño ya permiten leer, crear y actualizar.
 
 La fase 3 no necesita migraciones.
@@ -625,7 +648,7 @@ Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funci
 `next.config.ts`:
 
 - `exceljs` se añade a `serverExternalPackages`.
-- `experimental.serverActions.bodySizeLimit: '4mb'`.
+- `experimental.serverActions.bodySizeLimit: '4.5mb'`. El límite cuenta también lo que añade el FormData; el archivo sigue limitado a 4 MB, y Vercel admite 4,5 MB.
 
 ### 9.3 Lectura de celdas y precios
 
@@ -642,6 +665,7 @@ Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funci
 **Textos:**
 
 - Se quitan los espacios de los extremos y los espacios no separables, y los espacios dobles pasan a uno.
+- Se quitan los caracteres invisibles que llegan al copiar de una web o un PDF (espacios de ancho cero), y las tildes se unen a su letra (NFC). Así «LAP-001» copiado nunca crea otro producto.
 - En el código y el nombre, los saltos de línea pasan a espacio. En la descripción se conservan.
 
 **Código numérico:** un 123 de Excel pasa a «123» sin notación científica. Para enteros se usa `toFixed(0)`; si tiene decimales, es error.
@@ -649,7 +673,7 @@ Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funci
 **Precio numérico:**
 
 - Se redondea a 2 decimales si la diferencia es menor que 0,000001, porque son restos de coma flotante (1299.8999999 → 1299.90).
-- Si tiene más decimales de verdad, da error: «El precio tiene más de dos decimales.»
+- Si tiene más decimales de verdad, da error: «Precio: tiene más de dos decimales.» Los mensajes van tras el nombre de la columna, así que no lo repiten: «Precio: debe ser mayor que cero.», «Precio: no puede pasar de 9,999,999,999.99.»
 
 **Precio en texto:**
 
