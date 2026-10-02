@@ -211,6 +211,25 @@ describe('ImportActionBar', () => {
     expect(onDownload).toHaveBeenCalledWith('errors')
   })
 
+  it('con una sola fila los avisos hablan en singular', () => {
+    render(
+      <>
+        <ErrorsNotice errors={1} downloading={null} onDownload={vi.fn()} />
+        <ReviewNotice reviews={1} />
+      </>,
+    )
+    expect(
+      screen.getByText(
+        '1 fila con errores no se importará. Corrígela y vuelve a subir el archivo, o descárgala aparte.',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        '1 fila para revisar se importará igual. Si no es correcta, corrígela en el Excel y vuelve a subir el archivo.',
+      ),
+    ).toBeVisible()
+  })
+
   it('las filas para revisar se importan igual, y dice cómo corregirlas', () => {
     render(<ReviewNotice reviews={2} />)
     expect(

@@ -60,8 +60,9 @@ function Step({
   )
 }
 
-// Los tres pasos (spec §6.2): en PC el 1 y el 2 lado a lado y el 3 a todo el ancho; en móvil, uno
-// debajo de otro.
+// Los tres pasos (spec §6.2): en PC el 1 y el 3 a la izquierda, uno sobre otro, y la guía del 2, más
+// alta, a la derecha. Así no queda un hueco junto a la guía y la zona de carga se ve sin bajar tanto.
+// En móvil van uno debajo de otro.
 export function ImportSteps({ intent, upload }: { intent: Intent; upload: ReactNode }) {
   return (
     <div className="grid gap-3">
@@ -69,18 +70,18 @@ export function ImportSteps({ intent, upload }: { intent: Intent; upload: ReactN
         <Monitor className="size-4 shrink-0" aria-hidden />
         Es más cómodo desde una PC.
       </p>
-      <ol className="grid gap-4 lg:grid-cols-2">
+      <ol className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-start">
         <Step number={1} title="Descarga el archivo">
           <DownloadStep intent={intent} />
         </Step>
         <Step
           number={2}
           title={intent === 'create' ? 'Complétalo' : 'Cambia lo que necesites'}
-          className="lg:before:top-[41px] lg:before:-left-4 lg:before:h-0.5 lg:before:w-4"
+          className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:before:top-[41px] lg:before:-left-4 lg:before:h-0.5 lg:before:w-4"
         >
           <TemplateGuide intent={intent} />
         </Step>
-        <Step number={3} title="Súbelo" className="lg:col-span-2">
+        <Step number={3} title="Súbelo" className="lg:col-start-1 lg:row-start-2">
           {upload}
         </Step>
       </ol>

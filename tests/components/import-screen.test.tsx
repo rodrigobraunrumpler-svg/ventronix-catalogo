@@ -175,6 +175,17 @@ describe('ImportScreen: recorrido completo', () => {
     expect(actions.importProducts).toHaveBeenCalledOnce()
   })
 
+  it('la barra fija no va dentro de la animación de entrada', async () => {
+    actions.previewProductImport.mockResolvedValueOnce(ok(DECIDED))
+    renderScreen()
+    choose()
+    await screen.findByRole('heading', { name: 'Esto es lo que va a pasar' })
+    // Un antecesor animado (transform) haría que «fixed» se mida contra él y no contra la pantalla.
+    expect(
+      screen.getByRole('region', { name: 'Importación' }).closest('[class*="animate-in"]'),
+    ).toBeNull()
+  })
+
   it('al cambiar una opción recalcula la vista previa y lo anuncia', async () => {
     actions.previewProductImport.mockResolvedValueOnce(ok(DECIDED))
     const { user } = renderScreen()

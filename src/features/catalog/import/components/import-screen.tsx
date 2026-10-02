@@ -96,65 +96,69 @@ function PreviewStage({
     onOptions({ ...options, categoryMap: { ...options.categoryMap, [key]: decision } })
   }
 
+  // La barra fija va fuera de la sección animada: mientras dura la animación, un antecesor con
+  // transform haría que «fixed» se midiera contra él y no contra la pantalla.
   return (
-    <section
-      aria-labelledby="import-preview"
-      className="grid gap-6 motion-safe:animate-in motion-safe:duration-300 motion-safe:fade-in"
-    >
-      <div className="grid gap-1.5">
-        <h2
-          id="import-preview"
-          ref={heading}
-          tabIndex={-1}
-          className="scroll-mt-24 text-2xl font-extrabold tracking-[-0.01em] outline-none"
-        >
-          Esto es lo que va a pasar
-        </h2>
-        {/* Otro archivo se elige desde la barra fija: una sola acción con un solo nombre. */}
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          <FileSpreadsheet className="size-4 text-ring" aria-hidden />
-          <span className="font-semibold break-all text-foreground">{preview.fileName}</span>
-          <span>
-            · hoja «{preview.sheetName}» · {rows}
-          </span>
-        </p>
-        <p role="status" className="text-sm font-semibold text-ring">
-          {refreshing ? `Revisando ${rows}…` : null}
-        </p>
-      </div>
-      {preview.partialNotice ? <PartialNotice text={preview.partialNotice} /> : null}
-      {preview.ignoredNotice ? <PartialNotice text={preview.ignoredNotice} /> : null}
-      <ImportOptionsPanel
-        options={options}
-        counts={preview.counts}
-        disabled={busy}
-        onChange={onOptions}
-      />
-      <div
-        className={cn(
-          'grid gap-6 transition-opacity motion-reduce:transition-none',
-          refreshing && 'opacity-60',
-        )}
+    <>
+      <section
+        aria-labelledby="import-preview"
+        className="grid gap-6 motion-safe:animate-in motion-safe:duration-300 motion-safe:fade-in"
       >
-        <SummaryCards counts={preview.counts} active={tab} onSelect={selectCard} />
-        {preview.counts.error > 0 ? (
-          <ErrorsNotice
-            errors={preview.counts.error}
-            downloading={downloading}
-            onDownload={onDownload}
-          />
-        ) : null}
-        {preview.counts.review > 0 ? <ReviewNotice reviews={preview.counts.review} /> : null}
-        <CategoryDecisions choices={preview.choices} disabled={busy} onDecide={decide} />
-        <VisualSummary prices={preview.prices} bars={preview.bars} />
-        <PreviewRows
-          rows={preview.rows}
+        <div className="grid gap-1.5">
+          <h2
+            id="import-preview"
+            ref={heading}
+            tabIndex={-1}
+            className="scroll-mt-24 text-2xl font-extrabold tracking-[-0.01em] outline-none"
+          >
+            Esto es lo que va a pasar
+          </h2>
+          {/* Otro archivo se elige desde la barra fija: una sola acción con un solo nombre. */}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <FileSpreadsheet className="size-4 text-ring" aria-hidden />
+            <span className="font-semibold break-all text-foreground">{preview.fileName}</span>
+            <span>
+              · hoja «{preview.sheetName}» · {rows}
+            </span>
+          </p>
+          <p role="status" className="text-sm font-semibold text-ring">
+            {refreshing ? `Revisando ${rows}…` : null}
+          </p>
+        </div>
+        {preview.partialNotice ? <PartialNotice text={preview.partialNotice} /> : null}
+        {preview.ignoredNotice ? <PartialNotice text={preview.ignoredNotice} /> : null}
+        <ImportOptionsPanel
+          options={options}
           counts={preview.counts}
-          mode={options.mode}
-          tab={tab}
-          onTab={onTab}
+          disabled={busy}
+          onChange={onOptions}
         />
-      </div>
+        <div
+          className={cn(
+            'grid gap-6 transition-opacity motion-reduce:transition-none',
+            refreshing && 'opacity-60',
+          )}
+        >
+          <SummaryCards counts={preview.counts} active={tab} onSelect={selectCard} />
+          {preview.counts.error > 0 ? (
+            <ErrorsNotice
+              errors={preview.counts.error}
+              downloading={downloading}
+              onDownload={onDownload}
+            />
+          ) : null}
+          {preview.counts.review > 0 ? <ReviewNotice reviews={preview.counts.review} /> : null}
+          <CategoryDecisions choices={preview.choices} disabled={busy} onDecide={decide} />
+          <VisualSummary prices={preview.prices} bars={preview.bars} />
+          <PreviewRows
+            rows={preview.rows}
+            counts={preview.counts}
+            mode={options.mode}
+            tab={tab}
+            onTab={onTab}
+          />
+        </div>
+      </section>
       <ImportActionBar
         preview={preview}
         importing={importing}
@@ -164,7 +168,7 @@ function PreviewStage({
         onDownload={onDownload}
         onImport={onImport}
       />
-    </section>
+    </>
   )
 }
 

@@ -92,7 +92,7 @@ export function ImportOptionsPanel({
         Opciones de importación
       </h3>
       <div className="grid gap-5 md:grid-cols-2">
-        <fieldset disabled={disabled} className="grid gap-2">
+        <fieldset disabled={disabled} className="grid content-start gap-2">
           <legend className="mb-2 text-sm font-semibold">Los precios de este archivo</legend>
           <Choice
             name="import-tax"
@@ -109,7 +109,7 @@ export function ImportOptionsPanel({
             No incluyen IGV: sumar {TAX_CONFIG.ratePercent} %
           </Choice>
         </fieldset>
-        <fieldset disabled={disabled} className="grid gap-2">
+        <fieldset disabled={disabled} className="grid content-start gap-2">
           <legend className="mb-2 text-sm font-semibold">Qué hacer</legend>
           {IMPORT_MODES.map((mode) => (
             <Choice

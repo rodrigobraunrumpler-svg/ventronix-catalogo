@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { importButton, plural, previewSummary } from '../format'
+import { count, importButton, plural, previewSummary } from '../format'
 import type { ImportPreview } from '../types'
 
 export type BarDownload = 'simulation' | 'errors'
@@ -64,7 +64,8 @@ export function ImportActionBar({
         >
           {status}
         </p>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+        {/* En el teléfono: el estado y los iconos en una fila; «Importar» a todo el ancho debajo. */}
+        <div className="flex gap-2">
           <Button
             variant="ghost"
             className={ghost}
@@ -91,18 +92,18 @@ export function ImportActionBar({
               {downloading === 'simulation' ? 'Preparando Excel…' : 'Descargar simulación'}
             </span>
           </Button>
-          <Button
-            className="h-11 flex-1 px-4.5 text-[15px] font-bold sm:flex-none"
-            disabled={!button.enabled || busy}
-            aria-describedby="import-bar-status"
-            onClick={() => (preview.updates > 0 ? setConfirming(true) : onImport())}
-          >
-            {importing ? (
-              <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />
-            ) : null}
-            {importing ? `Importando ${products}…` : button.label}
-          </Button>
         </div>
+        <Button
+          className="h-11 px-4.5 text-[15px] font-bold max-sm:w-full"
+          disabled={!button.enabled || busy}
+          aria-describedby="import-bar-status"
+          onClick={() => (preview.updates > 0 ? setConfirming(true) : onImport())}
+        >
+          {importing ? (
+            <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />
+          ) : null}
+          {importing ? `Importando ${products}…` : button.label}
+        </Button>
       </div>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
@@ -132,12 +133,9 @@ export function ReviewNotice({ reviews }: { reviews: number }) {
     <p className="flex items-start gap-2 rounded-[12px] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
       <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>
-        {plural(
-          reviews,
-          'fila para revisar se importará igual',
-          'filas para revisar se importarán igual',
-        )}
-        . Si alguna no es correcta, corrígela en el Excel y vuelve a subir el archivo.
+        {reviews === 1
+          ? '1 fila para revisar se importará igual. Si no es correcta, corrígela en el Excel y vuelve a subir el archivo.'
+          : `${count(reviews)} filas para revisar se importarán igual. Si alguna no es correcta, corrígela en el Excel y vuelve a subir el archivo.`}
       </span>
     </p>
   )
@@ -155,10 +153,12 @@ export function ErrorsNotice({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[12px] border border-destructive/30 bg-destructive/5 px-4 py-3">
-      <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-destructive">
+      {/* El texto pide 16rem: si el botón no cabe al lado, baja en vez de estrechar el texto. */}
+      <p className="flex min-w-0 grow basis-64 items-start gap-2 text-sm text-destructive">
         <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-        {plural(errors, 'fila con errores no se importará', 'filas con errores no se importarán')}.
-        Corrígelas y vuelve a subir el archivo, o descárgalas aparte.
+        {errors === 1
+          ? '1 fila con errores no se importará. Corrígela y vuelve a subir el archivo, o descárgala aparte.'
+          : `${count(errors)} filas con errores no se importarán. Corrígelas y vuelve a subir el archivo, o descárgalas aparte.`}
       </p>
       <Button
         variant="outline"
