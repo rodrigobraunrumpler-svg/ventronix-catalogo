@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toProductQuery } from '@/features/catalog/list-options'
 import { listProducts } from '@/features/catalog/products/queries'
 import { catalogKeys } from '@/features/catalog/query-keys'
 import { normalizeSearch } from '@/features/catalog/search-pattern'
@@ -20,10 +21,11 @@ export function useAddSingleResult() {
   const { update, announce } = useProforma()
   return async (filters: ProductFilters) => {
     if (normalizeSearch(filters.search) === '') return
+    const query = toProductQuery(filters)
     const page = await queryClient
       .fetchQuery({
-        queryKey: catalogKeys.productList(filters),
-        queryFn: ({ signal }) => listProducts(createClient(), filters, signal),
+        queryKey: catalogKeys.productList(query),
+        queryFn: ({ signal }) => listProducts(createClient(), query, signal),
       })
       .catch(() => null)
     if (page?.total !== 1) return

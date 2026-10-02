@@ -1,3 +1,5 @@
+import type { DateField, DatePreset, ProductSort } from './list-options'
+
 export type Category = {
   id: string
   name: string
@@ -25,10 +27,28 @@ export type Product = ProductInput & {
 }
 
 export type ProductListItem = Product & { category_name: string }
+// Estado de la lista en la URL (spec del Excel §4.5).
 export type ProductFilters = {
   search: string
   category: string | null
   page: number
+  dateBy: DateField
+  date: DatePreset | null
+  from: string | null
+  to: string | null
+  sort: ProductSort
+}
+
+// Lo que se pide a la base: la fecha ya resuelta en días de Lima. Lo nuevo es opcional para que la
+// búsqueda de la proforma, que solo busca por texto, siga igual.
+export type ProductQuery = {
+  search: string
+  category: string | null
+  page: number
+  dateBy?: DateField
+  dateFrom?: string | null
+  dateTo?: string | null
+  sort?: ProductSort
 }
 
 export type ProductPage = {

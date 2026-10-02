@@ -1,4 +1,5 @@
-import { createParser } from 'nuqs'
+import { createParser, parseAsStringLiteral } from 'nuqs'
+import { DATE_FIELDS, DATE_PRESETS, isIsoDay, PRODUCT_SORTS } from './list-options'
 import { idSchema } from './schemas'
 import { SEARCH_MAX_LENGTH } from './search-pattern'
 
@@ -21,10 +22,21 @@ const searchParser = createParser({
   serialize: (value: string) => value,
 }).withDefault('')
 
+// Un día mal escrito o que no existe (2026-02-30) se ignora, como cualquier valor inválido.
+const dayParser = createParser({
+  parse: (value: string) => (isIsoDay(value) ? value : null),
+  serialize: (value: string) => value,
+})
+
 export const searchParsers = {
   search: searchParser,
   category: categoryParser,
   page: pageParser,
+  dateBy: parseAsStringLiteral(DATE_FIELDS).withDefault('created'),
+  date: parseAsStringLiteral(DATE_PRESETS),
+  from: dayParser,
+  to: dayParser,
+  sort: parseAsStringLiteral(PRODUCT_SORTS).withDefault('name'),
 }
 
 // Páginas visibles: primera, última y las vecinas de la actual; 'gap' marca un salto.

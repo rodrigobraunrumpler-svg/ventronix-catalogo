@@ -5,6 +5,7 @@ import { useQueryStates } from 'nuqs'
 import { useEffect, useState } from 'react'
 import { settle, type ActionResult } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
+import { toProductQuery } from '../list-options'
 import { catalogKeys } from '../query-keys'
 import { searchParsers } from '../search-params'
 import type { ProductInput } from '../types'
@@ -60,11 +61,11 @@ function useDebouncedValue<T>(value: T, delay: number) {
 }
 
 // La búsqueda espera 300 ms; claves distintas por filtro y la señal de cancelación evitan que una
-// respuesta antigua sustituya a la actual.
+// respuesta antigua sustituya a la actual. La fecha viaja ya resuelta en días de Lima.
 export function useProducts() {
   const [filters] = useCatalogFilters()
   const search = useDebouncedValue(filters.search, 300)
-  const current = { search, category: filters.category, page: filters.page }
+  const current = toProductQuery({ ...filters, search })
   return {
     filters,
     query: useQuery({

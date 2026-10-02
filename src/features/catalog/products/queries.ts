@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { Database } from '@/lib/supabase/database.types'
 import { unitPriceSchema } from '../money'
 import { normalizeSearch } from '../search-pattern'
-import type { Product, ProductFilters, ProductListItem, ProductPage } from '../types'
+import type { Product, ProductListItem, ProductPage, ProductQuery } from '../types'
 
 type Client = SupabaseClient<Database>
 
@@ -33,33 +33,50 @@ export async function getProduct(supabase: Client, id: string): Promise<ProductL
 // 50 por página: con un catálogo grande se encuentra el producto con menos clics.
 export const PAGE_SIZE = 50
 
-const pageSchema = z.object({
-  total: z.number().int().nonnegative(),
-  items: z.array(
-    z.object({
-      id: z.string(),
-      code: z.string(),
-      name: z.string(),
-      description: z.string().nullable(),
-      category_id: z.string(),
-      unit_price: z.string(),
-      created_at: z.string(),
-      updated_at: z.string(),
-      category_name: z.string(),
-    }),
-  ),
+const itemSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  category_id: z.string(),
+  unit_price: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  category_name: z.string(),
 })
 
-// Búsqueda, filtro y página se resuelven en la base de datos: nunca se descarga todo el catálogo.
+const pageSchema = z.object({
+  total: z.number().int().nonnegative(),
+  items: z.array(itemSchema),
+})
+
+const toListItem = ({ category_name, ...row }: z.infer<typeof itemSchema>): ProductListItem => ({
+  ...toProduct(row),
+  category_name,
+})
+
+// Búsqueda, filtros y orden: los mismos para la lista y para los Excel (spec del Excel §9.1).
+function searchArgs(query: Omit<ProductQuery, 'page'>) {
+  return {
+    search: normalizeSearch(query.search),
+    category: query.category ?? undefined,
+    date_by: query.dateBy,
+    date_from: query.dateFrom ?? undefined,
+    date_to: query.dateTo ?? undefined,
+    sort: query.sort,
+  }
+}
+
+// Búsqueda, filtros, orden y página se resuelven en la base de datos: nunca se descarga todo el
+// catálogo.
 export async function listProducts(
   supabase: Client,
-  filters: ProductFilters,
+  query: ProductQuery,
   signal?: AbortSignal,
 ): Promise<ProductPage> {
   let request = supabase.rpc('search_products', {
-    search: normalizeSearch(filters.search),
-    category: filters.category ?? undefined,
-    page: filters.page,
+    ...searchArgs(query),
+    page: query.page,
     page_size: PAGE_SIZE,
   })
   if (signal) request = request.abortSignal(signal)
@@ -68,8 +85,8 @@ export async function listProducts(
   const parsed = pageSchema.parse(data)
   return {
     total: parsed.total,
-    page: filters.page,
+    page: query.page,
     pageSize: PAGE_SIZE,
-    items: parsed.items.map(({ category_name, ...row }) => ({ ...toProduct(row), category_name })),
+    items: parsed.items.map(toListItem),
   }
 }

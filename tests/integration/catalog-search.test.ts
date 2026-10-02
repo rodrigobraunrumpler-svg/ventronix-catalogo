@@ -124,3 +124,24 @@ describe('listado del catálogo', () => {
     expect(await listProducts(outsider, filters())).toMatchObject({ total: 0, items: [] })
   })
 })
+
+describe('fecha y orden desde el código', () => {
+  async function dated(code: string, name: string, price: string, created: string) {
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $5)`,
+      [code, name, laptops, price, created],
+    )
+  }
+
+  it('listProducts envía la fecha y el orden a la base', async () => {
+    await dated('VIEJO', 'Viejo', '100.00', '2026-09-01T10:00:00-05:00')
+    await dated('BARATO', 'Barato', '100.00', '2026-10-01T10:00:00-05:00')
+    await dated('CARO', 'Caro', '900.00', '2026-10-01T11:00:00-05:00')
+    const result = await listProducts(
+      supabase,
+      filters({ dateFrom: '2026-10-01', dateTo: '2026-10-01', sort: 'price-desc' }),
+    )
+    expect(codes(result)).toEqual(['CARO', 'BARATO'])
+  })
+})

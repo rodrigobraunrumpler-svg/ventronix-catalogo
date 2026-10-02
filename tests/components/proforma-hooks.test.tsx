@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { catalogKeys } from '@/features/catalog/query-keys'
-import type { ProductListItem, ProductPage } from '@/features/catalog/types'
+import { toProductQuery } from '@/features/catalog/list-options'
+import type { ProductFilters, ProductListItem, ProductPage } from '@/features/catalog/types'
 import { useAddSingleResult } from '@/features/proforma/hooks'
 import { ProformaProvider } from '@/features/proforma/store'
 
@@ -18,7 +19,16 @@ const laptop: ProductListItem = {
   updated_at: '2026-09-30T00:00:00Z',
   category_name: 'Laptops',
 }
-const filters = { search: 'lap-001', category: null, page: 1 }
+const filters: ProductFilters = {
+  search: 'lap-001',
+  category: null,
+  page: 1,
+  dateBy: 'created',
+  date: null,
+  from: null,
+  to: null,
+  sort: 'name',
+}
 
 // El mismo manejador dos veces seguidas, sin volver a dibujar la pantalla entre medias.
 function EnterTwice() {
@@ -41,7 +51,7 @@ describe('useAddSingleResult', () => {
     // La búsqueda ya está en la caché: no hace falta Supabase.
     const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
     const page: ProductPage = { items: [laptop], total: 1, page: 1, pageSize: 20 }
-    queryClient.setQueryData(catalogKeys.productList(filters), page)
+    queryClient.setQueryData(catalogKeys.productList(toProductQuery(filters)), page)
     render(
       <QueryClientProvider client={queryClient}>
         <ProformaProvider>
