@@ -1,8 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ImportScreen } from '@/features/catalog/import/components/import-screen'
+
+// Las acciones cargan Supabase y ExcelJS en el servidor; esta prueba no las usa.
+vi.mock('@/features/catalog/products/excel-actions', () => ({
+  downloadImportTemplate: vi.fn(),
+  exportProducts: vi.fn(),
+  previewProductImport: vi.fn(),
+  importProducts: vi.fn(),
+  downloadImportSimulation: vi.fn(),
+  downloadImportErrors: vi.fn(),
+}))
 
 function renderScreen(hasProducts: boolean) {
   render(
