@@ -1,6 +1,6 @@
 # Filtro de fecha, orden, Excel y carga masiva de productos
 
-Fecha: 02-10-2026. Estado: **revisión 2**, revisada desde el lado del cliente; pendiente de aprobar este documento.
+Fecha: 02-10-2026. Estado: **revisión 3**, revisada dos veces desde el lado del cliente; pendiente de aprobar este documento.
 
 Parte del módulo de productos ([spec del catálogo](2026-09-29-catalogo-design.md)). Reglas del proyecto: [PROJECT_CONTEXT.md](../../../PROJECT_CONTEXT.md).
 
@@ -31,6 +31,12 @@ Cada mejora lleva una prioridad: **[E]** esencial, porque sin ella el uso real t
 | 12 | Resumen visual de la vista previa (precios que suben y bajan, productos por categoría) y búsqueda en la vista previa | Se entiende el efecto del archivo antes de importar y se encuentra una fila concreta. | R | 2 |
 | 13 | Hasta **5 000 filas** por archivo, antes 2 000 | Un distribuidor puede tener miles de modelos. Los límites de Vercel lo permiten (§10). | R | 2 |
 | 14 | **Tu propio Excel**: asignar sus columnas a las nuestras, recordar la asignación, elegir hoja y dar una categoría a las filas sin categoría | Las listas de proveedores nunca vienen con nuestras columnas. Evita copiar y pegar a la plantilla. | R | 3 |
+| 15 | *(rev. 3)* Al importar, **«Los precios de este archivo no incluyen IGV: sumar 18 %»** | Las listas de proveedores suelen venir sin IGV. Convertirlas a mano en Excel es lento y propenso a errores. | E | 2 |
+| 16 | *(rev. 3)* **Modo de importación**: crear y actualizar, solo crear los nuevos o solo actualizar los existentes | Con la lista completa de un proveedor se quiere actualizar solo lo que se vende, o añadir solo lo que falta, sin tocar lo demás. | R | 2 |
+| 17 | *(rev. 3)* **«Descargar simulación»** antes de importar | Sirve para revisarlo con calma o pasarlo a quien aprueba precios, antes de cambiar nada. Reutiliza el comprobante. | R | 2 |
+| 18 | *(rev. 3)* **«Copiar enlace de esta vista»** | Los filtros viven en la URL, así que guardar en favoritos o compartir «Laptops modificados esta semana» es un clic. | R | 1 |
+| 19 | *(rev. 3)* **Valor sin IGV** junto al precio con IGV en el reporte completo | Para contabilidad y para comparar con listas de proveedores sin IGV. | R | 1 |
+| 20 | *(rev. 3)* El indicador «modificados» aclara que **incluye los creados** | La cifra debe coincidir con la lista que abre, y el título lo explica para que no confunda. | E | 1 |
 
 ## 1. Objetivo
 
@@ -113,10 +119,10 @@ En la fila del título «Productos», a su derecha y antes de los botones, van t
 | --- | --- | --- |
 | «123 productos» | Total del catálogo | Quita todos los filtros |
 | «15 nuevos este mes» | Registrados desde el día 1 del mes de Lima | `dateBy=created&date=month&sort=newest` |
-| «8 modificados en 7 días» | `updated_at` en los últimos 7 días de Lima | `dateBy=updated&date=7d&sort=updated` |
+| «8 modificados en 7 días» | `updated_at` en los últimos 7 días de Lima, **incluidos los creados**, para que la cifra coincida con la lista que abre | `dateBy=updated&date=7d&sort=updated` |
 
 - El chip cuyo filtro está activo se ve **seleccionado** (`aria-pressed`).
-- Cada uno tiene un título que explica la cifra, por ejemplo «Productos registrados desde el 1 de octubre».
+- Cada uno tiene un título que explica la cifra, por ejemplo «Productos registrados desde el 1 de octubre» o «Productos creados o modificados en los últimos 7 días».
 - Con 0, el chip se muestra pero no se puede pulsar.
 - Los datos salen de `catalog_stats()` (§9.1) y se refrescan cuando se crea, edita, borra o importa.
 
@@ -152,6 +158,9 @@ Al pulsarlo se abre un panel (Popover de `radix-ui`) con:
   - Texto: «Prueba con otro rango o quita el filtro de fecha.»
   - Acción: «Quitar filtro de fecha».
 - La **ficha del producto** muestra «Registrado el 02/10/2026 · Modificado el 05/10/2026».
+- **«Copiar enlace de esta vista»:** un botón con icono de enlace junto a los chips de filtros activos. Solo se ve si hay algún filtro u orden.
+  - Copia la URL con todos los parámetros.
+  - Avisa con el toast «Enlace copiado: guárdalo en favoritos o compártelo para volver a esta misma vista.»
 - **Móvil:** el botón queda en la misma barra, solo con el icono y un punto verde si hay filtro activo, y el panel ocupa el ancho de la pantalla.
 
 ### 4.4 Orden
@@ -239,8 +248,14 @@ En móvil queda solo el icono, con `aria-label`.
 | Descripción | texto, con ajuste de línea | 60 |
 | Categoría | texto | 20 |
 | Precio con IGV (S/) | número, `"S/" #,##0.00` (título según §3) | 18 |
+| Valor sin IGV (S/) | número, `"S/" #,##0.00`, calculado con el módulo del IGV (base redondeada, igual que la «Op. gravada» de la proforma) | 16 |
 | Fecha de registro | fecha, `dd/mm/yyyy` | 14 |
 | Última modificación | fecha, `dd/mm/yyyy` | 16 |
+
+Las columnas de precio dependen de `TAX_CONFIG`:
+
+- `none`: una sola columna, «Precio (S/)».
+- `added`: el catálogo guarda el precio sin IGV, así que la columna calculada es «Precio con IGV».
 
 - **Estilo:**
   - Cabecera de la tabla en `#121511` (el foreground de la app), con texto blanco en negrita y un borde inferior verde `#72CE0B` (el primary).
@@ -364,6 +379,14 @@ Debajo van cuatro consejos breves:
 
 > «Tu archivo trae Código y Precio con IGV: solo se actualizarán los precios. El resto de los datos se mantiene.»
 
+**Opciones de importación**, arriba y siempre visibles. Al cambiarlas, la vista previa se recalcula:
+
+- **Los precios de este archivo:** «Incluyen IGV» (por defecto) o «No incluyen IGV: sumar 18 %».
+  - Con la segunda, el detalle muestra el precio final: «S/ 1,000.00 + IGV → S/ 1,180.00».
+  - La tasa sale de `TAX_CONFIG.ratePercent`.
+- **Qué hacer:** «Crear y actualizar» (por defecto), «Solo crear los nuevos» o «Solo actualizar los existentes».
+  - Las filas que el modo deja fuera no se importan y se cuentan aparte: «12 filas omitidas por el modo "Solo actualizar"».
+
 **Tarjetas de resumen**, cada una con su icono y un color que nunca va solo, siempre con texto:
 
 - **Nuevos**, en verde: se crearán.
@@ -404,6 +427,7 @@ Cada fila cuenta en una sola tarjeta, por este orden de prioridad: Con errores, 
   - Si solo hay filas sin cambios: «Tu catálogo ya está al día con este archivo.»
   - Si quedan categorías parecidas sin decidir: «Decide 2 categorías antes de importar.»
 - Botón secundario «Elegir otro archivo».
+- Botón secundario **«Descargar simulación»**: el mismo Excel que el comprobante de §6.10, con el título «Simulación: todavía no se guardó nada». Sirve para revisarlo con calma o pasarlo a quien aprueba los precios.
 - Si hay errores:
   - Aviso: «3 filas con errores no se importarán. Corrígelas y vuelve a subir el archivo, o descárgalas aparte.»
   - Botón «Descargar filas con errores».
@@ -591,6 +615,9 @@ La fase 3 no necesita migraciones.
 - `downloadImportTemplate()`
 - `previewProductImport(formData)`
 - `importProducts(formData)`, que devuelve el resultado y el comprobante en base64.
+- `downloadImportSimulation(formData)`
+
+Las acciones de importación reciben, junto al archivo, las opciones `{ pricesIncludeTax, mode, categoryMap }` y, en la fase 3, la asignación de columnas. El servidor las valida con Zod.
 - `downloadImportErrors(formData)`
 
 Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funciones `base64ToFile` y `downloadFile` pasan de `features/proforma/document/files.ts` a `src/lib/files.ts`, para compartirlas sin que una función importe de otra.
@@ -645,6 +672,13 @@ Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funci
 - **Cambio fuerte de precio:** `|nuevo − actual| / actual ≥ 0,5` (`PRICE_CHANGE_WARNING`). «El precio sube un 120 %» o «baja un 90 %. ¿Es correcto?»
 - **Nombre repetido en el archivo** con códigos distintos: «Mismo nombre que la fila 12 (otro código).»
 - **Nombre ya existente** en otro producto del catálogo, con otro código: «Ya existe "HP LaserJet Pro M404dn" con el código IMP-001.»
+
+**Opciones de importación:**
+
+- **Sumar IGV:** `precio × (100 + tasa) / 100`, redondeado al céntimo con la mitad hacia arriba. Se calcula con `BigInt` y el módulo del IGV, sin coma flotante. Se aplica antes de validar, así que un precio que pasa el máximo da su error normal.
+- **Modo «Solo crear los nuevos»:** las filas con códigos que ya existen quedan omitidas.
+- **Modo «Solo actualizar los existentes»:** las filas con códigos nuevos quedan omitidas.
+- Una fila omitida no se valida contra las reglas de producto nuevo. Así un archivo de «solo precios» con códigos desconocidos no llena la vista previa de errores.
 
 **Categorías parecidas.** Ambos nombres se normalizan: minúsculas, sin tildes ni espacios dobles, y sin `s` o `es` final.
 
@@ -736,6 +770,7 @@ Con TDD, como el resto del proyecto. Cada fase deja su CI en verde: formato, lin
   - Título del precio según `TAX_CONFIG`.
   - Reporte, leído de vuelta con ExcelJS: títulos, formatos, panel fijo, filtros, hipervínculo, resumen con barras de datos, aviso de recorte y textos con `=` escritos como texto.
   - Lista de precios, leída de vuelta: agrupación, contacto, nota del IGV y sin columnas internas.
+  - Valor sin IGV igual que la «Op. gravada» de la proforma, y las columnas de precio para cada modo de `TAX_CONFIG`.
 - **Integración** (Supabase local):
   - `search_products` y `export_products` con fechas de registro y de modificación (límites del día de Lima) y con cada orden, incluido el desempate estable entre páginas.
   - La llamada antigua de `search_products`.
@@ -756,6 +791,7 @@ Con TDD, como el resto del proyecto. Cada fase deja su CI en verde: formato, lin
   - Categorías parecidas: casi igual, parecida, nueva y la más cercana.
   - Plantilla: desplegable desde la hoja oculta, validaciones, código en formato texto y título del precio.
   - Archivo de errores y comprobante leídos de vuelta. La hoja «Para revertir» se puede volver a subir.
+  - Opciones: sumar IGV (redondeo al céntimo y precios límite) y los dos modos con sus filas omitidas. La simulación se lee de vuelta.
 - **Integración:**
   - `preview_product_import` e `import_products`: nuevo, actualiza, sin cambios, actualización parcial (solo precio) y nombre existente.
   - Categoría nueva sin duplicar por mayúsculas.
@@ -802,3 +838,11 @@ Además se actualizan [setup.md](../../setup.md) y [deployment.md](../../deploym
 - **Historial de importaciones en la app**, para ver quién importó qué y cuándo. Exige una tabla nueva (PROJECT_CONTEXT §24: hay que explicarlo y aprobarlo antes). Mientras tanto, el comprobante cumple esa función.
 - **Códigos automáticos** para filas sin código, por ejemplo con el prefijo de la categoría y un número. Es una regla de negocio y hay que definir el formato.
 - **Precios por volumen u otras monedas**: fuera del modelo actual.
+- **Ajuste masivo de precios sin Excel** *(rev. 3)*:
+  - Por ejemplo, «subir 5 % a lo que estoy viendo», con redondeo opcional.
+  - Reutilizaría la vista previa, la importación transaccional y el comprobante de la fase 2, así que sería una fase 4 corta.
+- **Lista de precios en PDF y envío por WhatsApp** *(rev. 3)*:
+  - Para mandarla a un cliente desde la app, reutilizando el PDF y el envío de la proforma.
+- **Historial de precios por producto** *(rev. 3)*:
+  - Para ver cómo cambió el precio de un modelo.
+  - Exige una tabla nueva, igual que el historial de importaciones.
