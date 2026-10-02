@@ -516,7 +516,10 @@ La asignación, la hoja y la categoría por defecto viajan con el archivo en cad
   - **Código:** formato texto (`@`), para que Excel no convierta «00123» ni «1E5»; longitud de 1 a 64.
   - **Nombre:** longitud de 1 a 120.
   - **Descripción:** longitud de 0 a 2 000 y ajuste de línea.
-  - **Categoría:** lista desplegable con las categorías actuales. Se toma de un rango de la hoja oculta «Categorías», porque una lista escrita no puede pasar de 255 caracteres. Al escribir una que no está, solo **avisa** (`errorStyle: 'warning'`) y deja continuar, porque las nuevas se crean.
+  - **Categoría:** lista desplegable con las categorías actuales. Se toma de un rango de la hoja oculta «Categorías», porque una lista escrita no puede pasar de 255 caracteres.
+    - Al escribir una que no está, Excel muestra un aviso **informativo** (`errorStyle: 'information'`), con el título «Categoría nueva», el texto «No está en tu lista: se creará al importar.» y «Aceptar».
+    - Se usa información y no advertencia para que una categoría nueva no parezca un error.
+    - Las categorías escritas a mano no se añaden al desplegable de las demás filas; se pueden volver a escribir o copiar.
   - **Precio con IGV:** decimal mayor que 0 (`errorStyle: 'stop'`), con formato `#,##0.00` y la ayuda «En soles, con IGV incluido».
 
 **Hoja oculta «Categorías»** con la lista para el desplegable.
