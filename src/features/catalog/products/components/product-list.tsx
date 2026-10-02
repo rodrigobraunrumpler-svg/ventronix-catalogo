@@ -59,7 +59,7 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
     <section
       aria-label="Lista de productos"
       aria-busy={query.isPending}
-      className="min-w-0 overflow-hidden rounded-[14px] border bg-card shadow-xs"
+      className="min-w-0 overflow-clip rounded-[14px] border bg-card shadow-xs"
     >
       <ProductFilters onSearchEnter={() => void addSingleResult(filters)} />
 

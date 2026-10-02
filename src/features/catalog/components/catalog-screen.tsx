@@ -76,7 +76,11 @@ export function CatalogScreen() {
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <CategoryPanel />
+          {/* En el celular, primero los productos: las categorías se filtran con las fichas de arriba
+              y su tarjeta (para crearlas o renombrarlas) queda debajo. */}
+          <div className="max-lg:order-last lg:contents">
+            <CategoryPanel />
+          </div>
           <ProductList
             onCreate={() => setProductDialog({ mode: 'create' })}
             onEdit={(product) => setProductDialog({ mode: 'edit', product })}

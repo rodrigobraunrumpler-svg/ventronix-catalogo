@@ -124,7 +124,7 @@ test('sin categorías, el formulario de producto permite crear una', async ({ pa
   await expect(sheet.getByLabel('Categoría')).toContainText('Plotters')
 })
 
-// 21 laptops y 1 impresora: dos páginas de 20.
+// 51 laptops y 1 impresora: dos páginas de 50.
 async function seedCatalog() {
   const db = await connect()
   try {
@@ -133,7 +133,7 @@ async function seedCatalog() {
       "insert into public.categories (name) values ('Laptops'), ('Impresoras') returning id, name",
     )
     const id = (name: string) => rows.find((row) => row.name === name)!.id
-    for (let i = 1; i <= 21; i++) {
+    for (let i = 1; i <= 51; i++) {
       const n = String(i).padStart(2, '0')
       await db.query(
         `insert into public.products (code, name, category_id, unit_price) values ($1, $2, $3, 2590)`,
@@ -156,11 +156,11 @@ test('pagina, filtra y busca; atrás, adelante y recargar restauran el estado', 
   await seedCatalog()
   await login(page)
   const list = productList(page)
-  await expect(list.getByText('Mostrando 1–20 de 22 productos')).toBeVisible()
+  await expect(list.getByText('Mostrando 1–50 de 52 productos')).toBeVisible()
 
   await list.getByRole('button', { name: 'Página siguiente' }).click()
   await expect(page).toHaveURL(/page=2/)
-  await expect(list.getByText('Mostrando 21–22 de 22 productos')).toBeVisible()
+  await expect(list.getByText('Mostrando 51–52 de 52 productos')).toBeVisible()
 
   await categoriesCard(page)
     .getByRole('button', { name: /^Impresoras/ })
@@ -170,7 +170,7 @@ test('pagina, filtra y busca; atrás, adelante y recargar restauran el estado', 
 
   await page.goBack()
   await expect(page).toHaveURL(/page=2/)
-  await expect(list.getByText('Mostrando 21–22 de 22 productos')).toBeVisible()
+  await expect(list.getByText('Mostrando 51–52 de 52 productos')).toBeVisible()
   await page.goForward()
   await expect(list.getByText('Mostrando 1–1 de 1 producto')).toBeVisible()
 
@@ -194,7 +194,7 @@ test('distingue la búsqueda sin resultados del catálogo vacío', async ({ page
   await list.getByLabel('Buscar por nombre o código').fill('no-existe')
   await expect(list.getByText('No encontramos productos')).toBeVisible()
   await list.getByRole('button', { name: 'Limpiar filtros' }).first().click()
-  await expect(list.getByText('Mostrando 1–20 de 22 productos')).toBeVisible()
+  await expect(list.getByText('Mostrando 1–50 de 52 productos')).toBeVisible()
 
   await seed([])
   await page.reload()
@@ -227,13 +227,13 @@ test('al borrar el último producto de la última página vuelve a la anterior',
   await login(page)
   const list = productList(page)
   await list.getByRole('button', { name: 'Página siguiente' }).click()
-  await expect(list.getByText('Mostrando 21–22 de 22 productos')).toBeVisible()
-  await list.getByRole('button', { name: 'Eliminar Laptop 21' }).click()
+  await expect(list.getByText('Mostrando 51–52 de 52 productos')).toBeVisible()
+  await list.getByRole('button', { name: 'Eliminar Laptop 51' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar producto' }).click()
-  await expect(list.getByText('Mostrando 21–21 de 21 productos')).toBeVisible()
-  await list.getByRole('button', { name: 'Eliminar Laptop 20' }).click()
+  await expect(list.getByText('Mostrando 51–51 de 51 productos')).toBeVisible()
+  await list.getByRole('button', { name: 'Eliminar Laptop 50' }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar producto' }).click()
-  await expect(list.getByText('Mostrando 1–20 de 20 productos')).toBeVisible()
+  await expect(list.getByText('Mostrando 1–50 de 50 productos')).toBeVisible()
   await expect(page).not.toHaveURL(/page=2/)
 })
 

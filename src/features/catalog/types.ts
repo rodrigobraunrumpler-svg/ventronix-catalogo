@@ -35,5 +35,5 @@ export type ProductPage = {
   items: ProductListItem[]
   total: number
   page: number
-  pageSize: 20
+  pageSize: number
 }

@@ -30,7 +30,8 @@ export async function getProduct(supabase: Client, id: string): Promise<ProductL
   return { ...toProduct(row), category_name: categories?.name ?? '' }
 }
 
-export const PAGE_SIZE = 20
+// 50 por página: con un catálogo grande se encuentra el producto con menos clics.
+export const PAGE_SIZE = 50
 
 const pageSchema = z.object({
   total: z.number().int().nonnegative(),

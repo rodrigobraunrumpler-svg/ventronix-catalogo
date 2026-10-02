@@ -47,8 +47,8 @@ const filters = (overrides = {}) => ({ search: '', category: null, page: 1, ...o
 const codes = (page: Awaited<ReturnType<typeof listProducts>>) => page.items.map((p) => p.code)
 
 describe('listado del catálogo', () => {
-  it('pagina de 20 en 20 en orden estable por nombre e ID, con el total', async () => {
-    for (let i = 1; i <= 21; i++) {
+  it('pagina de 50 en 50 en orden estable por nombre e ID, con el total', async () => {
+    for (let i = 1; i <= 51; i++) {
       await insertProduct(
         `LAP-${String(i).padStart(3, '0')}`,
         `Laptop ${String(i).padStart(2, '0')}`,
@@ -56,15 +56,15 @@ describe('listado del catálogo', () => {
       )
     }
     const first = await listProducts(supabase, filters())
-    expect(first).toMatchObject({ total: 21, page: 1, pageSize: 20 })
-    expect(first.items).toHaveLength(20)
+    expect(first).toMatchObject({ total: 51, page: 1, pageSize: 50 })
+    expect(first.items).toHaveLength(50)
     expect(first.items[0]).toMatchObject({
       code: 'LAP-001',
       category_name: 'Laptops',
       unit_price: '100.00',
     })
     const second = await listProducts(supabase, filters({ page: 2 }))
-    expect(codes(second)).toEqual(['LAP-021'])
+    expect(codes(second)).toEqual(['LAP-051'])
   })
 
   it('devuelve el total aunque la página pedida ya no tenga filas', async () => {
