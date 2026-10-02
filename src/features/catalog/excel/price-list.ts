@@ -1,7 +1,7 @@
 import 'server-only'
 import ExcelJS from 'exceljs'
 import type { CompanyProfile } from '@/features/company/schemas'
-import { formatDay, limaDay } from '../list-options'
+import { formatDate } from '@/lib/dates'
 import { priceColumns } from '../price-columns'
 import type { ProductListItem } from '../types'
 import { addLogo, COLORS, FONT, MONEY_FORMAT, styleBodyRow, styleHeaderRow } from './theme'
@@ -59,7 +59,7 @@ export async function buildPriceList(input: PriceListInput): Promise<Buffer> {
   })
   if (contact) put('C2', contact, muted)
   put('C3', 'Lista de precios', { size: 14, bold: true, color: { argb: COLORS.link } })
-  put('C4', `Vigente al ${formatDay(limaDay(input.generatedAt))}`, muted)
+  put('C4', `Vigente al ${formatDate(input.generatedAt)}`, muted)
   put('C5', prices.note, { ...muted, italic: true })
 
   const header = sheet.getRow(PRICE_LIST_TABLE_ROW)

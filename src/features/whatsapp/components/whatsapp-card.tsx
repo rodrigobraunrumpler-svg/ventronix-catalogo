@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatMobile } from '@/features/company/format'
 import type { ActionResult } from '@/lib/action-result'
+import { formatDate } from '@/lib/dates'
 import { digitsOnly, isValidMobile } from '@/lib/peru'
 import { pairingCode } from '../format'
 import type { WhatsAppStatus } from '../schemas'
@@ -36,13 +37,6 @@ export type WhatsAppCardProps = {
   onLink: (input: { phone: string; code: string }) => Promise<ActionResult<WhatsAppStatus>>
   onUnlink: () => Promise<ActionResult<WhatsAppStatus>>
 }
-
-const dateFormat = new Intl.DateTimeFormat('es-PE', {
-  timeZone: 'America/Lima',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-})
 
 // WhatsApp de la empresa en «Empresa» (spec de WhatsApp §4): vinculado, las proformas se envían
 // desde él; si no, abriendo el chat.
@@ -76,7 +70,7 @@ export function WhatsAppCard({ status, error = false, onLink, onUnlink }: WhatsA
           <p className="text-xs leading-normal text-muted-foreground">{summary}</p>
           {status?.phone && status.linkedAt ? (
             <p className="text-xs text-muted-foreground">
-              Vinculado el {dateFormat.format(new Date(status.linkedAt))}.
+              Vinculado el {formatDate(status.linkedAt)}.
             </p>
           ) : null}
         </div>

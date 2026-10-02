@@ -212,6 +212,19 @@ describe('ProformaEditor', () => {
     expect(screen.getByText('De 1 a 365 días.')).toBeVisible()
   })
 
+  it('«vence el» cuenta los días de Lima, como el PDF', async () => {
+    // 04:30 UTC del 2 de octubre = 23:30 del 1 de octubre en Lima: con 7 días, vence el 08/10.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-02T04:30:00Z') })
+    try {
+      seedProforma({ lines: [line()], validityDays: '7' })
+      const { user } = renderEditor()
+      await user.click(screen.getByRole('button', { name: /Más datos/ }))
+      expect(screen.getByText(/vence el 08\/10/)).toBeVisible()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('sin los datos obligatorios de la empresa, lo dice y enlaza a «Empresa»', () => {
     seedProforma({ lines: [line()], client: withClient })
     renderEditor({ company: { status: 'ready', profile: { ...completeCompany, ruc: null } } })

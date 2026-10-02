@@ -11,8 +11,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ProformaControl } from '@/features/proforma/components/proforma-control'
+import { formatDate } from '@/lib/dates'
 import { useReturnFocus } from '@/lib/use-return-focus'
-import { formatInstant } from '../../list-options'
 import type { ProductListItem } from '../../types'
 import { CategoryBadge, CodeChip, Price } from './product-list'
 
@@ -64,8 +64,8 @@ export function ProductDetail({
                 </p>
               </div>
               <p className="text-[13px] text-muted-foreground">
-                Registrado el {formatInstant(data.created_at)} · Modificado el{' '}
-                {formatInstant(data.updated_at)}
+                Registrado el {formatDate(data.created_at)} · Modificado el{' '}
+                {formatDate(data.updated_at)}
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">

@@ -1,30 +1,12 @@
+import { addDays } from 'date-fns'
+import { formatDate, lima } from '@/lib/dates'
 import { digitsOnly } from '@/lib/peru'
-
-const LIMA = 'America/Lima'
-const pad = (n: number) => String(n).padStart(2, '0')
-const dmy = (date: Date) =>
-  `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}/${date.getUTCFullYear()}`
-
-// Día en Lima de un instante (UTC−5, sin horario de verano).
-function limaDay(instant: Date) {
-  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
-    timeZone: LIMA,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-    .format(instant)
-    .split('-')
-    .map(Number)
-  return { year, month, day }
-}
 
 // Fecha de la proforma y «Válida hasta» (spec del documento §3), en días de Lima.
 export function documentDates(issuedAt: Date, validityDays: number) {
-  const { year, month, day } = limaDay(issuedAt)
   return {
-    date: dmy(new Date(Date.UTC(year, month - 1, day))),
-    validUntil: dmy(new Date(Date.UTC(year, month - 1, day + validityDays))),
+    date: formatDate(issuedAt),
+    validUntil: formatDate(addDays(issuedAt, validityDays, { in: lima })),
   }
 }
 

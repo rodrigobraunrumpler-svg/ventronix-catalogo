@@ -1,3 +1,15 @@
+import {
+  differenceInCalendarDays,
+  endOfMonth,
+  format,
+  isMatch,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+  subDays,
+  subMonths,
+} from 'date-fns'
+import { formatDate, lima } from '@/lib/dates'
 import type { ProductFilters, ProductQuery } from './types'
 
 // Filtro de fecha, orden y textos de la lista de productos (spec del Excel §4). Sirve en el
@@ -21,37 +33,12 @@ export type DateFilter = {
 
 export type DayRange = { from: string | null; to: string | null }
 
-const limaFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Lima',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-})
-
 // Día de Lima (AAAA-MM-DD) de un instante.
-export function limaDay(instant: Date) {
-  return limaFormat.format(instant)
-}
+export const limaDay = (instant: Date) => format(instant, 'yyyy-MM-dd', { in: lima })
 
-const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/
-
-export function isIsoDay(value: string) {
-  const match = ISO_DAY.exec(value)
-  if (!match) return false
-  const [year, month, day] = match.slice(1).map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  )
-}
-
-// Calendario sobre AAAA-MM-DD en UTC: sin husos horarios de por medio.
-export function addDays(day: string, days: number) {
-  const [year, month, date] = day.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, date + days)).toISOString().slice(0, 10)
-}
-
-const firstOfMonth = (day: string) => `${day.slice(0, 8)}01`
+// Solo AAAA-MM-DD de un día que existe (2026-02-30 no). isMatch sola acepta también «2026-2-3».
+export const isIsoDay = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) && isMatch(value, 'yyyy-MM-dd')
 
 // Días incluidos del filtro, o null si no filtra (spec §4.6). Un rango personalizado al revés se
 // ignora, como cualquier valor inválido de la URL.
@@ -59,21 +46,22 @@ export function resolveDateRange(
   filter: Pick<DateFilter, 'date' | 'from' | 'to'>,
   now = new Date(),
 ): DayRange | null {
-  const today = limaDay(now)
+  const today = startOfDay(now, { in: lima })
+  const days = (from: Date, to: Date) => ({ from: limaDay(from), to: limaDay(to) })
   switch (filter.date) {
     case null:
       return null
     case 'today':
-      return { from: today, to: today }
+      return days(today, today)
     case '7d':
-      return { from: addDays(today, -6), to: today }
+      return days(subDays(today, 6, { in: lima }), today)
     case '30d':
-      return { from: addDays(today, -29), to: today }
+      return days(subDays(today, 29, { in: lima }), today)
     case 'month':
-      return { from: firstOfMonth(today), to: today }
+      return days(startOfMonth(today, { in: lima }), today)
     case 'last-month': {
-      const lastDay = addDays(firstOfMonth(today), -1)
-      return { from: firstOfMonth(lastDay), to: lastDay }
+      const lastMonth = subMonths(today, 1, { in: lima })
+      return days(startOfMonth(lastMonth, { in: lima }), endOfMonth(lastMonth, { in: lima }))
     }
     case 'custom':
       if (!filter.from && !filter.to) return null
@@ -95,10 +83,8 @@ export const DATE_PRESET_LABELS: Record<Exclude<DatePreset, 'custom'>, string> =
   'last-month': 'Mes anterior',
 }
 
-export function formatDay(day: string) {
-  const [year, month, date] = day.split('-')
-  return `${date}/${month}/${year}`
-}
+// «2026-09-15» → «15/09/2026»: el día se lee como medianoche de Lima.
+export const formatDay = (day: string) => formatDate(parseISO(day, { in: lima }))
 
 // «Registro: últimos 7 días», «Modificación: 01/09/2026 – 15/09/2026»; null si no filtra.
 export function describeDateFilter(filter: DateFilter): string | null {
@@ -133,16 +119,10 @@ export function rowDateField({
 
 // «hoy», «ayer» o «el 02/10/2026», en días de Lima.
 export function relativeDay(instant: string, now = new Date()) {
-  const day = limaDay(new Date(instant))
-  const today = limaDay(now)
-  if (day === today) return 'hoy'
-  if (day === addDays(today, -1)) return 'ayer'
-  return `el ${formatDay(day)}`
-}
-
-// «02/10/2026» de un instante, en Lima.
-export function formatInstant(instant: string) {
-  return formatDay(limaDay(new Date(instant)))
+  const days = differenceInCalendarDays(now, new Date(instant), { in: lima })
+  if (days === 0) return 'hoy'
+  if (days === 1) return 'ayer'
+  return `el ${formatDate(instant)}`
 }
 
 // Lo que se pide a la base: el rango ya convertido en días concretos. La clave de la caché cambia

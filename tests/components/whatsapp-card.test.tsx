@@ -35,6 +35,12 @@ function renderCard(overrides: Partial<WhatsAppCardProps> = {}) {
 }
 
 describe('WhatsAppCard', () => {
+  it('muestra la fecha de vinculación en días de Lima', () => {
+    // 03:00 UTC del 1 de octubre = 22:00 del 30 de septiembre en Lima.
+    renderCard({ status: { ...linked, linkedAt: '2026-10-01T03:00:00.000Z' } })
+    expect(screen.getByText(/Vinculado el 30\/09\/2026\./)).toBeVisible()
+  })
+
   it('sin clave en el servidor explica qué falta y no deja vincular', () => {
     renderCard({ status: { configured: false, phone: null, linkedAt: null } })
     expect(screen.getByText(/falta configurar WHATSAPP_SESSION_KEY/)).toBeVisible()

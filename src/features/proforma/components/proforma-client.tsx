@@ -5,6 +5,7 @@ import { Check, ChevronRight, LoaderCircle, TriangleAlert } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { lima } from '@/lib/dates'
 import { digitsOnly, documentKind, isValidRuc } from '@/lib/peru'
 import { cn } from '@/lib/utils'
 import { patchClient, patchConditions, type ProformaClient as Client } from '../draft'
@@ -247,7 +248,9 @@ export function ProformaClient({
               />
               <span className="text-sm">
                 días
-                {!validity && days ? ` · vence el ${format(addDays(today, days), 'dd/MM')}` : ''}
+                {!validity && days
+                  ? ` · vence el ${format(addDays(today, days, { in: lima }), 'dd/MM', { in: lima })}`
+                  : ''}
               </span>
             </div>
             <Hint id="client-validity-hint" error={validity} />

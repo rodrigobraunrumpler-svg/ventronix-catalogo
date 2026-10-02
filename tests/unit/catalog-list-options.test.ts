@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addDays,
   describeDateFilter,
   isIsoDay,
   limaDay,
@@ -22,12 +21,6 @@ describe('días de Lima', () => {
     expect(limaDay(LATE_NIGHT)).toBe('2026-10-01')
     expect(limaDay(new Date('2026-10-02T04:59:59Z'))).toBe('2026-10-01')
     expect(limaDay(new Date('2026-10-02T05:00:00Z'))).toBe('2026-10-02')
-  })
-
-  it('suma días cruzando meses, años bisiestos y años', () => {
-    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
-    expect(addDays('2028-03-01', -1)).toBe('2028-02-29')
-    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
   })
 
   it('solo acepta días reales en AAAA-MM-DD', () => {

@@ -1,6 +1,8 @@
 import 'server-only'
+import { format } from 'date-fns'
 import ExcelJS from 'exceljs'
-import { formatDay, limaDay } from '../list-options'
+import { formatDate, lima } from '@/lib/dates'
+import { limaDay } from '../list-options'
 import { priceColumns } from '../price-columns'
 import type { ProductListItem } from '../types'
 import { summarizeByCategory } from './category-summary'
@@ -28,13 +30,6 @@ export type ReportInput = {
 // La tabla empieza aquí: arriba van el logotipo y la cabecera (spec del Excel §5.2).
 export const REPORT_TABLE_ROW = 8
 
-const limaTime = new Intl.DateTimeFormat('es-PE', {
-  timeZone: 'America/Lima',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-})
-
 // 10000 → «10 000», como en los textos de la spec.
 const spaced = (count: number) => String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 
@@ -55,7 +50,7 @@ function writeHeader(workbook: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, input
   put('C2', 'Reporte de productos', { size: 13, bold: true, color: { argb: COLORS.link } })
   put(
     'C3',
-    `Generado el ${formatDay(limaDay(input.generatedAt))} a las ${limaTime.format(input.generatedAt)} (hora de Lima)`,
+    `Generado el ${formatDate(input.generatedAt)} a las ${format(input.generatedAt, 'HH:mm', { in: lima })} (hora de Lima)`,
     muted,
   )
   put('C4', input.filtersText, muted)
