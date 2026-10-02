@@ -1,24 +1,7 @@
+import { downloadFile, releaseObjectUrl } from '@/lib/files'
 import { whatsappLink } from './format'
 
-// El PDF llega en base64 desde la Server Action.
-export function base64ToFile(base64: string, fileName: string) {
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
-  return new File([bytes], fileName, { type: 'application/pdf' })
-}
-
-// La dirección temporal se libera después, para no cortar la descarga ni la pestaña.
-const release = (url: string) => setTimeout(() => URL.revokeObjectURL(url), 60_000)
-
-export function downloadFile(file: File) {
-  const url = URL.createObjectURL(file)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.name
-  document.body.append(link)
-  link.click()
-  link.remove()
-  release(url)
-}
+export { base64ToFile, downloadFile } from '@/lib/files'
 
 export const TAB_BLOCKED = 'Tu navegador bloqueó la pestaña nueva: descargamos el PDF.'
 
@@ -39,7 +22,7 @@ export function openFile(file: File, tab = newTab()) {
   }
   const url = URL.createObjectURL(file)
   tab.location.href = url
-  release(url)
+  releaseObjectUrl(url)
   return true
 }
 

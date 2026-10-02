@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  centsToDecimal,
   divideRoundingHalfUp,
   formatCents,
   parseCents,
@@ -53,4 +54,13 @@ describe('formatCents', () => {
     [BigInt(5), '0.05'],
     [BigInt(12488751000), '124,887,510.00'],
   ])('%s → %s', (cents, text) => expect(formatCents(cents)).toBe(text))
+})
+
+describe('centsToDecimal', () => {
+  it('escribe céntimos como decimal, sin separador de miles', () => {
+    expect(centsToDecimal(BigInt(118000))).toBe('1180.00')
+    expect(centsToDecimal(BigInt(123456789))).toBe('1234567.89')
+    expect(centsToDecimal(BigInt(5))).toBe('0.05')
+    expect(centsToDecimal(BigInt(0))).toBe('0.00')
+  })
 })

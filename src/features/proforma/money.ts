@@ -36,3 +36,8 @@ export function formatCents(cents: bigint) {
   const whole = (cents / HUNDRED).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return `${whole}.${(cents % HUNDRED).toString().padStart(2, '0')}`
 }
+
+// Para escribir importes en Excel: decimal exacto, sin separador de miles.
+export function centsToDecimal(cents: bigint) {
+  return `${cents / HUNDRED}.${(cents % HUNDRED).toString().padStart(2, '0')}`
+}

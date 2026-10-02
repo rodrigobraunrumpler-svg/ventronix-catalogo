@@ -5,3 +5,8 @@ ignoredBuiltDependencies:
   - unrs-resolver
 onlyBuiltDependencies:
   - supabase
+
+# ExcelJS trae uuid 8, con un aviso moderado que aquí no aplica: solo usa v4() sin búfer. Se fuerza
+# la versión corregida para que la auditoría quede limpia (spec del Excel §3).
+overrides:
+  exceljs>uuid: ^11.1.1
