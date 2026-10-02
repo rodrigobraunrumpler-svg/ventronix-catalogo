@@ -96,7 +96,7 @@ Se entrega en **tres fases**, cada una publicable por separado y con su propio p
 | Seguridad de la dependencia | `pnpm audit` marca una vulnerabilidad moderada en `uuid` (<11.1.1), dependencia de ExcelJS. Solo afecta a `v3/v5/v6` con búfer, y ExcelJS usa `v4()` sin búfer, así que no es explotable aquí. Aun así se fuerza `uuid` ≥ 11.1.1 con un `override` de pnpm para que la auditoría quede limpia. |
 | IGV | El título de la columna de precio sale de `TAX_CONFIG`: «Precio con IGV (S/)» si es `included` (hoy), «Precio sin IGV (S/)» si es `added` y «Precio (S/)» si es `none`. Igual en las ayudas de la plantilla. |
 | Fecha del filtro | Por **fecha de registro** (`created_at`, por defecto) o por **última modificación** (`updated_at`). Días de **Lima** (UTC−5, sin horario de verano). |
-| Orden | Nombre A–Z (por defecto), más recientes, modificados recientemente y precio en ambos sentidos. Siempre se desempata por `id`, para que la paginación sea estable. |
+| Orden | Nombre A–Z (por defecto), más recientes, modificados recientemente y precio en ambos sentidos. Los empates se resuelven por nombre y, al final, por `id`, para que la paginación sea estable. |
 | Estado en la URL | Con nuqs, como la búsqueda y la categoría: `date`, `dateBy`, `from`, `to` y `sort` (§4.5). |
 | Filtrado | **Una sola función SQL** con filtros y orden, usada por la lista y por los dos Excel. Así no pueden desalinearse. |
 | Excel de salida | Lo filtrado y en el orden de pantalla, como máximo **10 000 filas**. Se genera en una Server Action y llega en base64, igual que el PDF de la proforma. |
@@ -205,7 +205,7 @@ La base convierte cada día en un instante con `(dia::timestamp at time zone 'Am
 
 ### 5.1 Botón «Descargar Excel»
 
-Va en la cabecera de la lista, junto al selector de orden. Es un botón con menú:
+Va en la cabecera de la lista, junto al selector de orden. Es un botón con menú, que muestra «Excel» con el icono de hoja de cálculo; su nombre accesible y su título son «Descargar Excel». El texto corto deja la cabecera en una línea en un laptop de 1366 px, junto al orden y la paginación:
 
 - **Reporte completo**, con la ayuda «Todos los datos, para ti. Se puede volver a subir en Carga masiva.»
 - **Lista de precios**, con la ayuda «Para enviar a tus clientes: con tus datos de contacto y agrupada por categoría.»
@@ -554,14 +554,14 @@ La asignación, la hoja y la categoría por defecto viajan con el archivo en cad
 
 **Fase 1: `…_product_list_filters.sql`**
 
-- Índices `products_created_at_idx`, `products_updated_at_idx` y `products_unit_price_idx`.
-- `public.filter_products(search, category, date_by, date_from, date_to)`:
-  - Devuelve `setof` filas con la categoría.
+- **Sin índices nuevos.** La búsqueda ya recorre la tabla (`ilike` con `%…%` y `unaccent`), y el filtro de fecha y el orden dependen de parámetros, así que la base no usaría índices por fecha o precio. Con miles de productos, filtrar y ordenar tarda milisegundos. Si el catálogo pasara de unas 50 000 filas, se añadirían índices junto con una consulta dinámica (`plpgsql` con `format`).
+- `public.filter_products(search, category, date_by, date_from, date_to, sort)`:
+  - Devuelve `setof` filas con la categoría y su posición en el orden pedido: el orden se escribe una sola vez, para la lista y los Excel.
   - Es `stable` y `security invoker`.
   - Concentra la búsqueda sin tildes y el escape de `% _ \` de la versión actual.
 - `public.search_products(...)`:
   - Se borra la versión actual y se crea de nuevo con `date_by text default 'created'`, `date_from date default null`, `date_to date default null` y `sort text default 'name'`, además de los parámetros de hoy.
-  - Pagina sobre `filter_products`, ordena según `sort` y desempata por `id`.
+  - Pagina sobre `filter_products`, con su orden.
   - **Compatible hacia atrás:** el código publicado sigue llamándola con los parámetros de siempre.
 - `public.export_products(search, category, date_by, date_from, date_to, sort, max_rows)`: todas las filas ordenadas, hasta `max_rows`.
 - `public.catalog_stats()`: devuelve `{ products, created_this_month, updated_last_7_days }` en días de Lima.
@@ -689,7 +689,7 @@ Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funci
 ## 10. Rendimiento y escalabilidad
 
 - **Una consulta por vista previa y una por importación.** Las operaciones son por conjuntos (`jsonb_to_recordset`, `insert … on conflict`), no una petición por fila. Con 5 000 filas se espera menos de 3 s por paso en Vercel `gru1`, junto a Supabase `sa-east-1`.
-- **Índices** por fecha de registro, de modificación y precio. Con miles de productos, filtrar y ordenar sigue siendo inmediato.
+- **Sin índices nuevos** (§9.1): a la escala del catálogo (miles de productos), el recorrido completo tarda milisegundos y todo ocurre en una sola consulta. Hay un umbral documentado para revisarlo.
 - **ExcelJS fuera del navegador** y cargado con `await import()` solo en las acciones que lo usan. Las demás páginas no arrancan más lentas.
 - **Límites en constantes únicas**, para ajustarlos si el negocio crece:
   - `EXPORT_MAX_ROWS` = 10 000
@@ -699,7 +699,7 @@ Las acciones que devuelven un archivo dan `{ base64, fileName, … }`. Las funci
   - Un `.xlsx` de 5 000 filas pesa unos 0,4 MB, y su vista previa unos 1,5 MB de JSON. Todo por debajo de los 4,5 MB de Vercel.
   - Un reporte de 10 000 filas pesa menos de 1 MB en base64.
 - **Vista previa paginada y búsqueda en el navegador**, sin dibujar miles de filas.
-- **Indicadores** en una sola consulta con índices.
+- **Indicadores** en una sola consulta.
 - **Invalidación precisa:** productos, categorías e indicadores.
 
 ## 11. Robustez y casos límite
