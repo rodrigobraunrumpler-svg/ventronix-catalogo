@@ -187,6 +187,45 @@ test('pagina, filtra y busca; atrás, adelante y recargar restauran el estado', 
   await expect(productList(page).getByText('Laptop 07').filter({ visible: true })).toBeVisible()
 })
 
+test('cambia de página desde arriba, sin bajar hasta el final', async ({ page }) => {
+  await seedCatalog()
+  await login(page)
+  const list = productList(page)
+  const top = list.getByRole('group', { name: 'Cambiar de página' })
+  await expect(top).toContainText('Página 1 de 2')
+  await top.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(page).toHaveURL(/page=2/)
+  await expect(top).toContainText('Página 2 de 2')
+  await expect(list.getByText('Mostrando 51–52 de 52 productos')).toBeVisible()
+  await top.getByRole('button', { name: 'Anterior' }).click()
+  await expect(list.getByText('Mostrando 1–50 de 52 productos')).toBeVisible()
+})
+
+test('al cambiar de página con los botones de abajo, vuelve al principio de la lista', async ({
+  page,
+}) => {
+  const db = await connect()
+  try {
+    await resetCatalog(db)
+    const { rows } = await db.query<{ id: string }>(
+      "insert into public.categories (name) values ('Laptops') returning id",
+    )
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price)
+       select 'LAP-' || lpad(n::text, 3, '0'), 'Laptop ' || lpad(n::text, 3, '0'), $1, 2590
+       from generate_series(1, 110) as n`,
+      [rows[0].id],
+    )
+  } finally {
+    await db.end()
+  }
+  await login(page)
+  const list = productList(page)
+  await list.getByRole('button', { name: 'Página siguiente' }).click()
+  await expect(list.getByText('Mostrando 51–100 de 110 productos')).toBeVisible()
+  await expect(list.getByRole('group', { name: 'Cambiar de página' })).toBeInViewport()
+})
+
 test('distingue la búsqueda sin resultados del catálogo vacío', async ({ page }) => {
   await seedCatalog()
   await login(page)

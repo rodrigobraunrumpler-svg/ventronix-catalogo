@@ -12,7 +12,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProformaControl } from '@/features/proforma/components/proforma-control'
@@ -54,12 +54,21 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
   const title = filters.search ? 'Resultados' : (categoryName ?? 'Todos los productos')
   const hasFilters = filters.search !== '' || filters.category !== null
   const clearFilters = () => setFilters({ search: null, category: null, page: null })
+  const goToPage = (page: number) => setFilters({ page: page === 1 ? null : page })
+  const listRef = useRef<HTMLElement>(null)
+  // Con los botones de abajo, la página nueva se lee desde el principio de la lista.
+  const goToPageFromBottom = (page: number) => {
+    void goToPage(page)
+    const list = listRef.current
+    if (list && list.getBoundingClientRect().top < 0) list.scrollIntoView({ block: 'start' })
+  }
 
   return (
     <section
+      ref={listRef}
       aria-label="Lista de productos"
       aria-busy={query.isPending}
-      className="min-w-0 overflow-clip rounded-[14px] border bg-card shadow-xs"
+      className="min-w-0 scroll-mt-16 overflow-clip rounded-[14px] border bg-card shadow-xs lg:scroll-mt-0"
     >
       <ProductFilters onSearchEnter={() => void addSingleResult(filters)} />
 
@@ -72,10 +81,19 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
             </span>
           ) : null}
         </h2>
-        <p className="hidden items-center gap-1.5 text-[13px] text-muted-foreground sm:flex">
-          <ArrowDownAZ className="size-4" aria-hidden />
-          Nombre A–Z
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="hidden items-center gap-1.5 text-[13px] text-muted-foreground sm:flex">
+            <ArrowDownAZ className="size-4" aria-hidden />
+            Nombre A–Z
+          </p>
+          {data && totalPages > 1 ? (
+            <PageStepper
+              page={Math.min(filters.page, totalPages)}
+              totalPages={totalPages}
+              onPage={goToPage}
+            />
+          ) : null}
+        </div>
       </div>
 
       {query.isPending ? (
@@ -125,7 +143,7 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
             totalPages={totalPages}
             total={data.total}
             shown={data.items.length}
-            onPage={(page) => setFilters({ page: page === 1 ? null : page })}
+            onPage={goToPageFromBottom}
           />
         </>
       ) : null}
@@ -295,6 +313,43 @@ function ProductCards({ items, onEdit, onDelete }: RowsProps) {
         </li>
       ))}
     </ul>
+  )
+}
+
+// Arriba, junto al título: cambiar de página sin bajar hasta el final de la lista.
+function PageStepper({
+  page,
+  totalPages,
+  onPage,
+}: {
+  page: number
+  totalPages: number
+  onPage: (page: number) => void
+}) {
+  return (
+    <div role="group" aria-label="Cambiar de página" className="flex items-center gap-1.5">
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label="Anterior"
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+      >
+        <ChevronLeft aria-hidden />
+      </Button>
+      <span className="min-w-21 text-center text-[13px] whitespace-nowrap text-muted-foreground tabular-nums">
+        Página {page} de {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="icon-sm"
+        aria-label="Siguiente"
+        disabled={page >= totalPages}
+        onClick={() => onPage(page + 1)}
+      >
+        <ChevronRight aria-hidden />
+      </Button>
+    </div>
   )
 }
 
