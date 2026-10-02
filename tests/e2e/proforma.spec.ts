@@ -242,3 +242,29 @@ test('en un laptop, el total y «Generar» siguen a la vista al bajar por la pro
   await expect(summary.getByText('Total', { exact: true })).toBeInViewport({ ratio: 1 })
   await expect(panel.getByRole('button', { name: 'Generar proforma' })).toBeInViewport({ ratio: 1 })
 })
+
+test('en la proforma, el nombre de un producto despliega su descripción completa', async ({
+  page,
+}) => {
+  await seed()
+  const db = await connect()
+  try {
+    await db.query("update public.products set description = $1 where code = 'LAP-001'", [
+      'Procesador Core i5 y 16 GB de RAM.\nGarantía de 3 años en sitio.',
+    ])
+  } finally {
+    await db.end()
+  }
+  await login(page)
+  await addLaptop14(page)
+  await bar(page).getByRole('button', { name: 'Completar proforma' }).click()
+  const name = dialog(page).getByRole('button', { name: 'Ver detalle de Laptop de 14 pulgadas' })
+  const description = dialog(page).getByText('Garantía de 3 años en sitio.')
+  await expect(description).toHaveCount(0)
+
+  await name.click()
+  await expect(name).toHaveAttribute('aria-expanded', 'true')
+  await expect(description).toBeVisible()
+  await name.click()
+  await expect(description).toHaveCount(0)
+})

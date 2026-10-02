@@ -11,6 +11,7 @@ import { clearDraft } from '@/lib/drafts'
 import { CategoryDialog, type CategoryDialogState } from '../categories/components/category-dialog'
 import { CategoryPanel } from '../categories/components/category-panel'
 import { DeleteProductDialog } from '../products/components/delete-product-dialog'
+import { ProductDetail } from '../products/components/product-detail'
 import { ProductList } from '../products/components/product-list'
 import { ProductDialog, type ProductDialogState } from '../products/components/product-dialog'
 import { productDraftKey } from '../products/components/product-form'
@@ -44,6 +45,7 @@ export function CatalogScreen() {
   const [productDialog, setProductDialog] = useState<ProductDialogState>(null)
   const [categoryDialog, setCategoryDialog] = useState<CategoryDialogState>(null)
   const [toDelete, setToDelete] = useState<ProductListItem | null>(null)
+  const [viewing, setViewing] = useState<ProductListItem | null>(null)
   const [proformaOpen, setProformaOpen] = useState(false)
   const { remove } = useProductMutations()
   useSearchShortcut()
@@ -84,6 +86,7 @@ export function CatalogScreen() {
           </div>
           <ProductList
             onCreate={() => setProductDialog({ mode: 'create' })}
+            onView={setViewing}
             onEdit={(product) => setProductDialog({ mode: 'edit', product })}
             onDelete={setToDelete}
           />
@@ -95,6 +98,14 @@ export function CatalogScreen() {
           onCreateCategory={() => setCategoryDialog({ mode: 'create' })}
         />
         <CategoryDialog state={categoryDialog} onClose={() => setCategoryDialog(null)} />
+        <ProductDetail
+          product={viewing}
+          onClose={() => setViewing(null)}
+          onEdit={(product) => {
+            setViewing(null)
+            setProductDialog({ mode: 'edit', product })
+          }}
+        />
         <DeleteProductDialog
           product={toDelete}
           onConfirm={confirmDelete}

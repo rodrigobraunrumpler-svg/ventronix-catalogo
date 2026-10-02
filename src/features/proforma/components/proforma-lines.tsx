@@ -1,6 +1,7 @@
 'use client'
 
 import { Minus, Plus, X } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/features/catalog/money'
 import { cn } from '@/lib/utils'
@@ -78,6 +79,9 @@ function LineRow({
   currentPrice: string | undefined
   missing: boolean
 }) {
+  // El nombre despliega el producto completo, tal como se copió al añadirlo: el nombre sin cortar
+  // y su descripción, que es la que saldrá en el documento.
+  const [open, setOpen] = useState(false)
   const { update } = useProforma()
   const removeLine = useRemoveLine()
   const id = `line-${line.productId}`
@@ -98,9 +102,21 @@ function LineRow({
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_118px_132px_104px_36px]">
       <div className="min-w-0">
-        <p className="line-clamp-2 leading-snug font-semibold text-foreground" title={line.name}>
-          {line.name}
-        </p>
+        <button
+          type="button"
+          aria-label={`Ver detalle de ${line.name}`}
+          aria-expanded={open}
+          aria-controls={open ? `${id}-detail` : undefined}
+          title={line.name}
+          className="block max-w-full cursor-pointer text-left decoration-primary decoration-2 underline-offset-3 hover:underline"
+          onClick={() => setOpen(!open)}
+        >
+          <span
+            className={cn('leading-snug font-semibold text-foreground', !open && 'line-clamp-2')}
+          >
+            {line.name}
+          </span>
+        </button>
         <div className="mt-0.75 flex flex-wrap items-center gap-2">
           <span className="rounded-md border bg-background px-1.5 font-mono text-xs text-secondary-foreground">
             {line.code}
@@ -203,6 +219,14 @@ function LineRow({
         <X aria-hidden />
       </Button>
 
+      {open ? (
+        <p
+          id={`${id}-detail`}
+          className="col-span-full rounded-lg bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed whitespace-pre-line text-secondary-foreground [overflow-wrap:anywhere]"
+        >
+          {line.description ?? 'Sin descripción'}
+        </p>
+      ) : null}
       {quantityProblem ? (
         <p
           id={`${id}-quantity-error`}

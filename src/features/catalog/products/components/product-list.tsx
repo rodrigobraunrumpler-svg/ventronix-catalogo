@@ -31,11 +31,12 @@ import { ProductFilters } from './product-filters'
 
 type ProductListProps = {
   onCreate: () => void
+  onView: (product: ProductListItem) => void
   onEdit: (product: ProductListItem) => void
   onDelete: (product: ProductListItem) => void
 }
 
-export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
+export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListProps) {
   const { filters, query } = useProducts()
   const [, setFilters] = useCatalogFilters()
   const categories = useCategories()
@@ -136,8 +137,8 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
         />
       ) : data ? (
         <>
-          <ProductTable items={data.items} onEdit={onEdit} onDelete={onDelete} />
-          <ProductCards items={data.items} onEdit={onEdit} onDelete={onDelete} />
+          <ProductTable items={data.items} onView={onView} onEdit={onEdit} onDelete={onDelete} />
+          <ProductCards items={data.items} onView={onView} onEdit={onEdit} onDelete={onDelete} />
           <Pagination
             page={Math.min(filters.page, totalPages)}
             totalPages={totalPages}
@@ -151,9 +152,11 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
   )
 }
 
-type RowsProps = Pick<ProductListProps, 'onEdit' | 'onDelete'> & { items: ProductListItem[] }
+type RowsProps = Pick<ProductListProps, 'onView' | 'onEdit' | 'onDelete'> & {
+  items: ProductListItem[]
+}
 
-function CategoryBadge({ product }: { product: ProductListItem }) {
+export function CategoryBadge({ product }: { product: ProductListItem }) {
   const color = categoryColor(product.category_id)
   return (
     <span
@@ -166,7 +169,7 @@ function CategoryBadge({ product }: { product: ProductListItem }) {
   )
 }
 
-function Price({ value }: { value: string }) {
+export function Price({ value }: { value: string }) {
   return (
     <span className="whitespace-nowrap tabular-nums">
       <span className="mr-1 text-xs font-medium text-muted-foreground">S/</span>
@@ -179,7 +182,7 @@ function RowActions({
   product,
   onEdit,
   onDelete,
-}: Omit<RowsProps, 'items'> & { product: ProductListItem }) {
+}: Omit<RowsProps, 'items' | 'onView'> & { product: ProductListItem }) {
   return (
     <div className="inline-flex gap-1">
       <Button
@@ -205,7 +208,7 @@ function RowActions({
   )
 }
 
-function CodeChip({ code }: { code: string }) {
+export function CodeChip({ code }: { code: string }) {
   return (
     <span className="shrink-0 rounded-md border bg-background/60 px-1.5 font-mono text-xs font-medium whitespace-nowrap text-secondary-foreground">
       {code}
@@ -216,7 +219,33 @@ function CodeChip({ code }: { code: string }) {
 // PC: tabla con anchos fijos para que nunca se desborde de su tarjeta. La categoría va debajo del
 // nombre y no en su propia columna: así el nombre tiene todo el ancho posible. Las filas que están
 // en la proforma se marcan con un fondo verde claro (spec §4.1).
-function ProductTable({ items, onEdit, onDelete }: RowsProps) {
+// El nombre abre la ficha del producto: ahí se lee completo, con toda su descripción.
+function NameButton({
+  product,
+  onView,
+  className,
+}: {
+  product: ProductListItem
+  onView: RowsProps['onView']
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Ver ficha de ${product.name}`}
+      title={product.name}
+      className={cn(
+        'cursor-pointer text-left font-semibold decoration-primary decoration-2 underline-offset-3 hover:underline',
+        className,
+      )}
+      onClick={() => onView(product)}
+    >
+      {product.name}
+    </button>
+  )
+}
+
+function ProductTable({ items, onView, onEdit, onDelete }: RowsProps) {
   const { draft } = useProforma()
   const th =
     'h-11 border-y bg-background/60 px-3.5 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase lg:short:h-9'
@@ -251,9 +280,7 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
             )}
           >
             <td className="overflow-hidden py-3.5 pr-3.5 pl-5 align-middle lg:short:py-2.5">
-              <p className="truncate font-semibold" title={product.name}>
-                {product.name}
-              </p>
+              <NameButton product={product} onView={onView} className="block max-w-full truncate" />
               <div className="mt-1 flex min-w-0 items-center gap-2">
                 <CodeChip code={product.code} />
                 <CategoryBadge product={product} />
@@ -282,7 +309,7 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
 }
 
 // Móvil: tarjetas legibles sin desbordamiento horizontal, con el mismo control de proforma.
-function ProductCards({ items, onEdit, onDelete }: RowsProps) {
+function ProductCards({ items, onView, onEdit, onDelete }: RowsProps) {
   const { draft } = useProforma()
   return (
     <ul className="md:hidden">
@@ -295,7 +322,7 @@ function ProductCards({ items, onEdit, onDelete }: RowsProps) {
           )}
         >
           <div className="flex items-start justify-between gap-3">
-            <p className="min-w-0 font-semibold">{product.name}</p>
+            <NameButton product={product} onView={onView} className="min-w-0" />
             <Price value={product.unit_price} />
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2">

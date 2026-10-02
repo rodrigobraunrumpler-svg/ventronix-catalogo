@@ -515,3 +515,46 @@ test('en un laptop de 1366×768 se ven al menos 6 productos sin bajar', async ({
   )
   expect(visible).toBeGreaterThanOrEqual(6)
 })
+
+test('el nombre abre la ficha con el producto completo, para añadirlo o editarlo', async ({
+  page,
+}) => {
+  const ids = await seed(['Laptops'])
+  const db = await connect()
+  try {
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price, description)
+       values ('LAP-014', 'Laptop de 14 pulgadas', $1, 2590, $2)`,
+      [
+        ids.Laptops,
+        'Procesador Intel Core i5 de 13.ª generación, 16 GB de RAM y SSD de 512 GB.\n' +
+          'Pantalla Full HD antirreflejo.\nGarantía de 3 años con atención en sitio.',
+      ],
+    )
+  } finally {
+    await db.end()
+  }
+  await login(page)
+  await productList(page)
+    .getByRole('button', { name: 'Ver ficha de Laptop de 14 pulgadas' })
+    .click()
+  const ficha = page.getByRole('dialog', { name: 'Laptop de 14 pulgadas' })
+  await expect(ficha).toContainText('LAP-014')
+  await expect(ficha).toContainText('Laptops')
+  await expect(ficha).toContainText('2,590.00')
+  await expect(ficha).toContainText('Garantía de 3 años con atención en sitio.')
+
+  await ficha.getByRole('button', { name: 'Añadir Laptop de 14 pulgadas a la proforma' }).click()
+  await expect(
+    ficha.getByRole('group', { name: 'Cantidad de Laptop de 14 pulgadas en la proforma' }),
+  ).toContainText('1')
+  await ficha.getByRole('button', { name: 'Editar' }).click()
+  const edit = page.getByRole('dialog', { name: 'Editar producto' })
+  await expect(edit.getByLabel('Código')).toHaveValue('LAP-014')
+  await expect(ficha).toHaveCount(0)
+  // Al cerrar el formulario, el foco vuelve al nombre que abrió la ficha.
+  await page.keyboard.press('Escape')
+  await expect(
+    productList(page).getByRole('button', { name: 'Ver ficha de Laptop de 14 pulgadas' }),
+  ).toBeFocused()
+})
