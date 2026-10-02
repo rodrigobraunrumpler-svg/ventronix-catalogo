@@ -1431,7 +1431,13 @@ import { IMPORT_COLUMNS, type ImportColumn } from '../import/types'
 import { priceColumns } from '../price-columns'
 import { readCell, type ReadRow } from './normalize'
 
-export type ReadSheet = { sheetName: string; columns: ImportColumn[]; rows: ReadRow[] }
+// derivedPrice: el título de «Valor sin IGV (S/)» si el archivo lo trae; no se importa.
+export type ReadSheet = {
+  sheetName: string
+  columns: ImportColumn[]
+  rows: ReadRow[]
+  derivedPrice: string | null
+}
 export type ReadResult = { ok: true; sheet: ReadSheet } | { ok: false; message: string }
 
 // «Código», «CÓDIGO », «codigo:» → «codigo».

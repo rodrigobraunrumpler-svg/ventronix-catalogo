@@ -49,6 +49,7 @@ El [plan de la fase 2](../plans/2026-10-03-fase-2-carga-masiva.md) se revisó ci
 - Un corte de red durante la importación tiene su propio mensaje (§6.9).
 - `import_products` recibe el modo (§9.1) y el límite de la petición es de 4,5 MB (§9.2).
 - Los mensajes de precio ya no repiten la columna, y se quitan los caracteres invisibles (§9.3).
+- Al ejecutar el plan, la revisión de las capturas cambió la disposición de los pasos en PC (§6.2): el paso 3 va bajo el paso 1, junto a la guía.
 
 ## 1. Objetivo
 
@@ -333,7 +334,7 @@ Pide como máximo 10 001 filas para saber si hubo recorte. El precio viaja como 
 
    La tarjeta elegida cambia el botón principal del paso 1: «Descargar plantilla» o «Descargar mi catálogo». El otro archivo queda como enlace.
 3. **Pasos** numerados y unidos por una línea:
-   - En PC, el paso 1 y el paso 2 se ven lado a lado, y el paso 3 ocupa todo el ancho.
+   - En PC, el paso 1 y el paso 3 van a la izquierda, uno sobre otro, y la guía del paso 2, más alta, a la derecha. Así no queda un hueco junto a la guía y la zona de carga se ve sin bajar tanto.
    - En móvil van uno debajo de otro, con la nota «Es más cómodo desde una PC».
 4. **Preguntas frecuentes** al final, plegables:
    - ¿Qué pasa si el código ya existe?
