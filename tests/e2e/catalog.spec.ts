@@ -449,3 +449,21 @@ test('Crear y añadir otro permite cargar varios productos seguidos', async ({ p
   await expect(list.getByText('Laptop A').filter({ visible: true })).toBeVisible()
   await expect(list.getByText('Laptop B').filter({ visible: true })).toBeVisible()
 })
+
+test('en PC, la categoría va debajo del nombre y el nombre gana el ancho de esa columna', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'La tabla es solo de PC; en el celular cada producto es una tarjeta.')
+  await seed(['Laptops'], 'Laptops')
+  await login(page)
+  const table = productList(page).getByRole('table', { name: 'Productos del catálogo' })
+  await expect(table.getByRole('columnheader')).toHaveText([
+    'Producto',
+    'Precio unitario',
+    'Proforma',
+    'Acciones',
+  ])
+  const row = table.getByRole('row', { name: /Laptop de 14 pulgadas/ })
+  await expect(row.getByRole('cell').first()).toContainText('Laptops')
+})

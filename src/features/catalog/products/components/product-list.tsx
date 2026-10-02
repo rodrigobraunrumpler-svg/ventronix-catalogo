@@ -157,7 +157,7 @@ function CategoryBadge({ product }: { product: ProductListItem }) {
   const color = categoryColor(product.category_id)
   return (
     <span
-      className="inline-flex h-6.5 max-w-full items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap"
+      className="inline-flex h-5.5 max-w-full min-w-0 items-center gap-1.5 rounded-full px-2 text-xs font-semibold whitespace-nowrap"
       style={{ backgroundColor: color.bg, color: color.fg }}
     >
       <span className="size-1.5 shrink-0 rounded-full bg-current" />
@@ -213,8 +213,9 @@ function CodeChip({ code }: { code: string }) {
   )
 }
 
-// PC: tabla con anchos fijos para que nunca se desborde de su tarjeta. Las filas que están en la
-// proforma se marcan con un fondo verde claro (spec §4.1).
+// PC: tabla con anchos fijos para que nunca se desborde de su tarjeta. La categoría va debajo del
+// nombre y no en su propia columna: así el nombre tiene todo el ancho posible. Las filas que están
+// en la proforma se marcan con un fondo verde claro (spec §4.1).
 function ProductTable({ items, onEdit, onDelete }: RowsProps) {
   const { draft } = useProforma()
   const th =
@@ -226,9 +227,6 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
         <tr>
           <th scope="col" className={cn(th, 'pl-5')}>
             Producto
-          </th>
-          <th scope="col" className={cn(th, 'w-36')}>
-            Categoría
           </th>
           <th scope="col" className={cn(th, 'w-36 text-right')}>
             Precio unitario
@@ -258,6 +256,7 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
               </p>
               <div className="mt-1 flex min-w-0 items-center gap-2">
                 <CodeChip code={product.code} />
+                <CategoryBadge product={product} />
                 <span
                   className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground"
                   title={product.description ?? undefined}
@@ -265,9 +264,6 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
                   {product.description ?? 'Sin descripción'}
                 </span>
               </div>
-            </td>
-            <td className="px-3.5 py-3.5 align-middle">
-              <CategoryBadge product={product} />
             </td>
             <td className="px-3.5 py-3.5 text-right align-middle">
               <Price value={product.unit_price} />
