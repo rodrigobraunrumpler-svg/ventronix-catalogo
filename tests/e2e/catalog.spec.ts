@@ -467,3 +467,30 @@ test('en PC, la categoría va debajo del nombre y el nombre gana el ancho de esa
   const row = table.getByRole('row', { name: /Laptop de 14 pulgadas/ })
   await expect(row.getByRole('cell').first()).toContainText('Laptops')
 })
+
+test('el menú lateral se pliega, se recuerda al recargar y se vuelve a abrir', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'En el celular no hay menú lateral.')
+  await seed([])
+  await login(page)
+  const sidebar = page.getByRole('complementary')
+  const width = async () => (await sidebar.boundingBox())!.width
+  expect(await width()).toBeGreaterThan(200)
+
+  await page.getByRole('button', { name: 'Ocultar menú' }).click()
+  expect(await width()).toBeLessThan(80)
+  await page.reload()
+  expect(await width()).toBeLessThan(80)
+
+  // Plegado, los iconos siguen llevando a cada sección.
+  await sidebar.getByRole('link', { name: 'Empresa' }).click()
+  await expect(page).toHaveURL(/\/company$/)
+  expect(await width()).toBeLessThan(80)
+
+  await page.getByRole('button', { name: 'Mostrar menú' }).click()
+  expect(await width()).toBeGreaterThan(200)
+  await page.reload()
+  expect(await width()).toBeGreaterThan(200)
+})

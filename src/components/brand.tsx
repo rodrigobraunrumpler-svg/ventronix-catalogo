@@ -1,8 +1,10 @@
 import Image from 'next/image'
+import { cn } from '@/lib/utils'
 
-export function Brand() {
+// Plegada (menú lateral estrecho) solo se ve el logo; el nombre queda para los lectores de pantalla.
+export function Brand({ compact = false, className }: { compact?: boolean; className?: string }) {
   return (
-    <div className="flex items-center gap-3 px-2">
+    <div className={cn('flex items-center gap-3 px-2', className)}>
       {/* Recurso estático pequeño: se sirve tal cual, sin pasar por el optimizador de imágenes. */}
       <Image
         src="/brand/ventronix-mark.png"
@@ -12,7 +14,7 @@ export function Brand() {
         unoptimized
         className="size-9.5 rounded-[11px]"
       />
-      <span className="grid leading-tight">
+      <span className={cn('grid leading-tight', compact && 'sr-only')}>
         <span className="text-[17px] font-extrabold tracking-[-0.02em] text-foreground">
           Ventronix
         </span>

@@ -1,7 +1,9 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { requireOwner, UnauthorizedError, type AuthorizedContext } from '@/lib/auth/require-owner'
+import { SIDEBAR_COOKIE } from '@/lib/sidebar'
 
 // Además del proxy: la autorización se comprueba aquí y en cada Action (spec §5).
 export default async function PrivateLayout({ children }: { children: ReactNode }) {
@@ -13,5 +15,10 @@ export default async function PrivateLayout({ children }: { children: ReactNode 
     throw error
   }
 
-  return <AppShell email={owner.user.email ?? ''}>{children}</AppShell>
+  const collapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === 'collapsed'
+  return (
+    <AppShell email={owner.user.email ?? ''} collapsed={collapsed}>
+      {children}
+    </AppShell>
+  )
 }
