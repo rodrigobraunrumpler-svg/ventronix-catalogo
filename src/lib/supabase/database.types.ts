@@ -200,7 +200,32 @@ export type Database = {
           updated_at: string
         }[]
       }
+      import_products: { Args: { columns: string[]; mode?: string; rows: Json }; Returns: Json }
       next_proforma_number: { Args: Record<PropertyKey, never>; Returns: number }
+      preview_product_import: { Args: { columns: string[]; rows: Json }; Returns: Json }
+      product_import_plan: {
+        Args: { columns: string[]; rows: Json }
+        Returns: {
+          category: string
+          category_changed: boolean
+          category_id: string
+          category_name: string
+          code: string
+          current_category: string
+          current_description: string
+          current_name: string
+          current_price: number
+          description: string
+          description_changed: boolean
+          line: number
+          name: string
+          name_changed: boolean
+          name_taken_by: string
+          price: number
+          price_changed: boolean
+          product_id: string
+        }[]
+      }
       search_products: {
         Args: {
           category?: string
