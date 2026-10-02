@@ -81,7 +81,10 @@ export function AppShell({
       >
         Ir al contenido
       </a>
-      <aside className="hidden border-r border-sidebar-border bg-sidebar px-3.5 py-5 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-8">
+      <aside
+        aria-label="Menú lateral"
+        className="hidden border-r border-sidebar-border bg-sidebar px-3.5 py-5 text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-8"
+      >
         <div className={cn('flex items-center justify-between gap-2', collapsed && 'flex-col')}>
           {/* Sin margen propio: junto al botón de plegar, el nombre cabe en una sola línea. */}
           <Brand compact={collapsed} className="px-0" />

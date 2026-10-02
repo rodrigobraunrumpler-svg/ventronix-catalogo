@@ -475,7 +475,7 @@ test('el menú lateral se pliega, se recuerda al recargar y se vuelve a abrir', 
   test.skip(isMobile, 'En el celular no hay menú lateral.')
   await seed([])
   await login(page)
-  const sidebar = page.getByRole('complementary')
+  const sidebar = page.getByRole('complementary', { name: 'Menú lateral' })
   const width = async () => (await sidebar.boundingBox())!.width
   expect(await width()).toBeGreaterThan(200)
 
