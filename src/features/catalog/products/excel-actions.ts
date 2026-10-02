@@ -2,12 +2,15 @@
 
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { getCompanyProfile } from '@/features/company/queries'
 import type { ActionResult } from '@/lib/action-result'
 import { withOwner } from '@/lib/auth/with-owner'
+import type { Database } from '@/lib/supabase/database.types'
 import { failure, invalid } from '../action-errors'
+import { listCategoryOptions } from '../categories/queries'
 import {
   describeExportFilters,
   EXPORT_FORMATS,
@@ -18,12 +21,15 @@ import {
   type ExportFilters,
   type ExportFormat,
 } from '../excel/export-request'
+import { readImportRequest } from '../excel/import-request'
+import type { DownloadedFile, ImportOutcome, ImportPreview } from '../import/types'
 import { resolveDateRange } from '../list-options'
 import { exportProductRows } from './queries'
 
 export type ExcelFile = { base64: string; fileName: string; count: number; truncated: boolean }
 
-// Ya se incluye en la función de /products (next.config.ts, outputFileTracingIncludes).
+// Se incluye en las funciones de /products y /products/import (next.config.ts,
+// outputFileTracingIncludes).
 const LOGO = path.join(process.cwd(), 'public/brand/ventronix-logo-proforma.jpg')
 
 // Dirección de la app para «Abrir esta vista en la app», tomada de la petición (spec §5.2).
@@ -112,5 +118,76 @@ export async function exportProducts(
         truncated,
       },
     }
+  })
+}
+
+// Plantilla de la carga masiva (spec §8), con las categorías actuales en su desplegable.
+export async function downloadImportTemplate(): Promise<ActionResult<DownloadedFile>> {
+  return withOwner(async ({ supabase }) => {
+    const categories = await listCategoryOptions(supabase)
+    const { buildTemplate } = await import('../excel/template')
+    const buffer = await buildTemplate(categories.map((category) => category.name))
+    return {
+      ok: true,
+      data: { base64: buffer.toString('base64'), fileName: 'plantilla-carga-masiva.xlsx' },
+    }
+  })
+}
+
+// Cada acción de la carga masiva vuelve a leer y validar el archivo: nunca se confía en el
+// navegador (spec §3). ExcelJS se carga solo aquí.
+async function analyzeRequest(supabase: SupabaseClient<Database>, formData: FormData) {
+  const request = readImportRequest(formData)
+  if (!request.ok) return { ok: false as const, failure: failure('VALIDATION', request.message) }
+  const { analyzeImport } = await import('../excel/import-service')
+  const result = await analyzeImport(supabase, {
+    data: await request.file.arrayBuffer(),
+    fileName: request.file.name,
+    options: request.options,
+  })
+  if (!result.ok) return { ok: false as const, failure: failure('VALIDATION', result.message) }
+  return { ok: true as const, analysis: result.analysis, options: request.options }
+}
+
+export async function previewProductImport(
+  formData: FormData,
+): Promise<ActionResult<ImportPreview>> {
+  return withOwner(async ({ supabase }) => {
+    const result = await analyzeRequest(supabase, formData)
+    return result.ok ? { ok: true, data: result.analysis.preview } : result.failure
+  })
+}
+
+export async function importProducts(formData: FormData): Promise<ActionResult<ImportOutcome>> {
+  return withOwner(async ({ supabase }) => {
+    const result = await analyzeRequest(supabase, formData)
+    if (!result.ok) return result.failure
+    const { runImport } = await import('../excel/import-service')
+    return runImport(supabase, result.analysis, result.options.mode)
+  })
+}
+
+export async function downloadImportSimulation(
+  formData: FormData,
+): Promise<ActionResult<DownloadedFile>> {
+  return withOwner(async ({ supabase }) => {
+    const result = await analyzeRequest(supabase, formData)
+    if (!result.ok) return result.failure
+    const { buildSimulation } = await import('../excel/import-service')
+    return { ok: true, data: await buildSimulation(result.analysis) }
+  })
+}
+
+export async function downloadImportErrors(
+  formData: FormData,
+): Promise<ActionResult<DownloadedFile>> {
+  return withOwner(async ({ supabase }) => {
+    const result = await analyzeRequest(supabase, formData)
+    if (!result.ok) return result.failure
+    const { buildErrors } = await import('../excel/import-service')
+    const file = await buildErrors(result.analysis)
+    return file
+      ? { ok: true, data: file }
+      : failure('VALIDATION', 'Este archivo no tiene filas con errores.')
   })
 }
