@@ -72,7 +72,7 @@ export function ProductList({ onCreate, onEdit, onDelete }: ProductListProps) {
     >
       <ProductFilters onSearchEnter={() => void addSingleResult(filters)} />
 
-      <div className="flex min-h-15 items-center justify-between gap-4 px-4 py-2.5 sm:px-5">
+      <div className="flex min-h-15 items-center justify-between gap-4 px-4 py-2.5 sm:px-5 lg:short:min-h-12 lg:short:py-1.5">
         <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
           {title}
           {data ? (
@@ -219,7 +219,7 @@ function CodeChip({ code }: { code: string }) {
 function ProductTable({ items, onEdit, onDelete }: RowsProps) {
   const { draft } = useProforma()
   const th =
-    'h-11 border-y bg-background/60 px-3.5 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase'
+    'h-11 border-y bg-background/60 px-3.5 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase lg:short:h-9'
   return (
     <table className="hidden w-full table-fixed border-collapse text-left md:table">
       <caption className="sr-only">Productos del catálogo</caption>
@@ -250,7 +250,7 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
                 : 'hover:bg-background/40',
             )}
           >
-            <td className="overflow-hidden py-3.5 pr-3.5 pl-5 align-middle">
+            <td className="overflow-hidden py-3.5 pr-3.5 pl-5 align-middle lg:short:py-2.5">
               <p className="truncate font-semibold" title={product.name}>
                 {product.name}
               </p>
@@ -265,13 +265,13 @@ function ProductTable({ items, onEdit, onDelete }: RowsProps) {
                 </span>
               </div>
             </td>
-            <td className="px-3.5 py-3.5 text-right align-middle">
+            <td className="px-3.5 py-3.5 text-right align-middle lg:short:py-2.5">
               <Price value={product.unit_price} />
             </td>
-            <td className="px-2 py-3.5 text-center align-middle">
+            <td className="px-2 py-3.5 text-center align-middle lg:short:py-2.5">
               <ProformaControl product={product} />
             </td>
-            <td className="py-3.5 pr-5 pl-2 text-right align-middle">
+            <td className="py-3.5 pr-5 pl-2 text-right align-middle lg:short:py-2.5">
               <RowActions product={product} onEdit={onEdit} onDelete={onDelete} />
             </td>
           </tr>

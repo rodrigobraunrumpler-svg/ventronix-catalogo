@@ -208,3 +208,37 @@ test('la barra de la proforma ocupa el ancho del contenido, con el menú abierto
   await page.getByRole('button', { name: 'Ocultar menú' }).click()
   expect(await left(bar(page))).toBe(await left(heading))
 })
+
+test('en un laptop, el total y «Generar» siguen a la vista al bajar por la proforma', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'En el celular el resumen va al final, debajo del cliente.')
+  // 1920×1080 con Windows al 150%, sin la barra de tareas ni la del navegador.
+  await page.setViewportSize({ width: 1280, height: 590 })
+  await seed()
+  const db = await connect()
+  try {
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price)
+       select 'EXT-00' || n, 'Equipo extra ' || n, category_id, 100
+       from public.products, generate_series(1, 6) n where code = 'LAP-001'`,
+    )
+  } finally {
+    await db.end()
+  }
+  await login(page)
+  await addLaptop14(page)
+  for (let n = 1; n <= 6; n++) {
+    await list(page)
+      .getByRole('button', { name: `Añadir Equipo extra ${n} a la proforma` })
+      .click()
+  }
+  await expect(bar(page)).toContainText('7 productos')
+  await bar(page).getByRole('button', { name: 'Completar proforma' }).click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: /Más datos/ }).scrollIntoViewIfNeeded()
+  const summary = panel.getByRole('region', { name: 'Resumen' })
+  await expect(summary.getByText('Total', { exact: true })).toBeInViewport({ ratio: 1 })
+  await expect(panel.getByRole('button', { name: 'Generar proforma' })).toBeInViewport({ ratio: 1 })
+})

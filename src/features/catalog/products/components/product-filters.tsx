@@ -16,7 +16,7 @@ export function ProductFilters({ onSearchEnter }: { onSearchEnter?: () => void }
   const hasFilters = filters.search !== '' || filters.category !== null
 
   return (
-    <div className="sticky top-16 z-10 grid min-h-17 grid-cols-1 content-center gap-3 border-b bg-card px-4 py-3 sm:px-5 lg:top-0">
+    <div className="sticky top-16 z-10 grid min-h-17 grid-cols-1 content-center gap-3 border-b bg-card px-4 py-3 sm:px-5 lg:top-0 lg:short:min-h-15 lg:short:py-2">
       <div className="flex items-center gap-3">
         <div className="relative max-w-[440px] flex-1">
           <Search

@@ -5,6 +5,10 @@
 /* Solo tema claro: `dark:` de los componentes shadcn queda inactivo salvo que se añada la clase .dark. */
 @custom-variant dark (&:is(.dark *));
 
+/* Pantallas bajas, como las de un laptop: menos aire vertical para que quepan más productos sin
+   tener que alejar el zoom del navegador. */
+@custom-variant short (@media (max-height: 800px));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

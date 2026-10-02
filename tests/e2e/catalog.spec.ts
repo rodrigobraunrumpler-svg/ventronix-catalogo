@@ -494,3 +494,24 @@ test('el menú lateral se pliega, se recuerda al recargar y se vuelve a abrir', 
   await page.reload()
   expect(await width()).toBeGreaterThan(200)
 })
+
+test('en un laptop de 1366×768 se ven al menos 6 productos sin bajar', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'La tabla es solo de PC; en el celular cada producto es una tarjeta.')
+  // Lo que queda de la pantalla sin la barra de tareas ni la del navegador.
+  await page.setViewportSize({ width: 1366, height: 640 })
+  await seedCatalog()
+  await login(page)
+  const rows = productList(page).locator('tbody tr')
+  await expect(rows.first()).toBeVisible()
+  const visible = await rows.evaluateAll(
+    (all) =>
+      all.filter((row) => {
+        const box = row.getBoundingClientRect()
+        return box.top >= 0 && box.bottom <= window.innerHeight
+      }).length,
+  )
+  expect(visible).toBeGreaterThanOrEqual(6)
+})

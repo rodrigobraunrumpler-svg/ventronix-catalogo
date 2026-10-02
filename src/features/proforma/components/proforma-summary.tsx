@@ -16,7 +16,8 @@ const addonLabel =
 const amount = 'font-semibold text-foreground tabular-nums'
 
 // Tarjeta del resumen (spec §4.3 y prototipo): totales, IGV y, al pie, lo que se le pase (el botón
-// «Generar proforma» y su motivo).
+// «Generar proforma» y su motivo). En PC queda fija arriba mientras se baja por los productos y el
+// cliente: el total y «Generar» siempre a la vista, también en la pantalla baja de un laptop.
 export function ProformaSummary({ children }: { children: ReactNode }) {
   const { draft, update } = useProforma()
   const totals = totalsFromText(draft)
@@ -28,7 +29,7 @@ export function ProformaSummary({ children }: { children: ReactNode }) {
   return (
     <section
       aria-labelledby="proforma-summary-title"
-      className="flex flex-col self-start rounded-[14px] border bg-[#fafbf8] text-sm"
+      className="flex flex-col self-start rounded-[14px] border bg-[#fafbf8] text-sm lg:sticky lg:top-0"
     >
       <h3 id="proforma-summary-title" className="px-4.5 pt-4 text-sm font-bold text-foreground">
         Resumen
