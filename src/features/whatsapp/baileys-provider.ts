@@ -56,16 +56,20 @@ export const ignoredChat = (jid: string) =>
   Boolean(isJidBroadcast(jid) || isJidGroup(jid) || isJidNewsletter(jid))
 
 // Solo lo necesario para enviar: sin historial, sin aparecer «en línea» y sin consultas iniciales.
-const connect: MakeSocket = (state) =>
-  makeWASocket({
-    auth: state,
-    logger,
-    markOnlineOnConnect: false,
-    syncFullHistory: false,
-    shouldSyncHistoryMessage: () => false,
-    shouldIgnoreJid: ignoredChat,
-    fireInitQueries: false,
-  })
+// En el teléfono, Dispositivos vinculados la muestra como «Google Chrome (Proformas Ventronix)»: el
+// sistema (browser[0]) es el nombre de la app. Se fija al vincular.
+export const socketConfig = (state: AuthenticationState) => ({
+  auth: state,
+  logger,
+  browser: ['Proformas Ventronix', 'Chrome', '1.0.0'] as [string, string, string],
+  markOnlineOnConnect: false,
+  syncFullHistory: false,
+  shouldSyncHistoryMessage: () => false,
+  shouldIgnoreJid: ignoredChat,
+  fireInitQueries: false,
+})
+
+const connect: MakeSocket = (state) => makeWASocket(socketConfig(state))
 
 const statusCode = (error: unknown) =>
   (error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode
