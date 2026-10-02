@@ -31,6 +31,9 @@ function NavLinks({
       <Link
         key={href}
         href={href}
+        // Precarga la página entera (no solo hasta loading.tsx): el cambio entre Productos y
+        // Empresa es instantáneo, sin esqueleto. Las páginas no traen datos: se cargan aparte.
+        prefetch
         aria-current={active ? 'page' : undefined}
         title={iconOnly ? label : undefined}
         className={cn(
