@@ -1,10 +1,10 @@
 'use client'
 
 import {
-  ArrowDownAZ,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
+  Link2,
   Package,
   Pencil,
   Plus,
@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProformaControl } from '@/features/proforma/components/proforma-control'
@@ -23,13 +24,14 @@ import { useProforma } from '@/features/proforma/store'
 import { cn } from '@/lib/utils'
 import { useCategories } from '../../categories/hooks'
 import { categoryColor } from '../../categories/theme'
-import { describeDateFilter } from '../../list-options'
+import { describeDateFilter, relativeDay, rowDateField, type DateField } from '../../list-options'
 import { formatPrice } from '../../money'
 import { pageList } from '../../search-params'
 import type { ProductListItem } from '../../types'
 import { useCatalogFilters, useProducts } from '../hooks'
 import { PAGE_SIZE } from '../queries'
 import { ProductFilters } from './product-filters'
+import { SortSelect } from './sort-select'
 
 type ProductListProps = {
   onCreate: () => void
@@ -56,6 +58,7 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
   const categoryName = categories.data?.find((category) => category.id === filters.category)?.name
   const title = filters.search ? 'Resultados' : (categoryName ?? 'Todos los productos')
   const dateLabel = describeDateFilter(filters)
+  const dateField = rowDateField(filters)
   const hasFilters = filters.search !== '' || filters.category !== null || filters.date !== null
   const onlyDate = filters.date !== null && filters.search === '' && filters.category === null
   const clearFilters = () =>
@@ -90,12 +93,10 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
             ) : null}
           </h2>
           {dateLabel ? <DateChip label={dateLabel} onClear={clearDate} /> : null}
+          {hasFilters || filters.sort !== 'name' ? <CopyLinkButton /> : null}
         </div>
-        <div className="flex items-center gap-4">
-          <p className="hidden items-center gap-1.5 text-[13px] text-muted-foreground sm:flex">
-            <ArrowDownAZ className="size-4" aria-hidden />
-            Nombre A–Z
-          </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <SortSelect value={filters.sort} onChange={(sort) => setFilters({ sort, page: null })} />
           {data && totalPages > 1 ? (
             <PageStepper
               page={Math.min(filters.page, totalPages)}
@@ -157,8 +158,20 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
         />
       ) : data ? (
         <>
-          <ProductTable items={data.items} onView={onView} onEdit={onEdit} onDelete={onDelete} />
-          <ProductCards items={data.items} onView={onView} onEdit={onEdit} onDelete={onDelete} />
+          <ProductTable
+            items={data.items}
+            dateField={dateField}
+            onView={onView}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+          <ProductCards
+            items={data.items}
+            dateField={dateField}
+            onView={onView}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
           <Pagination
             page={Math.min(filters.page, totalPages)}
             totalPages={totalPages}
@@ -228,6 +241,41 @@ function RowActions({
   )
 }
 
+// Con un filtro o un orden por fecha, cada fila dice cuándo se registró o modificó (spec §4.3).
+function RowDate({ product, field }: { product: ProductListItem; field: DateField }) {
+  const instant = field === 'created' ? product.created_at : product.updated_at
+  return (
+    <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+      {field === 'created' ? 'Registrado' : 'Modificado'} {relativeDay(instant)}
+    </span>
+  )
+}
+
+// Los filtros viven en la URL: copiarla guarda la vista para volver a ella o compartirla.
+function CopyLinkButton() {
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      toast.success(
+        'Enlace copiado: guárdalo en favoritos o compártelo para volver a esta misma vista.',
+      )
+    } catch {
+      toast.error('No se pudo copiar el enlace. Cópialo desde la barra de direcciones.')
+    }
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      aria-label="Copiar enlace de esta vista"
+      title="Copiar enlace de esta vista"
+      onClick={() => void copy()}
+    >
+      <Link2 aria-hidden />
+    </Button>
+  )
+}
+
 // El filtro de fecha activo, para quitarlo con un clic (spec §4.3).
 function DateChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
@@ -282,7 +330,13 @@ function NameButton({
   )
 }
 
-function ProductTable({ items, onView, onEdit, onDelete }: RowsProps) {
+function ProductTable({
+  items,
+  dateField,
+  onView,
+  onEdit,
+  onDelete,
+}: RowsProps & { dateField: DateField | null }) {
   const { draft } = useProforma()
   const th =
     'h-11 border-y bg-background/60 px-3.5 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase lg:short:h-9'
@@ -327,6 +381,7 @@ function ProductTable({ items, onView, onEdit, onDelete }: RowsProps) {
                 >
                   {product.description ?? 'Sin descripción'}
                 </span>
+                {dateField ? <RowDate product={product} field={dateField} /> : null}
               </div>
             </td>
             <td className="px-3.5 py-3.5 text-right align-middle lg:short:py-2.5">
@@ -346,7 +401,13 @@ function ProductTable({ items, onView, onEdit, onDelete }: RowsProps) {
 }
 
 // Móvil: tarjetas legibles sin desbordamiento horizontal, con el mismo control de proforma.
-function ProductCards({ items, onView, onEdit, onDelete }: RowsProps) {
+function ProductCards({
+  items,
+  dateField,
+  onView,
+  onEdit,
+  onDelete,
+}: RowsProps & { dateField: DateField | null }) {
   const { draft } = useProforma()
   return (
     <ul className="md:hidden">
@@ -365,6 +426,7 @@ function ProductCards({ items, onView, onEdit, onDelete }: RowsProps) {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <CodeChip code={product.code} />
             <CategoryBadge product={product} />
+            {dateField ? <RowDate product={product} field={dateField} /> : null}
           </div>
           <div className="flex items-center justify-between gap-3">
             <ProformaControl product={product} />

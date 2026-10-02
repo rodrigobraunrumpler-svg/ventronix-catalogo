@@ -543,6 +543,8 @@ test('el nombre abre la ficha con el producto completo, para añadirlo o editarl
   await expect(ficha).toContainText('Laptops')
   await expect(ficha).toContainText('2,590.00')
   await expect(ficha).toContainText('Garantía de 3 años con atención en sitio.')
+  await expect(ficha).toContainText('Registrado el')
+  await expect(ficha).toContainText('Modificado el')
 
   await ficha.getByRole('button', { name: 'Añadir Laptop de 14 pulgadas a la proforma' }).click()
   await expect(
