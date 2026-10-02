@@ -11,6 +11,7 @@ export const COLORS = {
   group: 'FFEEF7E2',
   link: 'FF3F7D0A',
   warning: 'FFB54708',
+  danger: 'FFB42318',
   white: 'FFFFFFFF',
 } as const
 
