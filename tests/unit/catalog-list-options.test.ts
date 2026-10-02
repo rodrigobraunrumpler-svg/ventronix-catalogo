@@ -84,6 +84,12 @@ describe('textos', () => {
     expect(describeDateFilter(base)).toBeNull()
   })
 
+  it('un rango al revés no se describe: la lista lo ignora y el chip y el Excel también', () => {
+    expect(
+      describeDateFilter({ ...base, date: 'custom', from: '2026-09-10', to: '2026-09-01' }),
+    ).toBeNull()
+  })
+
   it('fecha relativa en días de Lima', () => {
     expect(relativeDay('2026-10-01T15:00:00Z', LATE_NIGHT)).toBe('hoy')
     expect(relativeDay('2026-09-30T15:00:00Z', LATE_NIGHT)).toBe('ayer')

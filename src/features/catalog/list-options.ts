@@ -86,9 +86,11 @@ export const DATE_PRESET_LABELS: Record<Exclude<DatePreset, 'custom'>, string> =
 // «2026-09-15» → «15/09/2026»: el día se lee como medianoche de Lima.
 export const formatDay = (day: string) => formatDate(parseISO(day, { in: lima }))
 
-// «Registro: últimos 7 días», «Modificación: 01/09/2026 – 15/09/2026»; null si no filtra.
+// «Registro: últimos 7 días», «Modificación: 01/09/2026 – 15/09/2026»; null si no filtra. Un rango al
+// revés no filtra (resolveDateRange), así que tampoco se describe.
 export function describeDateFilter(filter: DateFilter): string | null {
   if (filter.date === null) return null
+  if (filter.from && filter.to && filter.from > filter.to) return null
   const field = DATE_FIELD_LABELS[filter.dateBy]
   if (filter.date !== 'custom') return `${field}: ${DATE_PRESET_LABELS[filter.date].toLowerCase()}`
   if (filter.from && filter.to)
