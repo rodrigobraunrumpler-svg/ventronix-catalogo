@@ -71,6 +71,11 @@ describe('documento PDF de la proforma', () => {
     expect(fileName).toBe('Proforma-0001-Cliente-de-ejemplo-SAC.pdf')
   })
 
+  it('lleva el logotipo y la franja de marcas', async () => {
+    const { pdf } = await generate(input())
+    expect(pdf.toString('latin1').match(/\/Subtype\s*\/Image\b/g)).toHaveLength(2)
+  })
+
   it('pasa a varias páginas con muchas líneas', async () => {
     const lines = Array.from({ length: 40 }, (_, index) => line(index + 1))
     const { pdf } = await generate(input({ lines }))

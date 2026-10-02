@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     '/products': [
       './src/features/proforma/document/fonts/**',
       './public/brand/ventronix-wordmark.png',
+      './public/brand/marcas.jpg',
     ],
   },
 }

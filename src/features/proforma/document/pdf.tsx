@@ -16,6 +16,8 @@ import type { DocumentModel } from './model'
 
 const fonts = path.join(process.cwd(), 'src/features/proforma/document/fonts')
 const logo = path.join(process.cwd(), 'public/brand/ventronix-wordmark.png')
+// Franja de marcas que vende la empresa (fotocopiadoras, impresoras, computadoras…).
+const brands = path.join(process.cwd(), 'public/brand/marcas.jpg')
 
 Font.register({
   family: 'Jakarta',
@@ -173,9 +175,16 @@ const s = StyleSheet.create({
   totalLabel: { color: '#ffffff', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.42 },
   totalValue: { color: color.lime, fontSize: 13.5, fontWeight: 800 },
   taxNote: { marginTop: 6, fontSize: 8.25, color: color.muted, textAlign: 'right' },
-  words: {
+  // A la izquierda de los totales, en el hueco que dejan libre: la franja de marcas arriba y el
+  // importe en letras abajo. Así la imagen no alarga la proforma ni la pasa a otra página.
+  totalsLeft: {
     flex: 1,
+    alignSelf: 'stretch',
+    justifyContent: 'space-between',
     paddingRight: 18,
+  },
+  brands: { width: '100%', marginBottom: 9 },
+  words: {
     paddingBottom: 3,
     fontSize: 8.25,
     fontWeight: 600,
@@ -318,7 +327,11 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
         </View>
 
         <View style={s.totals} wrap={false}>
-          <Text style={s.words}>{model.amountInWords}</Text>
+          <View style={s.totalsLeft}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf, no es un <img> */}
+            <Image src={brands} style={s.brands} />
+            <Text style={s.words}>{model.amountInWords}</Text>
+          </View>
           <View style={s.totalsBox}>
             {model.adjustments.map((item) => (
               <View key={item.label} style={s.totalsRow}>
