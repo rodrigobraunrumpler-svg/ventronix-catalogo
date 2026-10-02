@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/products': [
       './src/features/proforma/document/fonts/**',
-      './public/brand/ventronix-wordmark.png',
+      './public/brand/ventronix-logo-proforma.jpg',
       './public/brand/marcas.jpg',
     ],
   },

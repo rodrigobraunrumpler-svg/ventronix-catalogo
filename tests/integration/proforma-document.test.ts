@@ -76,6 +76,52 @@ describe('documento PDF de la proforma', () => {
     expect(pdf.toString('latin1').match(/\/Subtype\s*\/Image\b/g)).toHaveLength(2)
   })
 
+  describe('muchos productos en una sola página', () => {
+    const demoLine = (index: number) => ({
+      code: `DEMO-LAP-${String(index).padStart(3, '0')}`,
+      name: `Laptop de 14 pulgadas modelo ${index}`,
+      description: 'Core i5 · 16 GB RAM · SSD de 512 GB',
+      unitPrice: '2590.00',
+      quantity: 1,
+    })
+    const lines = (count: number) =>
+      Array.from({ length: count }, (_, index) => demoLine(index + 1))
+    const payments = () =>
+      db.query('update public.company_profile set bank_accounts = $1, wallets = $2', [
+        JSON.stringify([
+          {
+            bank: 'BCP',
+            account: '191-1234567-0-12',
+            cci: '00219100123456701254',
+            holder: 'Juan Pérez',
+          },
+        ]),
+        JSON.stringify([{ kind: 'ambos', number: '987654321' }]),
+      ])
+
+    it('con 15 productos y todos los datos se compacta y cabe en una página', async () => {
+      await payments()
+      await db.query('update public.company_profile set payment_terms = $1, return_policy = $2', [
+        'Contado contra entrega o transferencia bancaria.',
+        'Cambios dentro de los 7 días con comprobante y empaque original.',
+      ])
+      const client = {
+        name: 'Cliente de ejemplo S.A.C.',
+        document: '20000000001',
+        phone: '900000000',
+        address: 'Av. Ejemplo 123, Huamanga',
+        deliveryTime: '3 días hábiles',
+      }
+      const full = input({ lines: lines(15), client, discountPercent: '5', shipping: '20' })
+      expect(pages((await generate(full)).pdf)).toBe(1)
+    })
+
+    it('con 20 productos, sin descuento ni envío, también cabe en una página', async () => {
+      await payments()
+      expect(pages((await generate(input({ lines: lines(20) }))).pdf)).toBe(1)
+    })
+  })
+
   it('pasa a varias páginas con muchas líneas', async () => {
     const lines = Array.from({ length: 40 }, (_, index) => line(index + 1))
     const { pdf } = await generate(input({ lines }))

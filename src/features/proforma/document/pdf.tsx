@@ -15,7 +15,8 @@ import { flowPieces, wrapCode } from './format'
 import type { DocumentModel } from './model'
 
 const fonts = path.join(process.cwd(), 'src/features/proforma/document/fonts')
-const logo = path.join(process.cwd(), 'public/brand/ventronix-wordmark.png')
+// Logotipo de la proforma: fondo negro puro, se funde con la franja negra de la cabecera.
+const logo = path.join(process.cwd(), 'public/brand/ventronix-logo-proforma.jpg')
 // Franja de marcas que vende la empresa (fotocopiadoras, impresoras, computadoras…).
 const brands = path.join(process.cwd(), 'public/brand/marcas.jpg')
 
@@ -49,196 +50,226 @@ const SIDE = 30
 // Margen superior de las páginas siguientes; la franja negra de la primera lo cubre con un margen
 // negativo para quedar pegada al borde, como en la pizarra.
 const TOP = 24
-// Caracteres de JetBrains Mono (0,6 em) que caben en la columna CÓDIGO: (64,5 − 15) / (9 × 0,6).
-const CODE_CHARS = 9
 
-const s = StyleSheet.create({
-  page: {
-    fontFamily: 'Jakarta',
-    fontSize: 9.75,
-    color: color.ink,
-    lineHeight: 1.5,
-    // Sin alternativas contextuales: Jakarta cambia «1-2» por un signo menos y «1x2» por «×» (al
-    // copiar del PDF salen así), y las ligaduras de JetBrains Mono («--», «->», «..») rompen fontkit.
-    fontFeatureSettings: { calt: false },
-    paddingTop: TOP,
-    paddingBottom: 40,
-  },
-  watermark: {
-    position: 'absolute',
-    top: 360,
-    left: -30,
-    width: 655,
-    height: 120,
-    textAlign: 'center',
-    fontSize: 96,
-    fontWeight: 800,
-    color: color.lime,
-    opacity: 0.12,
-    transform: 'rotate(-30deg)',
-  },
-  header: {
-    marginTop: -TOP,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#000000',
-    paddingVertical: 19.5,
-    paddingHorizontal: SIDE,
-  },
-  logo: { width: 174 },
-  headerRight: { alignItems: 'flex-end' },
-  // react-pdf monta «PROFORMA» y el número con interlineado 1.5: se dibujan a 1.2 y el resto del
-  // interlineado de la pizarra va en márgenes (más su gap de 2 px), para que las líneas caigan igual.
-  headerTitle: {
-    marginVertical: 2.9,
-    color: '#ffffff',
-    fontSize: 19.5,
-    fontWeight: 800,
-    letterSpacing: 1.56,
-    lineHeight: 1.2,
-  },
-  headerNumber: {
-    marginTop: 3.5,
-    marginBottom: 2,
-    color: color.lime,
-    fontFamily: 'JetBrainsMono',
-    fontSize: 13.5,
-    fontWeight: 700,
-    lineHeight: 1.2,
-  },
-  headerDate: { marginTop: 1.5, color: color.soft, fontSize: 9 },
-  companyRow: {
-    flexDirection: 'row',
-    paddingVertical: 10.5,
-    paddingHorizontal: SIDE,
-    borderBottomWidth: 0.75,
-    borderBottomColor: color.line,
-  },
-  companyItem: { flex: 1, paddingRight: 9 },
-  label: { fontSize: 8.25, color: color.muted },
-  semibold: { fontWeight: 600 },
-  client: {
-    marginTop: 15,
-    marginHorizontal: SIDE,
-    paddingTop: 12,
-    paddingBottom: 4.5,
-    paddingHorizontal: 13.5,
-    borderWidth: 0.75,
-    borderColor: color.line,
-    borderRadius: 7.5,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  clientLeft: { width: '60%', paddingRight: 18, marginBottom: 7.5 },
-  clientRight: { width: '40%', marginBottom: 7.5 },
-  clientValue: { fontSize: 10.5 },
-  table: { marginTop: 15, marginHorizontal: SIDE },
-  thead: { flexDirection: 'row', backgroundColor: '#000000' },
-  th: {
-    color: '#ffffff',
-    fontSize: 8.25,
-    fontWeight: 700,
-    letterSpacing: 0.5,
-    paddingVertical: 6.75,
-    paddingHorizontal: 7.5,
-  },
-  row: { flexDirection: 'row', borderBottomWidth: 0.75, borderBottomColor: color.line },
-  td: { paddingVertical: 8.25, paddingHorizontal: 7.5 },
-  quantity: { width: 42 },
-  code: { width: 64.5 },
-  mono: { fontFamily: 'JetBrainsMono', fontSize: 9 },
-  description: { flex: 1 },
-  unit: { width: 78, textAlign: 'right' },
-  lineTotal: { width: 84, textAlign: 'right' },
-  detail: { fontSize: 9, color: color.muted },
-  totals: {
-    marginTop: 13.5,
-    marginHorizontal: SIDE,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  totalsBox: { width: 225 },
-  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4.5 },
-  totalsLabel: { color: color.text },
-  totalBand: {
-    marginTop: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#000000',
-    borderRadius: 6,
-    paddingVertical: 7.5,
-    paddingHorizontal: 9,
-  },
-  totalLabel: { color: '#ffffff', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.42 },
-  totalValue: { color: color.lime, fontSize: 13.5, fontWeight: 800 },
-  taxNote: { marginTop: 6, fontSize: 8.25, color: color.muted, textAlign: 'right' },
-  // A la izquierda de los totales, en el hueco que dejan libre: la franja de marcas arriba y el
-  // importe en letras abajo. Así la imagen no alarga la proforma ni la pasa a otra página.
-  totalsLeft: {
-    flex: 1,
-    alignSelf: 'stretch',
-    justifyContent: 'space-between',
-    paddingRight: 18,
-  },
-  brands: { width: '100%', marginBottom: 9 },
-  words: {
-    paddingBottom: 3,
-    fontSize: 8.25,
-    fontWeight: 600,
-    color: color.text,
-  },
-  bottom: {
-    marginTop: 19.5,
-    marginHorizontal: SIDE,
-    paddingTop: 13.5,
-    borderTopWidth: 0.75,
-    borderTopColor: color.line,
-    flexDirection: 'row',
-  },
-  terms: { flex: 1.3, paddingRight: 18 },
-  payments: { flex: 1 },
-  heading: { fontSize: 9.75, fontWeight: 700, marginBottom: 6 },
-  item: { fontSize: 9, color: color.text, marginBottom: 2.25 },
-  // Lista numerada con sangría francesa, como el <ol> de la pizarra (18 px).
-  term: { flexDirection: 'row' },
-  termNumber: { width: 11.25, marginRight: 2.25, textAlign: 'right' },
-  termText: { flex: 1 },
-  flow: { flexDirection: 'row', flexWrap: 'wrap' },
-  // Los textos que dependen de la página van dentro de un contenedor fijo: react-pdf 4.9 no dibuja
-  // un texto dinámico (render) que sea él mismo absoluto.
-  footer: { position: 'absolute', bottom: 15, left: SIDE, right: SIDE, height: 16 },
-  thanks: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    fontSize: 9.75,
-    fontWeight: 600,
-    color: color.text,
-  },
-  pageNumber: {
-    position: 'absolute',
-    top: 2,
-    right: 0,
-    textAlign: 'right',
-    fontSize: 8.25,
-    color: color.muted,
-  },
-  limeBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 6,
-    backgroundColor: color.lime,
-  },
-})
+// Medidas de la pizarra «Proforma · Documento A4». Con «compact» (muchos productos que no caben en
+// una hoja) todo se aprieta: filas de una línea, cabecera y cliente más bajos, y términos y cuentas
+// junto a los totales.
+function sheet(compact: boolean) {
+  const pick = (normal: number, tight: number) => (compact ? tight : normal)
+  return StyleSheet.create({
+    page: {
+      fontFamily: 'Jakarta',
+      fontSize: pick(9.75, 8.25),
+      color: color.ink,
+      lineHeight: pick(1.5, 1.4),
+      // Sin alternativas contextuales: Jakarta cambia «1-2» por un signo menos y «1x2» por «×» (al
+      // copiar del PDF salen así), y las ligaduras de JetBrains Mono («--», «->», «..») rompen fontkit.
+      fontFeatureSettings: { calt: false },
+      paddingTop: TOP,
+      paddingBottom: 40,
+    },
+    watermark: {
+      position: 'absolute',
+      top: 360,
+      left: -30,
+      width: 655,
+      height: 120,
+      textAlign: 'center',
+      fontSize: 96,
+      fontWeight: 800,
+      color: color.lime,
+      opacity: 0.12,
+      transform: 'rotate(-30deg)',
+    },
+    header: {
+      marginTop: -TOP,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#000000',
+      paddingVertical: pick(19.5, 9),
+      paddingHorizontal: SIDE,
+    },
+    logo: { width: pick(165, 112) },
+    headerRight: { alignItems: 'flex-end' },
+    // react-pdf monta «PROFORMA» y el número con interlineado 1.5: se dibujan a 1.2 y el resto del
+    // interlineado de la pizarra va en márgenes (más su gap de 2 px), para que las líneas caigan igual.
+    headerTitle: {
+      marginVertical: pick(2.9, 1.2),
+      color: '#ffffff',
+      fontSize: pick(19.5, 15),
+      fontWeight: 800,
+      letterSpacing: pick(1.56, 1.2),
+      lineHeight: 1.2,
+    },
+    headerNumber: {
+      marginTop: pick(3.5, 1.5),
+      marginBottom: pick(2, 1),
+      color: color.lime,
+      fontFamily: 'JetBrainsMono',
+      fontSize: pick(13.5, 11),
+      fontWeight: 700,
+      lineHeight: 1.2,
+    },
+    headerDate: { marginTop: pick(1.5, 0.5), color: color.soft, fontSize: pick(9, 7.5) },
+    headerDateFirst: { marginTop: pick(6, 3) },
+    companyRow: {
+      flexDirection: 'row',
+      paddingVertical: pick(10.5, 6),
+      paddingHorizontal: SIDE,
+      borderBottomWidth: 0.75,
+      borderBottomColor: color.line,
+    },
+    companyItem: { flex: 1, paddingRight: 9 },
+    label: { fontSize: pick(8.25, 7), color: color.muted },
+    semibold: { fontWeight: 600 },
+    client: {
+      marginTop: pick(15, 8),
+      marginHorizontal: SIDE,
+      paddingTop: pick(12, 6),
+      paddingBottom: pick(4.5, 2),
+      paddingHorizontal: pick(13.5, 10),
+      borderWidth: 0.75,
+      borderColor: color.line,
+      borderRadius: 7.5,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    // Normal: dos columnas, como la pizarra. Compacta: tres por fila.
+    clientLeft: { width: '60%', paddingRight: 18, marginBottom: 7.5 },
+    clientRight: { width: '40%', marginBottom: 7.5 },
+    clientCell: { width: '33.33%', paddingRight: 9, marginBottom: 4 },
+    clientValue: { fontSize: pick(10.5, 8.75) },
+    table: { marginTop: pick(15, 8), marginHorizontal: SIDE },
+    thead: { flexDirection: 'row', backgroundColor: '#000000' },
+    th: {
+      color: '#ffffff',
+      fontSize: pick(8.25, 7),
+      fontWeight: 700,
+      letterSpacing: 0.5,
+      paddingVertical: pick(6.75, 4),
+      paddingHorizontal: 7.5,
+    },
+    row: { flexDirection: 'row', borderBottomWidth: 0.75, borderBottomColor: color.line },
+    td: { paddingVertical: pick(8.25, 3.5), paddingHorizontal: 7.5 },
+    quantity: { width: 42 },
+    code: { width: pick(64.5, 74) },
+    mono: { fontFamily: 'JetBrainsMono', fontSize: pick(9, 7.5) },
+    description: { flex: 1 },
+    // react-pdf lee maxLines del estilo: lo que no cabe en la línea termina en «…».
+    oneLine: { maxLines: 1, textOverflow: 'ellipsis' },
+    unit: { width: pick(78, 70), textAlign: 'right' },
+    lineTotal: { width: pick(84, 76), textAlign: 'right' },
+    detail: { fontSize: pick(9, 7.5), color: color.muted },
+    totals: {
+      marginTop: pick(13.5, 8),
+      marginHorizontal: SIDE,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+    },
+    totalsBox: { width: pick(225, 205) },
+    totalsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: pick(4.5, 2),
+    },
+    totalsLabel: { color: color.text },
+    totalBand: {
+      marginTop: pick(3, 2),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#000000',
+      borderRadius: 6,
+      paddingVertical: pick(7.5, 5),
+      paddingHorizontal: pick(9, 8),
+    },
+    totalLabel: {
+      color: '#ffffff',
+      fontSize: pick(10.5, 9),
+      fontWeight: 700,
+      letterSpacing: 0.42,
+    },
+    totalValue: { color: color.lime, fontSize: pick(13.5, 11.5), fontWeight: 800 },
+    taxNote: {
+      marginTop: pick(6, 3),
+      fontSize: pick(8.25, 7),
+      color: color.muted,
+      textAlign: 'right',
+    },
+    // A la izquierda de los totales, en el hueco que dejan libre: la franja de marcas arriba y el
+    // importe en letras abajo (en la compacta, también términos y cuentas). Así la imagen no alarga
+    // la proforma ni la pasa a otra página.
+    totalsLeft: {
+      flex: 1,
+      alignSelf: 'stretch',
+      justifyContent: 'space-between',
+      paddingRight: pick(18, 14),
+    },
+    brands: compact ? { width: 210, marginBottom: 5 } : { width: '100%', marginBottom: 9 },
+    words: {
+      paddingBottom: pick(3, 1),
+      fontSize: pick(8.25, 7.25),
+      fontWeight: 600,
+      color: color.text,
+    },
+    bottom: {
+      marginTop: 19.5,
+      marginHorizontal: SIDE,
+      paddingTop: 13.5,
+      borderTopWidth: 0.75,
+      borderTopColor: color.line,
+      flexDirection: 'row',
+    },
+    inlineBottom: { flexDirection: 'row', marginBottom: 5 },
+    terms: { flex: 1.3, paddingRight: pick(18, 10) },
+    payments: { flex: 1 },
+    heading: { fontSize: pick(9.75, 8), fontWeight: 700, marginBottom: pick(6, 2.5) },
+    item: { fontSize: pick(9, 7.25), color: color.text, marginBottom: pick(2.25, 0.75) },
+    // Lista numerada con sangría francesa, como el <ol> de la pizarra (18 px).
+    term: { flexDirection: 'row' },
+    termNumber: { width: pick(11.25, 9), marginRight: pick(2.25, 1.5), textAlign: 'right' },
+    termText: { flex: 1 },
+    // Los textos que dependen de la página van dentro de un contenedor fijo: react-pdf 4.9 no dibuja
+    // un texto dinámico (render) que sea él mismo absoluto.
+    footer: { position: 'absolute', bottom: 15, left: SIDE, right: SIDE, height: 16 },
+    thanks: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+      fontSize: pick(9.75, 8.25),
+      fontWeight: 600,
+      color: color.text,
+    },
+    pageNumber: {
+      position: 'absolute',
+      top: 2,
+      right: 0,
+      textAlign: 'right',
+      fontSize: 8.25,
+      color: color.muted,
+    },
+    limeBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 6,
+      backgroundColor: color.lime,
+    },
+  })
+}
+
+const sheets = { normal: sheet(false), compact: sheet(true) }
+type Sheet = (typeof sheets)['normal']
+// Caracteres de JetBrains Mono (0,6 em) que caben en la columna CÓDIGO: (ancho − 15) / (letra × 0,6).
+const codeChars = (compact: boolean) => (compact ? 13 : 9)
 
 type TextStyle = ComponentProps<typeof View>['style']
+const flow = { flexDirection: 'row', flexWrap: 'wrap' } as const
 
 // Texto escrito por el usuario. Si trae una palabra más larga que su columna (ver flowPieces), sus
 // trozos van en filas que saltan de línea; la caja ocupa el lugar del texto y le pasa su estilo.
@@ -248,7 +279,7 @@ function Words({ children, style }: { children: string; style?: TextStyle }) {
   return (
     <View style={style}>
       {paragraphs.map((pieces, index) => (
-        <View key={index} style={s.flow}>
+        <View key={index} style={flow}>
           {pieces.map((piece, key) => (
             <Text key={key}>{piece}</Text>
           ))}
@@ -258,7 +289,7 @@ function Words({ children, style }: { children: string; style?: TextStyle }) {
   )
 }
 
-function TableHead() {
+function TableHead({ s }: { s: Sheet }) {
   return (
     <View fixed style={s.thead}>
       <Text style={[s.th, s.quantity]}>CANT.</Text>
@@ -270,8 +301,44 @@ function TableHead() {
   )
 }
 
-// Plantilla A4 de la proforma, igual a la pizarra del prototipo (spec del documento §4).
-export function ProformaPdf({ model }: { model: DocumentModel }) {
+function Terms({ s, terms }: { s: Sheet; terms: string[] }) {
+  return (
+    <View style={s.terms}>
+      <Text style={s.heading}>Términos y condiciones</Text>
+      {terms.map((term, index) => (
+        <View key={index} style={s.term}>
+          <Text style={[s.item, s.termNumber]}>{index + 1}.</Text>
+          <Words style={[s.item, s.termText]}>{term}</Words>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function Payments({ s, payments }: { s: Sheet; payments: string[] }) {
+  if (payments.length === 0) return null
+  return (
+    <View style={s.payments}>
+      <Text style={s.heading}>Cuentas para el pago</Text>
+      {payments.map((line, index) => (
+        <Words key={index} style={s.item}>
+          {line}
+        </Words>
+      ))}
+    </View>
+  )
+}
+
+// Plantilla A4 de la proforma, igual a la pizarra del prototipo (spec del documento §4). «compact»
+// es la misma proforma apretada para que muchos productos quepan en una hoja.
+export function ProformaPdf({
+  model,
+  compact = false,
+}: {
+  model: DocumentModel
+  compact?: boolean
+}) {
+  const s = compact ? sheets.compact : sheets.normal
   return (
     <Document title={model.title} author={model.author} language="es">
       <Page size="A4" style={s.page}>
@@ -287,7 +354,7 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           <View style={s.headerRight}>
             <Text style={s.headerTitle}>PROFORMA</Text>
             <Text style={s.headerNumber}>{model.numberLabel ?? 'BORRADOR'}</Text>
-            <Text style={[s.headerDate, { marginTop: 6 }]}>Fecha: {model.date}</Text>
+            <Text style={[s.headerDate, s.headerDateFirst]}>Fecha: {model.date}</Text>
             <Text style={s.headerDate}>Válida hasta: {model.validUntil}</Text>
           </View>
         </View>
@@ -303,7 +370,10 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
 
         <View style={s.client}>
           {model.client.map((item, index) => (
-            <View key={item.label} style={index % 2 === 0 ? s.clientLeft : s.clientRight}>
+            <View
+              key={item.label}
+              style={compact ? s.clientCell : index % 2 === 0 ? s.clientLeft : s.clientRight}
+            >
               <Text style={s.label}>{item.label}</Text>
               <Words style={[s.clientValue, { fontWeight: item.weight }]}>{item.value}</Words>
             </View>
@@ -311,14 +381,26 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
         </View>
 
         <View style={s.table}>
-          <TableHead />
+          <TableHead s={s} />
           {model.rows.map((row, index) => (
             <View key={index} style={s.row} wrap={false}>
               <Text style={[s.td, s.quantity]}>{row.quantity}</Text>
-              <Text style={[s.td, s.code, s.mono]}>{wrapCode(row.code, CODE_CHARS)}</Text>
+              <Text style={[s.td, s.code, s.mono]}>{wrapCode(row.code, codeChars(compact))}</Text>
               <View style={[s.td, s.description]}>
-                <Words style={s.semibold}>{row.name}</Words>
-                {row.description ? <Words style={s.detail}>{row.description}</Words> : null}
+                {compact ? (
+                  // Una línea por producto: nombre y descripción juntos, recortados si no caben.
+                  <Text style={s.oneLine}>
+                    <Text style={s.semibold}>{row.name}</Text>
+                    {row.description ? (
+                      <Text style={s.detail}>{`  ·  ${row.description}`}</Text>
+                    ) : null}
+                  </Text>
+                ) : (
+                  <>
+                    <Words style={s.semibold}>{row.name}</Words>
+                    {row.description ? <Words style={s.detail}>{row.description}</Words> : null}
+                  </>
+                )}
               </View>
               <Text style={[s.td, s.unit]}>{row.unitPrice}</Text>
               <Text style={[s.td, s.lineTotal, s.semibold]}>{row.total}</Text>
@@ -330,6 +412,12 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           <View style={s.totalsLeft}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf, no es un <img> */}
             <Image src={brands} style={s.brands} />
+            {compact ? (
+              <View style={s.inlineBottom}>
+                <Terms s={s} terms={model.terms} />
+                <Payments s={s} payments={model.payments} />
+              </View>
+            ) : null}
             <Text style={s.words}>{model.amountInWords}</Text>
           </View>
           <View style={s.totalsBox}>
@@ -350,27 +438,12 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
           </View>
         </View>
 
-        <View style={s.bottom} wrap={false}>
-          <View style={s.terms}>
-            <Text style={s.heading}>Términos y condiciones</Text>
-            {model.terms.map((term, index) => (
-              <View key={index} style={s.term}>
-                <Text style={[s.item, s.termNumber]}>{index + 1}.</Text>
-                <Words style={[s.item, s.termText]}>{term}</Words>
-              </View>
-            ))}
+        {compact ? null : (
+          <View style={s.bottom} wrap={false}>
+            <Terms s={s} terms={model.terms} />
+            <Payments s={s} payments={model.payments} />
           </View>
-          {model.payments.length > 0 ? (
-            <View style={s.payments}>
-              <Text style={s.heading}>Cuentas para el pago</Text>
-              {model.payments.map((line, index) => (
-                <Words key={index} style={s.item}>
-                  {line}
-                </Words>
-              ))}
-            </View>
-          ) : null}
-        </View>
+        )}
 
         <View fixed style={s.footer}>
           <Text
@@ -392,6 +465,11 @@ export function ProformaPdf({ model }: { model: DocumentModel }) {
   )
 }
 
-export function renderProformaPdf(model: DocumentModel) {
-  return renderToBuffer(<ProformaPdf model={model} />)
+const pageCount = (pdf: Buffer) => pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0
+
+// Primero con el diseño de la pizarra; si no cabe en una hoja, compactada. Si aun así no cabe, se
+// reparte en varias páginas, con la cabecera de la tabla en cada una.
+export async function renderProformaPdf(model: DocumentModel) {
+  const pdf = await renderToBuffer(<ProformaPdf model={model} />)
+  return pageCount(pdf) === 1 ? pdf : renderToBuffer(<ProformaPdf model={model} compact />)
 }

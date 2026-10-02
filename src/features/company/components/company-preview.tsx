@@ -57,10 +57,10 @@ export function CompanyPreview({ values }: { values: PreviewValues }) {
       </h2>
       <div className="flex items-center justify-between gap-3 bg-black px-4.5 py-3.5">
         <Image
-          src="/brand/ventronix-wordmark.png"
+          src="/brand/ventronix-logo-proforma.jpg"
           alt="Ventronix"
           width={132}
-          height={71}
+          height={75}
           unoptimized
           className="h-auto w-33"
         />
