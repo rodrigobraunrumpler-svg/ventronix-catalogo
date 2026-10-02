@@ -83,13 +83,16 @@ Las variables solo existen en Production. Por eso los despliegues de preview (ra
 
 ## 3. Comprobación después de publicar
 
-Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplica las migraciones nuevas con `pnpm db:push`: búsqueda sin tildes, datos de la empresa y numeración de proformas.
+Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplica las migraciones nuevas con `pnpm db:push`. La más reciente es `202610020001_product_list_filters.sql`: fecha y orden de la lista, Excel e indicadores.
 
 Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba despliegue» y el producto `PRUEBA-001`, y bórralos al terminar.
 
 - [ ] `/products` sin sesión lleva a `/login`.
 - [ ] La cuenta inicia sesión, y una contraseña incorrecta muestra el mensaje genérico.
 - [ ] Crear, editar, buscar, filtrar y borrar funcionan; una categoría con productos no se puede borrar.
+- [ ] Los indicadores junto a «Productos» muestran cifras y cada uno aplica su filtro.
+- [ ] El filtro de fecha (registro o modificación) y el orden cambian la lista y se conservan al recargar.
+- [ ] El botón «Excel» descarga el reporte completo y la lista de precios con lo filtrado.
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.
