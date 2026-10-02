@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   changeText,
   count,
+  defaultTab,
   fileSize,
+  filterRows,
   importButton,
   outcomeSummary,
   percentText,
   plural,
+  previewSummary,
   rowDetails,
 } from '@/features/catalog/import/format'
 import type { PreviewCounts, PreviewRow } from '@/features/catalog/import/types'
@@ -112,5 +115,37 @@ describe('textos de la vista previa', () => {
     expect(outcomeSummary({ created: 1, updated: 0, unchanged: 0, categoriesCreated: [] })).toBe(
       '1 producto creado',
     )
+  })
+})
+
+describe('pestañas y búsqueda de la vista previa', () => {
+  const rows = [
+    row({ line: 2, status: 'create', code: 'IMP-001', name: 'Impresión térmica' }),
+    row({ line: 3, status: 'error', code: 'LAP-002', name: 'Laptop' }),
+    row({ line: 4, status: 'omitted', code: 'MON-003', name: 'Monitor' }),
+  ]
+
+  it('se abre en lo que más conviene mirar: errores, avisos, cambios y nuevos', () => {
+    expect(defaultTab(counts({ error: 1, review: 2 }))).toBe('error')
+    expect(defaultTab(counts({ review: 2, update: 3 }))).toBe('review')
+    expect(defaultTab(counts({ create: 5, update: 2, unchanged: 4000 }))).toBe('update')
+    expect(defaultTab(counts({ create: 5 }))).toBe('create')
+    expect(defaultTab(counts({ unchanged: 5 }))).toBe('all')
+  })
+
+  it('filtra por pestaña y busca por código o nombre sin tildes ni mayúsculas', () => {
+    expect(filterRows(rows, 'all', '').map((item) => item.line)).toEqual([2, 3, 4])
+    expect(filterRows(rows, 'error', '').map((item) => item.line)).toEqual([3])
+    expect(filterRows(rows, 'all', '  IMPRESION ').map((item) => item.line)).toEqual([2])
+    expect(filterRows(rows, 'all', 'mon-0').map((item) => item.line)).toEqual([4])
+    expect(filterRows(rows, 'create', 'laptop')).toEqual([])
+  })
+
+  it('resume lo que hará el botón Importar', () => {
+    expect(previewSummary(counts({ create: 48, update: 12, review: 3 }))).toBe(
+      '48 nuevos · 12 se actualizan · 3 para revisar',
+    )
+    expect(previewSummary(counts({ update: 1 }))).toBe('1 se actualiza')
+    expect(previewSummary(counts({ unchanged: 4 }))).toBe('')
   })
 })

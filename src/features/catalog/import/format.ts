@@ -4,6 +4,7 @@ import type {
   ImportMode,
   ImportOutcome,
   ImportPreview,
+  PreviewCounts,
   PreviewRow,
   RowStatus,
 } from './types'
@@ -116,4 +117,38 @@ export function outcomeSummary(
     parts.push(plural(outcome.categoriesCreated.length, 'categoría nueva', 'categorías nuevas'))
   }
   return parts.join(' · ')
+}
+
+// Nunca se dibujan miles de filas de golpe (spec §6.6).
+export const PAGE_SIZE = 50
+
+// La primera pestaña con contenido de este orden: Con errores, Para revisar, Se actualizan, Nuevos y
+// Todas. Con el catálogo completo, «Todas» escondería los pocos cambios entre miles de filas sin
+// cambios (revisión 2 del plan).
+export const defaultTab = (counts: PreviewCounts): RowTab =>
+  (['error', 'review', 'update', 'create'] as const).find((tab) => counts[tab] > 0) ?? 'all'
+
+// Sin tildes ni mayúsculas: «impresion» encuentra «Impresión».
+const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+export function filterRows(rows: PreviewRow[], tab: RowTab, search: string) {
+  const needle = fold(search.trim())
+  return rows.filter(
+    (row) =>
+      (tab === 'all' || row.status === tab) &&
+      (!needle || fold(row.code).includes(needle) || fold(row.name ?? '').includes(needle)),
+  )
+}
+
+// «48 nuevos · 12 se actualizan · 3 para revisar»: lo que hará el botón Importar.
+export function previewSummary(counts: PreviewCounts) {
+  return [
+    counts.create > 0 ? plural(counts.create, 'nuevo', 'nuevos') : null,
+    counts.update > 0
+      ? `${count(counts.update)} ${counts.update === 1 ? 'se actualiza' : 'se actualizan'}`
+      : null,
+    counts.review > 0 ? `${count(counts.review)} para revisar` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
