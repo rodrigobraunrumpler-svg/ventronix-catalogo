@@ -97,7 +97,7 @@ export function DateFilterControl({
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="z-50 grid w-[min(22rem,calc(100vw-2rem))] gap-4 rounded-xl border bg-popover p-4 text-sm shadow-lg"
+          className="z-50 grid max-h-(--radix-popover-content-available-height) w-[min(22rem,calc(100vw-2rem))] gap-4 overflow-y-auto rounded-xl border bg-popover p-4 text-sm shadow-lg"
         >
           <fieldset className="grid gap-2">
             <legend className="mb-1 font-semibold">¿Qué fecha?</legend>
@@ -133,7 +133,8 @@ export function DateFilterControl({
             <p className="text-xs text-muted-foreground">{help}</p>
           </fieldset>
 
-          <fieldset className="grid gap-0.5">
+          {/* Dos columnas: el panel entero cabe en un laptop de 640 px de alto. */}
+          <fieldset className="grid grid-cols-2 gap-x-1 gap-y-0.5">
             <legend className="mb-1 font-semibold">Rango</legend>
             {RANGES.map((range) => (
               <label

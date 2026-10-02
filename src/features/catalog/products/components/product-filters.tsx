@@ -62,7 +62,8 @@ export function ProductFilters({ onSearchEnter }: { onSearchEnter?: () => void }
             }
           >
             <X aria-hidden />
-            Limpiar filtros
+            {/* En el celular, «Limpiar»: así el buscador conserva un ancho útil. */}
+            Limpiar<span className="max-sm:sr-only"> filtros</span>
           </Button>
         ) : null}
       </div>

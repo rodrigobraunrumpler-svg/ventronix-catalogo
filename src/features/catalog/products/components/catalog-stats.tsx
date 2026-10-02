@@ -9,7 +9,8 @@ export type StatsShortcut = 'all' | 'created-this-month' | 'updated-7-days'
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many)
 
 // Cifras clave junto al título (spec del Excel §4.1). Cada una aplica su filtro con un clic. Van en
-// la misma fila que «Productos»: no quitan altura a la lista.
+// la misma fila que «Productos»: no quitan altura a la lista. inline-block y no flex: en un
+// contenedor flex el espacio entre la cifra y el texto no se pinta.
 export function CatalogStatsChips({
   stats,
   active,
@@ -53,7 +54,7 @@ export function CatalogStatsChips({
           disabled={item.count === 0}
           title={item.title}
           onClick={() => onSelect(item.key)}
-          className="inline-flex h-7 cursor-pointer items-center rounded-full border bg-card px-3 text-[13px] text-secondary-foreground transition-colors hover:bg-accent disabled:cursor-default disabled:opacity-55 aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-foreground"
+          className="inline-block h-7 cursor-pointer rounded-full border bg-card px-3 text-[13px] leading-[26px] whitespace-nowrap text-secondary-foreground transition-colors hover:bg-accent disabled:cursor-default disabled:opacity-55 aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-foreground"
         >
           <span className="font-bold text-foreground tabular-nums">{item.count}</span> {item.text}
         </button>
@@ -88,7 +89,7 @@ export function CatalogSummary() {
 
   if (stats.isPending) {
     return (
-      <div className="flex gap-2" aria-hidden>
+      <div className="flex flex-wrap gap-2" aria-hidden>
         {[104, 136, 168].map((width) => (
           <Skeleton key={width} className="h-7 rounded-full" style={{ width }} />
         ))}
