@@ -27,3 +27,9 @@ export function documentError(value: string) {
 }
 
 export const isValidMobile = (value: string) => /^9\d{8}$/.test(value)
+
+// Teléfono de contacto: de 6 a 9 dígitos (fijo de provincia, fijo con su código como 01 o 066, 0800
+// o celular), o lo mismo con el 51 delante. El + solo al principio; espacios, guiones y paréntesis
+// para agrupar.
+export const isValidPhone = (value: string) =>
+  /^\+?[\d ()-]+$/.test(value) && /^(\d{6,9}|51\d{8,9})$/.test(digitsOnly(value))

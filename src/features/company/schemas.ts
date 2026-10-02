@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { digitsOnly, isValidMobile, isValidRuc } from '@/lib/peru'
+import { digitsOnly, isValidMobile, isValidPhone, isValidRuc } from '@/lib/peru'
 
 // Datos de la empresa para la proforma (spec §6.2). Importable en cliente y servidor. La salida
 // vuelve a validar igual: el servidor comprueba exactamente lo que envía el formulario.
@@ -19,16 +19,11 @@ export const WALLET_KINDS = ['yape', 'plin', 'ambos'] as const
 
 const accountMessage = 'Escribe el número de cuenta: de 6 a 20 dígitos.'
 const mobileMessage = 'Escribe 9 dígitos que empiecen por 9.'
+const phoneMessage = 'Escribe un teléfono válido, como 987 654 321 o (01) 234 5678.'
 const validityMessage = 'La validez va de 1 a 365 días.'
 
 const phoneSchema = z.object({
-  number: z
-    .string()
-    .trim()
-    .regex(
-      /^[\d +()-]{6,20}$/,
-      'Escribe un teléfono válido: números, espacios, +, - o paréntesis.',
-    ),
+  number: z.string().trim().refine(isValidPhone, phoneMessage),
 })
 
 export const bankAccountSchema = z.object({

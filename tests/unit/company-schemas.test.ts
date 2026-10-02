@@ -57,7 +57,7 @@ describe('companyProfileSchema', () => {
     [{ phones: [] }, 'phones: Añade al menos un teléfono.'],
     [
       { phones: [{ number: 'abc' }] },
-      'phones.0.number: Escribe un teléfono válido: números, espacios, +, - o paréntesis.',
+      'phones.0.number: Escribe un teléfono válido, como 987 654 321 o (01) 234 5678.',
     ],
     [{ email: 'ventas@' }, 'email: Escribe un correo válido.'],
     [{ default_validity_days: '0' }, 'default_validity_days: La validez va de 1 a 365 días.'],
@@ -77,6 +77,29 @@ describe('companyProfileSchema', () => {
     ],
   ])('rechaza %j', (overrides, expected) => {
     expect(issues({ ...valid, ...overrides })).toEqual([expected])
+  })
+
+  it.each(['9999999999999999999', '9876543210', '12 345', '------', '+51 +51 987', '98 + 76 54'])(
+    'rechaza el teléfono %j',
+    (number) => {
+      expect(issues({ ...valid, phones: [{ number }] })).toEqual([
+        'phones.0.number: Escribe un teléfono válido, como 987 654 321 o (01) 234 5678.',
+      ])
+    },
+  )
+
+  // Fijos de provincia (6 dígitos, o 9 con su código: 066), de Lima (01), 0800, celulares y
+  // cualquiera de ellos con el +51 delante.
+  it.each([
+    '987 654 321',
+    '(01) 234-5678',
+    '066 312345',
+    '312345',
+    '0800-12345',
+    '+51 987 654 321',
+    '+51 1 234 5678',
+  ])('acepta el teléfono %j', (number) => {
+    expect(issues({ ...valid, phones: [{ number }] })).toEqual([])
   })
 
   it('rechaza un tipo de número que no es Yape, Plin ni ambos', () => {
