@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import { useProforma } from '@/features/proforma/store'
 import { cn } from '@/lib/utils'
 import { useCategories } from '../../categories/hooks'
 import { categoryColor } from '../../categories/theme'
+import { describeDateFilter } from '../../list-options'
 import { formatPrice } from '../../money'
 import { pageList } from '../../search-params'
 import type { ProductListItem } from '../../types'
@@ -53,8 +55,12 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
 
   const categoryName = categories.data?.find((category) => category.id === filters.category)?.name
   const title = filters.search ? 'Resultados' : (categoryName ?? 'Todos los productos')
-  const hasFilters = filters.search !== '' || filters.category !== null
-  const clearFilters = () => setFilters({ search: null, category: null, page: null })
+  const dateLabel = describeDateFilter(filters)
+  const hasFilters = filters.search !== '' || filters.category !== null || filters.date !== null
+  const onlyDate = filters.date !== null && filters.search === '' && filters.category === null
+  const clearFilters = () =>
+    setFilters({ search: null, category: null, date: null, from: null, to: null, page: null })
+  const clearDate = () => setFilters({ date: null, from: null, to: null, page: null })
   const goToPage = (page: number) => setFilters({ page: page === 1 ? null : page })
   const listRef = useRef<HTMLElement>(null)
   // Con los botones de abajo, la página nueva se lee desde el principio de la lista.
@@ -73,15 +79,18 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
     >
       <ProductFilters onSearchEnter={() => void addSingleResult(filters)} />
 
-      <div className="flex min-h-15 items-center justify-between gap-4 px-4 py-2.5 sm:px-5 lg:short:min-h-12 lg:short:py-1.5">
-        <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
-          {title}
-          {data ? (
-            <span className="rounded-full bg-muted px-2 font-mono text-xs font-medium text-muted-foreground">
-              {data.total}
-            </span>
-          ) : null}
-        </h2>
+      <div className="flex min-h-15 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 sm:px-5 lg:short:min-h-12 lg:short:py-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
+            {title}
+            {data ? (
+              <span className="rounded-full bg-muted px-2 font-mono text-xs font-medium text-muted-foreground">
+                {data.total}
+              </span>
+            ) : null}
+          </h2>
+          {dateLabel ? <DateChip label={dateLabel} onClear={clearDate} /> : null}
+        </div>
         <div className="flex items-center gap-4">
           <p className="hidden items-center gap-1.5 text-[13px] text-muted-foreground sm:flex">
             <ArrowDownAZ className="size-4" aria-hidden />
@@ -121,6 +130,17 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
             <Button onClick={onCreate}>
               <Plus aria-hidden />
               Crear un producto
+            </Button>
+          }
+        />
+      ) : data && data.total === 0 && onlyDate ? (
+        <EmptyState
+          icon={<Search className="size-6" aria-hidden />}
+          title="No hay productos en esas fechas"
+          text="Prueba con otro rango o quita el filtro de fecha."
+          action={
+            <Button variant="outline" onClick={clearDate}>
+              Quitar filtro de fecha
             </Button>
           }
         />
@@ -205,6 +225,23 @@ function RowActions({
         <Trash2 aria-hidden />
       </Button>
     </div>
+  )
+}
+
+// El filtro de fecha activo, para quitarlo con un clic (spec §4.3).
+function DateChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex h-7 items-center gap-1 rounded-full bg-accent pr-1 pl-3 text-[13px] font-medium">
+      {label}
+      <button
+        type="button"
+        aria-label="Quitar filtro de fecha"
+        onClick={onClear}
+        className="grid size-5 cursor-pointer place-items-center rounded-full hover:bg-background"
+      >
+        <X className="size-3.5" aria-hidden />
+      </button>
+    </span>
   )
 }
 

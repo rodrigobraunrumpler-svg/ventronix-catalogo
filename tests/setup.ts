@@ -8,6 +8,13 @@ Element.prototype.setPointerCapture ??= () => {}
 Element.prototype.releasePointerCapture ??= () => {}
 Element.prototype.hasPointerCapture ??= () => false
 
+// Radix (Popover, DropdownMenu) mide el contenido con ResizeObserver, que jsdom no trae.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver
+
 // Sin `globals`, Testing Library no registra su limpieza automática. Los borradores del navegador
 // tampoco pasan de una prueba a otra.
 afterEach(() => {

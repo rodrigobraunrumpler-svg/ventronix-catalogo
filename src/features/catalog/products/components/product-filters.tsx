@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { CategoryChips } from '../../categories/components/category-chips'
 import { useCategories } from '../../categories/hooks'
 import { useCatalogFilters } from '../hooks'
+import { ProductDateFilter } from './date-filter'
 
 // Búsqueda y «Limpiar filtros»; en el celular, también las categorías como fichas (en PC se eligen
 // en su tarjeta). Siempre a la vista: al bajar por la lista se quedan arriba, debajo de la cabecera
@@ -13,7 +14,7 @@ import { useCatalogFilters } from '../hooks'
 export function ProductFilters({ onSearchEnter }: { onSearchEnter?: () => void }) {
   const [filters, setFilters] = useCatalogFilters()
   const categories = useCategories()
-  const hasFilters = filters.search !== '' || filters.category !== null
+  const hasFilters = filters.search !== '' || filters.category !== null || filters.date !== null
 
   return (
     <div className="sticky top-16 z-10 grid min-h-17 grid-cols-1 content-center gap-3 border-b bg-card px-4 py-3 sm:px-5 lg:top-0 lg:short:min-h-15 lg:short:py-2">
@@ -44,11 +45,21 @@ export function ProductFilters({ onSearchEnter }: { onSearchEnter?: () => void }
             className="bg-background/60 pl-10"
           />
         </div>
+        <ProductDateFilter />
         {hasFilters ? (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setFilters({ search: null, category: null, page: null })}
+            onClick={() =>
+              setFilters({
+                search: null,
+                category: null,
+                date: null,
+                from: null,
+                to: null,
+                page: null,
+              })
+            }
           >
             <X aria-hidden />
             Limpiar filtros
