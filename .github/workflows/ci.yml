@@ -1,0 +1,64 @@
+# Comprobaciones en cada push a main y en cada pull request. No despliega: eso lo hace Vercel.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Un push nuevo a la misma rama cancela la ejecución anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Formato, lint, tipos, pruebas y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # versión de pnpm: campo packageManager de package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    name: Integración y E2E con Supabase local
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Base de datos, Auth, API REST y gateway, como en docs/setup.md. Aplica las migraciones.
+      - run: pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      # La app que arrancan las e2e apunta a ese Supabase local: aquí no hay claves de la nube.
+      - name: Crear .env.development.local
+        run: |
+          key=$(pnpm exec supabase status -o json | node -e 'const { PUBLISHABLE_KEY: k } = JSON.parse(require("fs").readFileSync(0, "utf8")); if (!k) process.exit(1); console.log(k)')
+          printf 'NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321\nNEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$key" > .env.development.local
+      - run: pnpm test:integration
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      # Si algo falla, las trazas y capturas de Playwright quedan como artefacto durante 7 días.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-test-results
+          path: test-results
+          retention-days: 7

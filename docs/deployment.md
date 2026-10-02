@@ -127,7 +127,7 @@ Con Supabase Pro, las copias diarias se restauran desde la sección Backups del 
 
 ## 5. Publicar cambios
 
-1. Trabaja en una rama y abre un pull request. Vercel crea un preview, que no tiene datos (ver la sección 2).
+1. Trabaja en una rama y abre un pull request. Vercel crea un preview, que no tiene datos (ver la sección 2). GitHub Actions ([`ci.yml`](../.github/workflows/ci.yml)) comprueba en cada pull request y en cada push a `main` el formato, el lint, los tipos, las pruebas y el build, y ejecuta la integración y las e2e contra un Supabase local. No despliega ni usa claves de la nube.
 2. Si el cambio incluye una migración, sigue este orden:
    1. Haz una copia de seguridad.
    2. Revisa `db push --dry-run`.
