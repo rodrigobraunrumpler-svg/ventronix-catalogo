@@ -55,17 +55,21 @@ Abre `http://localhost:3000`; la raíz redirige a `/products`.
 
 ## Comandos
 
-| Comando                 | Qué hace                                                                  |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `pnpm lint`             | ESLint sobre todo el proyecto.                                            |
-| `pnpm typecheck`        | Genera los tipos de rutas de Next.js y ejecuta `tsc --noEmit`.            |
-| `pnpm format`           | Formatea con Prettier.                                                    |
-| `pnpm format:check`     | Comprueba el formato sin modificar archivos.                              |
-| `pnpm test`             | Pruebas unitarias y de componentes (Vitest).                              |
-| `pnpm test:integration` | Pruebas contra el Supabase de pruebas; requiere el entorno de la tarea 2. |
-| `pnpm test:e2e`         | Pruebas de extremo a extremo con Playwright (escritorio y móvil).         |
-| `pnpm validate`         | Lint, tipos, formato, pruebas y build de producción.                      |
-| `pnpm db:push`          | Aplica las migraciones al Supabase de producción (ver `deployment.md`).   |
+| Comando                 | Qué hace                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `pnpm lint`             | ESLint sobre todo el proyecto.                                                |
+| `pnpm typecheck`        | Genera los tipos de rutas de Next.js y ejecuta `tsc --noEmit`.                |
+| `pnpm format`           | Formatea con Prettier.                                                        |
+| `pnpm format:check`     | Comprueba el formato sin modificar archivos.                                  |
+| `pnpm test`             | Pruebas unitarias y de componentes (Vitest).                                  |
+| `pnpm test:integration` | Pruebas contra el Supabase de pruebas; requiere el entorno de la tarea 2.     |
+| `pnpm test:e2e`         | Pruebas de extremo a extremo con Playwright (escritorio y móvil).             |
+| `pnpm validate`         | Lint, tipos, formato, pruebas y build de producción.                          |
+| `pnpm db:push`          | Aplica las migraciones al Supabase de producción (ver `deployment.md`).       |
+| `pnpm demo:seed`        | Añade 100 productos de prueba (códigos `DEMO-…`) al Supabase de `.env.local`. |
+| `pnpm demo:clean`       | Borra esos productos y las categorías de prueba que queden vacías.            |
+
+`pnpm demo:seed` y `pnpm demo:clean` entran con `OWNER_EMAIL` y `OWNER_PASSWORD` de `.env.local`: sirven para ver cómo se arman las proformas con un catálogo grande y dejarlo limpio después. Solo tocan productos cuyo código empieza por `DEMO-`.
 
 `pnpm test:e2e` necesita el navegador de Playwright una sola vez (`pnpm exec playwright install chromium`), el Supabase local en marcha y `.env.development.local`. Sus cuentas de prueba se crean solas en el Supabase local. Arranca su propio `pnpm dev` en el puerto 4100, así que nunca usa la app del puerto 3000, aunque tengas `pnpm start` abierto con el Supabase real. Next permite un solo `pnpm dev` por carpeta: si tienes uno abierto, ciérralo antes de lanzar las e2e.
 

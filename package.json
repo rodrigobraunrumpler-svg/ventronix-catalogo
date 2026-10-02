@@ -20,7 +20,9 @@
     "prepare": "husky",
     "owner:create": "node --env-file-if-exists=.env.local scripts/create-owner.mjs",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "db:push": "node --env-file-if-exists=.env.local scripts/db-push.mjs"
+    "db:push": "node --env-file-if-exists=.env.local scripts/db-push.mjs",
+    "demo:seed": "node --env-file-if-exists=.env.local scripts/demo-catalog.mjs seed",
+    "demo:clean": "node --env-file-if-exists=.env.local scripts/demo-catalog.mjs clean"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs}": [
