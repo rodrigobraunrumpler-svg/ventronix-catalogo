@@ -1,6 +1,7 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import { FileSpreadsheet, Plus } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -76,10 +77,19 @@ export function CatalogScreen() {
               Tu catálogo y sus categorías, en un mismo lugar.
             </p>
           </div>
-          <Button onClick={() => setProductDialog({ mode: 'create' })}>
-            <Plus aria-hidden />
-            Nuevo producto
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {/* Muchos productos a la vez, desde Excel (spec del Excel §6.1). */}
+            <Button asChild variant="outline">
+              <Link href="/products/import" prefetch>
+                <FileSpreadsheet aria-hidden />
+                Carga masiva
+              </Link>
+            </Button>
+            <Button onClick={() => setProductDialog({ mode: 'create' })}>
+              <Plus aria-hidden />
+              Nuevo producto
+            </Button>
+          </div>
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">

@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -130,10 +131,20 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
           title="Tu catálogo empieza aquí"
           text="Añade tu primer producto para tener sus datos siempre a mano."
           action={
-            <Button onClick={onCreate}>
-              <Plus aria-hidden />
-              Crear un producto
-            </Button>
+            <div className="grid justify-items-center gap-3">
+              <Button onClick={onCreate}>
+                <Plus aria-hidden />
+                Crear un producto
+              </Button>
+              {/* Justo cuando más sirve (spec del Excel §6.1). */}
+              <Link
+                href="/products/import"
+                prefetch
+                className="text-sm font-semibold text-[#3f7d0a] underline-offset-4 hover:underline"
+              >
+                o súbelos todos desde Excel
+              </Link>
+            </div>
           }
         />
       ) : data && data.total === 0 && onlyDate ? (
