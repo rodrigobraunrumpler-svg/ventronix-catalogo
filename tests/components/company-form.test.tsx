@@ -38,6 +38,17 @@ const sunat: RucLookupResult = {
 }
 
 describe('CompanyForm', () => {
+  it('«Guardar cambios» va en la tarjeta del formulario, junto a los campos, no en la cabecera', () => {
+    renderForm(completeCompany)
+    const card = screen.getByRole('tablist', {
+      name: 'Secciones de los datos de la empresa',
+    }).parentElement!
+    const header = screen.getByRole('heading', { level: 1, name: 'Empresa' }).parentElement!
+      .parentElement!
+    expect(card).toContainElement(save())
+    expect(header).not.toContainElement(save())
+  })
+
   it('muestra una sección a la vez, con la vista previa al lado', async () => {
     const { user } = renderForm()
     expect(tab(/Datos/)).toHaveAttribute('aria-selected', 'true')

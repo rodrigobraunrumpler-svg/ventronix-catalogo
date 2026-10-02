@@ -10,6 +10,7 @@ import {
   LoaderCircle,
   Phone,
   Plus,
+  Save,
   ScrollText,
   Trash2,
   X,
@@ -295,34 +296,15 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
     'size-10.5 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
 
   return (
-    <form onSubmit={save} noValidate className="grid gap-6">
-      <CompanyHeader>
-        {serverError ? (
-          <span role="alert" className="text-[13px] font-semibold text-destructive">
-            {serverError}
-          </span>
-        ) : status === 'invalid' && Object.keys(errors).length > 0 ? (
-          <span role="alert" className="text-[13px] font-semibold text-destructive">
-            Revisa los campos marcados.
-          </span>
-        ) : status === 'saved' && !isDirty ? (
-          <span role="status" className="inline-flex items-center gap-1.5 text-[13px] text-ring">
-            <Check className="size-4" aria-hidden />
-            Cambios guardados
-          </span>
-        ) : isDirty ? (
-          <span className="text-[13px] text-muted-foreground">Cambios sin guardar</span>
-        ) : null}
-        <Button type="submit" disabled={isSubmitting}>
-          Guardar cambios
-        </Button>
-      </CompanyHeader>
+    // En pantallas muy anchas, el formulario y la vista previa no se separan.
+    <form onSubmit={save} noValidate className="grid max-w-[1320px] gap-6">
+      <CompanyHeader />
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Tabs.Root
           value={tab}
           onValueChange={(value) => setTab(value as Section)}
-          className="min-w-0 overflow-hidden rounded-[14px] border bg-card"
+          className="min-w-0 overflow-clip rounded-[14px] border bg-card"
         >
           <Tabs.List
             aria-label="Secciones de los datos de la empresa"
@@ -692,6 +674,34 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
               ) : null}
             </div>
           </Tabs.Content>
+
+          {/* Guardar va con el formulario: al pie de la tarjeta y, si la pestaña es larga, pegado al
+              borde de la pantalla. Siempre a la vista y junto a los campos. */}
+          <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-t bg-card px-5 py-3.5">
+            <Button type="submit" disabled={isSubmitting} className="max-sm:w-full">
+              <Save aria-hidden />
+              Guardar cambios
+            </Button>
+            {serverError ? (
+              <span role="alert" className="text-[13px] font-semibold text-destructive">
+                {serverError}
+              </span>
+            ) : status === 'invalid' && Object.keys(errors).length > 0 ? (
+              <span role="alert" className="text-[13px] font-semibold text-destructive">
+                Revisa los campos marcados.
+              </span>
+            ) : status === 'saved' && !isDirty ? (
+              <span
+                role="status"
+                className="inline-flex items-center gap-1.5 text-[13px] text-ring"
+              >
+                <Check className="size-4" aria-hidden />
+                Cambios guardados
+              </span>
+            ) : isDirty ? (
+              <span className="text-[13px] text-muted-foreground">Cambios sin guardar</span>
+            ) : null}
+          </div>
         </Tabs.Root>
 
         <div className="grid gap-4">
