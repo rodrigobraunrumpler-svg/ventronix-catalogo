@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
@@ -6,6 +7,7 @@ import {
   ProformaEditor,
   type ProformaEditorProps,
 } from '@/features/proforma/components/proforma-editor'
+import type { ProductListItem } from '@/features/catalog/types'
 import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
 import { EMPTY_DRAFT } from '@/features/proforma/draft'
 import type { RucLookupResult } from '@/features/proforma/ruc'
@@ -15,6 +17,7 @@ import { completeCompany, e1Lines, line, seedProforma } from '../support/proform
 
 type Lookup = (ruc: string) => Promise<RucLookupResult>
 type Generate = (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
+type Search = (term: string, signal?: AbortSignal) => Promise<ProductListItem[]>
 
 function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
   const props: ProformaEditorProps = {
@@ -27,13 +30,18 @@ function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
       ok: true,
       data: { fileName: 'Proforma-borrador.pdf', base64: btoa('%PDF') },
     })),
+    searchProducts: vi.fn<Search>(async () => []),
     ...overrides,
   }
   render(
-    <ProformaProvider>
-      <ProformaEditor {...props} />
-      <Toaster />
-    </ProformaProvider>,
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <ProformaProvider>
+        <ProformaEditor {...props} />
+        <Toaster />
+      </ProformaProvider>
+    </QueryClientProvider>,
   )
   return { ...props, user: userEvent.setup() }
 }
@@ -174,6 +182,20 @@ describe('ProformaEditor', () => {
     expect(screen.getByLabelText('Razón social o nombre')).toHaveValue('')
   })
 
+  it('pasar por el nombre sin escribir no lo marca en rojo; borrarlo después, sí', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor()
+    const name = screen.getByLabelText('Razón social o nombre')
+    const error = 'Escribe la razón social o el nombre del cliente.'
+    await user.click(name)
+    await user.tab()
+    expect(screen.queryByText(error)).not.toBeInTheDocument()
+    await user.type(name, 'a')
+    await user.clear(name)
+    await user.tab()
+    expect(screen.getByText(error)).toBeVisible()
+  })
+
   it('un documento que no es DNI ni RUC se marca al salir del campo', async () => {
     seedProforma({ lines: [line()] })
     const { user } = renderEditor()
@@ -254,5 +276,65 @@ describe('ProformaEditor', () => {
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe('Proforma-borrador.pdf')
     open.mockRestore()
     click.mockRestore()
+  })
+
+  describe('buscar y añadir sin salir de la proforma', () => {
+    const product = (id: string, name: string, code: string, price: string): ProductListItem => ({
+      id,
+      code,
+      name,
+      description: null,
+      category_id: 'laptops',
+      category_name: 'Laptops',
+      unit_price: price,
+      created_at: '',
+      updated_at: '',
+    })
+    const lenovo = product('p1', 'Lenovo ThinkPad E14', 'LAP-001', '3590.00')
+    const hp = product('p2', 'HP ProBook 440', 'LAP-002', '3790.00')
+    const search = () => screen.getByRole('combobox', { name: 'Añadir producto' })
+
+    it('Enter añade el primer resultado y deja el buscador listo para el siguiente', async () => {
+      seedProforma({})
+      const searchProducts = vi.fn<Search>(async () => [lenovo, hp])
+      const { user } = renderEditor({ searchProducts })
+      await user.type(search(), 'laptop')
+      expect(await screen.findByRole('option', { name: /Lenovo ThinkPad E14/ })).toBeVisible()
+      await user.keyboard('{Enter}')
+      expect(price('Lenovo ThinkPad E14')).toHaveValue('3590.00')
+      expect(search()).toHaveValue('')
+      expect(search()).toHaveFocus()
+      expect(searchProducts).toHaveBeenCalledWith('laptop', expect.anything())
+    })
+
+    it('con las flechas se elige otro resultado, y un clic también lo añade', async () => {
+      seedProforma({})
+      const { user } = renderEditor({ searchProducts: vi.fn<Search>(async () => [lenovo, hp]) })
+      await user.type(search(), 'laptop')
+      await screen.findByRole('option', { name: /HP ProBook 440/ })
+      await user.keyboard('{ArrowDown}{Enter}')
+      expect(price('HP ProBook 440')).toHaveValue('3790.00')
+      await user.type(search(), 'lenovo')
+      await user.click(await screen.findByRole('option', { name: /Lenovo ThinkPad E14/ }))
+      expect(price('Lenovo ThinkPad E14')).toHaveValue('3590.00')
+    })
+
+    it('si ya está en la proforma lo dice y suma una unidad', async () => {
+      seedProforma({
+        lines: [line({ productId: 'p1', code: 'LAP-001', name: 'Lenovo ThinkPad E14' })],
+      })
+      const { user } = renderEditor({ searchProducts: vi.fn<Search>(async () => [lenovo]) })
+      await user.type(search(), 'lenovo')
+      expect(await screen.findByRole('option', { name: /En la proforma: 1/ })).toBeVisible()
+      await user.keyboard('{Enter}')
+      expect(screen.getByLabelText('Cantidad de Lenovo ThinkPad E14')).toHaveValue('2')
+    })
+
+    it('sin resultados lo dice', async () => {
+      seedProforma({})
+      const { user } = renderEditor({ searchProducts: vi.fn<Search>(async () => []) })
+      await user.type(search(), 'xyz')
+      expect(await screen.findByText('No encontramos productos con «xyz».')).toBeVisible()
+    })
   })
 })

@@ -15,6 +15,7 @@ import { formatCents, parseCents } from '../money'
 import { priceError, quantityError } from '../readiness'
 import { useProforma, useRemoveLine } from '../store'
 import { MAX_QUANTITY } from '../totals'
+import { ProformaProductSearch, type SearchProducts } from './proforma-product-search'
 
 const inlineAction =
   'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3'
@@ -22,9 +23,11 @@ const inlineAction =
 export function ProformaLines({
   prices,
   onContinue,
+  searchProducts,
 }: {
   prices: Map<string, string> | undefined
   onContinue: () => void
+  searchProducts: SearchProducts
 }) {
   const { draft } = useProforma()
   return (
@@ -43,9 +46,10 @@ export function ProformaLines({
           Seguir eligiendo productos
         </button>
       </div>
+      <ProformaProductSearch searchProducts={searchProducts} />
       {draft.lines.length === 0 ? (
         <p className="rounded-xl border border-dashed border-input p-6 text-center text-muted-foreground">
-          La proforma está vacía. Pulsa «Seguir eligiendo productos» y añádelos desde la lista.
+          La proforma está vacía. Busca los productos aquí arriba o elígelos en la lista.
         </p>
       ) : (
         <ul className="grid rounded-xl border">

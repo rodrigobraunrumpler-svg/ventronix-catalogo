@@ -78,8 +78,19 @@ export function ProformaClient({
   const errors = clientErrors(client)
   const validity = validityError(draft.validityDays)
   const showMore = moreOpen || validity !== null
-  const touch = (field: keyof Client) => setTouched((current) => ({ ...current, [field]: true }))
-  const edit = (patch: Partial<Client>) => update((current) => patchClient(current, patch))
+  const [edited, setEdited] = useState<Partial<Record<keyof Client, boolean>>>({})
+  // Un campo se marca al salir de él solo si se escribió en él: pasar de largo (por ejemplo, al ir
+  // al buscador de productos) no lo pone en rojo. «Generar» ya dice qué falta.
+  const touch = (field: keyof Client) => {
+    if (edited[field]) setTouched((current) => ({ ...current, [field]: true }))
+  }
+  const edit = (patch: Partial<Client>) => {
+    setEdited((current) => ({
+      ...current,
+      ...Object.fromEntries(Object.keys(patch).map((key) => [key, true])),
+    }))
+    update((current) => patchClient(current, patch))
+  }
 
   // Se consulta al completar un RUC válido, no en cada tecla (spec §7). Si el documento cambió
   // mientras tanto, la respuesta no pisa nada.

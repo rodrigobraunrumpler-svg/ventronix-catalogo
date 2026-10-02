@@ -8,8 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { listProducts } from '@/features/catalog/products/queries'
 import { useCompanyProfile } from '@/features/company/hooks'
 import { settle } from '@/lib/action-result'
+import { createClient } from '@/lib/supabase/client'
 import { useReturnFocus } from '@/lib/use-return-focus'
 import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
 import { generateProformaDocument, reserveProformaNumber, sendProformaByWhatsApp } from '../actions'
@@ -54,6 +56,12 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
         {...returnFocus}
+        // Con texto en el buscador de productos, Escape solo lo borra: la ventana sigue abierta.
+        onEscapeKeyDown={(event) => {
+          if (event.target instanceof HTMLElement && event.target.dataset.clearsOnEscape) {
+            event.preventDefault()
+          }
+        }}
         onOpenAutoFocus={(event) => {
           // El foco entra en el primer campo pendiente (spec §4.3).
           const target = document.getElementById(firstPendingField(draft))
@@ -79,6 +87,11 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
           lookupRuc={lookupRuc}
           reserveNumber={() => settle(reserveProformaNumber())}
           generatePdf={(input) => settle(generateProformaDocument(input))}
+          searchProducts={(term, signal) =>
+            listProducts(createClient(), { search: term, category: null, page: 1 }, signal).then(
+              (page) => page.items,
+            )
+          }
           sendByWhatsApp={sendByWhatsApp}
           onContinue={onClose}
           onFinish={onClose}

@@ -14,6 +14,7 @@ import { useProforma } from '../store'
 import { totalsFromText } from '../totals'
 import { ProformaClient } from './proforma-client'
 import { ProformaLines } from './proforma-lines'
+import type { SearchProducts } from './proforma-product-search'
 import { ProformaSummary } from './proforma-summary'
 
 export type ProformaEditorProps = {
@@ -23,6 +24,8 @@ export type ProformaEditorProps = {
   onContinue: () => void
   onGenerate: () => void
   generatePdf: (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
+  // Buscar en el catálogo para añadir sin salir de la proforma.
+  searchProducts: SearchProducts
   generating?: boolean
   error?: string | null
 }
@@ -36,6 +39,7 @@ export function ProformaEditor({
   onContinue,
   onGenerate,
   generatePdf,
+  searchProducts,
   generating = false,
   error = null,
 }: ProformaEditorProps) {
@@ -67,7 +71,7 @@ export function ProformaEditor({
   return (
     <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-5 pt-5 pb-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex min-w-0 flex-col gap-5">
-        <ProformaLines prices={prices} onContinue={onContinue} />
+        <ProformaLines prices={prices} onContinue={onContinue} searchProducts={searchProducts} />
         <ProformaClient lookupRuc={lookupRuc} defaultValidityDays={defaultValidity} />
       </div>
       <ProformaSummary>
