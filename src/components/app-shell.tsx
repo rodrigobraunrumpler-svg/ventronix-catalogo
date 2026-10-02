@@ -3,7 +3,7 @@
 import { Building2, Package, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { Brand } from '@/components/brand'
 import { Button } from '@/components/ui/button'
 import { SignOutButton } from '@/features/auth/components/sign-out-button'
@@ -70,10 +70,9 @@ export function AppShell({
 
   return (
     <div
-      className={cn(
-        'min-h-dvh lg:grid',
-        collapsed ? 'lg:grid-cols-[72px_minmax(0,1fr)]' : 'lg:grid-cols-[240px_minmax(0,1fr)]',
-      )}
+      // El ancho del menú lo usa también la barra de la proforma, que va fija abajo.
+      style={{ '--sidebar-width': collapsed ? '72px' : '240px' } as CSSProperties}
+      className="min-h-dvh lg:grid lg:grid-cols-[var(--sidebar-width)_minmax(0,1fr)]"
     >
       <a
         href="#main"

@@ -26,7 +26,7 @@ export function ProformaBar({ onComplete }: { onComplete: () => void }) {
       <div
         role="region"
         aria-label="Proforma"
-        className="fixed inset-x-4 bottom-4 z-20 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[14px] bg-foreground py-3 pr-3.5 pl-5 text-white shadow-[0_18px_36px_-12px_#10180a66] sm:inset-x-6 sm:bottom-6 lg:right-10 lg:left-[272px]"
+        className="fixed inset-x-4 bottom-4 z-20 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[14px] bg-foreground py-3 pr-3.5 pl-5 text-white shadow-[0_18px_36px_-12px_#10180a66] sm:inset-x-6 sm:bottom-6 lg:right-10 lg:left-[calc(var(--sidebar-width)+2.5rem)]"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className="grid size-9.5 shrink-0 place-items-center rounded-[10px] bg-primary text-primary-foreground max-sm:hidden">
