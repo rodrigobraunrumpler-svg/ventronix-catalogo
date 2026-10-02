@@ -1,7 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { getCatalogStats, listProducts } from '@/features/catalog/products/queries'
+import {
+  exportProductRows,
+  getCatalogStats,
+  listProducts,
+} from '@/features/catalog/products/queries'
 import { ensureUser, signedInClient } from '../support/local-supabase'
 import { connect, resetCatalog } from './db'
 
@@ -159,5 +163,16 @@ describe('indicadores desde el código', () => {
       createdThisMonth: 1,
       updatedLast7Days: 1,
     })
+  })
+})
+
+describe('exportación desde el código', () => {
+  it('exportProductRows devuelve todas las filas como productos de la lista', async () => {
+    await insertProduct('B-1', 'Beta', laptops, '20.00')
+    await insertProduct('A-1', 'Alfa', laptops, '10.50')
+    const rows = await exportProductRows(supabase, { search: '', category: null }, 10)
+    expect(rows.map((row) => row.code)).toEqual(['A-1', 'B-1'])
+    expect(rows[0]).toMatchObject({ unit_price: '10.50', category_name: 'Laptops' })
+    expect(await exportProductRows(outsider, { search: '', category: null }, 10)).toEqual([])
   })
 })

@@ -30,6 +30,7 @@ import { pageList } from '../../search-params'
 import type { ProductListItem } from '../../types'
 import { useCatalogFilters, useProducts } from '../hooks'
 import { PAGE_SIZE } from '../queries'
+import { ExportMenu } from './export-menu'
 import { ProductFilters } from './product-filters'
 import { SortSelect } from './sort-select'
 
@@ -97,6 +98,7 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SortSelect value={filters.sort} onChange={(sort) => setFilters({ sort, page: null })} />
+          <ExportMenu filters={filters} disabled={!data || data.total === 0} />
           {data && totalPages > 1 ? (
             <PageStepper
               page={Math.min(filters.page, totalPages)}

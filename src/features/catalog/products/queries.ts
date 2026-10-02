@@ -107,3 +107,18 @@ export async function getCatalogStats(supabase: Client): Promise<CatalogStats> {
     updatedLast7Days: stats.updated_last_7_days,
   }
 }
+
+// Todas las filas filtradas para los Excel (spec §5.4). Quien llama pide una de más para saber si
+// hubo recorte.
+export async function exportProductRows(
+  supabase: Client,
+  query: Omit<ProductQuery, 'page'>,
+  maxRows: number,
+): Promise<ProductListItem[]> {
+  const { data, error } = await supabase.rpc('export_products', {
+    ...searchArgs(query),
+    max_rows: maxRows,
+  })
+  if (error) throw error
+  return z.array(itemSchema).parse(data).map(toListItem)
+}
