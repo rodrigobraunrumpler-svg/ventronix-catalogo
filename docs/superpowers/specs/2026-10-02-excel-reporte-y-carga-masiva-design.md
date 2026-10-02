@@ -27,7 +27,7 @@ Cada mejora lleva una prioridad: **[E]** esencial, porque sin ella el uso real t
 | 8 | **Avisos «Para revisar»**: precio que cambia ±50 % o más, y nombre repetido o ya existente con otro código | Atrapa errores de tipeo (1299 → 12.99) y productos duplicados antes de guardar. | E | 2 |
 | 9 | **Categorías parecidas**: «"Impresora" se parece a "Impresoras". ¿Usar esa?» | Una categoría duplicada no se puede fusionar ni borrar si tiene productos. Es el error más caro de limpiar. | E | 2 |
 | 10 | **Comprobante de la importación** con lo que cambió y una hoja «Para revertir» | Un deshacer práctico sin tablas nuevas: subir esa hoja devuelve los valores anteriores. | R | 2 |
-| 11 | Dos accesos al entrar: **«Cargar productos nuevos»** y **«Actualizar precios o datos»** | Cada intención lleva al archivo correcto: la plantilla o «mi catálogo». | R | 2 |
+| 11 | Dos descargas junto a la zona de carga: **la plantilla** (productos nuevos) y **«mi catálogo»** (actualizar precios o datos) | Cada necesidad tiene su archivo, sin quitarle protagonismo a subir el Excel. | R | 2 |
 | 12 | Resumen visual de la vista previa (precios que suben y bajan, productos por categoría) y búsqueda en la vista previa | Se entiende el efecto del archivo antes de importar y se encuentra una fila concreta. | R | 2 |
 | 13 | Hasta **5 000 filas** por archivo, antes 2 000 | Un distribuidor puede tener miles de modelos. Los límites de Vercel lo permiten (§10). | R | 2 |
 | 14 | **Tu propio Excel**: asignar sus columnas a las nuestras, recordar la asignación, elegir hoja y dar una categoría a las filas sin categoría | Las listas de proveedores nunca vienen con nuestras columnas. Evita copiar y pegar a la plantilla. | R | 3 |
@@ -49,7 +49,7 @@ El [plan de la fase 2](../plans/2026-10-03-fase-2-carga-masiva.md) se revisó ci
 - Un corte de red durante la importación tiene su propio mensaje (§6.9).
 - `import_products` recibe el modo (§9.1) y el límite de la petición es de 4,5 MB (§9.2).
 - Los mensajes de precio ya no repiten la columna, y se quitan los caracteres invisibles (§9.3).
-- Tras probarlo en una pantalla ancha, la carga masiva ocupa todo el contenedor: los tres pasos van en una fila y la guía de la plantilla, debajo, a todo el ancho (§6.2 y §6.4).
+- Tras probarla, la entrada de la carga masiva se centra en subir el Excel (§6.2 a §6.5). Ocupa todo el contenedor y la zona de carga va primero, grande y entera a la vista. Al lado van las dos descargas, que reemplazan a las tarjetas de intención y a los pasos numerados. La guía de columnas va plegada.
 
 ## 1. Objetivo
 
@@ -320,25 +320,19 @@ Pide como máximo 10 001 filas para saber si hubo recorte. El precio viaja como 
 
 - En la cabecera de Productos, junto a «Nuevo producto», va un botón secundario **«Carga masiva»** con icono de hoja de cálculo. Lleva a `/products/import`.
 - En el estado vacío del catálogo («Tu catálogo empieza aquí») se añade el enlace «o súbelos todos desde Excel», porque es justo cuando más sirve.
-- La pantalla tiene migas **«Productos › Carga masiva»** y el botón «Volver a Productos».
+- La pantalla tiene migas **«Productos › Carga masiva»** y el botón «Volver a Productos». En el teléfono el botón se oculta: ya están las migas y el menú.
 
 ### 6.2 Estructura de la pantalla
 
-1. **Cabecera:**
-   - Título: «Carga masiva de productos».
-   - Subtítulo: «Crea y actualiza muchos productos a la vez con un Excel. Antes de guardar te mostramos qué va a pasar con cada fila.»
-   - Una ilustración de una hoja de cálculo con los colores de la marca.
-2. **¿Qué quieres hacer?** Dos tarjetas grandes, con la primera ya elegida si el catálogo está vacío y la segunda si no lo está:
-   - **«Cargar productos nuevos»**: «Empieza con la plantilla: trae tus categorías y te guía columna por columna.»
-   - **«Actualizar precios o datos»**: «Descarga tu catálogo, cambia lo que necesites (puede ser solo el precio) y súbelo.»
+La pantalla es para **subir un Excel**: lo primero que se ve es dónde hacerlo. Ocupa todo el ancho del contenedor, como Productos.
 
-   La tarjeta elegida cambia el botón principal del paso 1: «Descargar plantilla» o «Descargar mi catálogo». El otro archivo queda como enlace.
-3. **Pasos** numerados y unidos por una línea:
-   - La pantalla ocupa todo el ancho del contenedor, como Productos.
-   - Los tres pasos van en una fila cuando el contenedor tiene sitio (se mide el contenedor y no la ventana, porque el menú lateral se puede plegar). Si no, van uno debajo de otro.
-   - La guía de la plantilla (§6.4) va debajo de los pasos, a todo el ancho, para que su tabla quepa entera.
-   - En móvil van uno debajo de otro, con la nota «Es más cómodo desde una PC».
-4. **Preguntas frecuentes** al final, plegables:
+1. **Cabecera compacta:**
+   - Título: «Carga masiva de productos».
+   - Subtítulo: «Crea y actualiza muchos productos a la vez con un Excel. Antes de guardar verás qué va a pasar con cada fila.»
+2. **«Sube tu Excel»**, la zona de carga (§6.5), grande y entera a la vista al entrar, en PC y en el teléfono. Encima, la nota «Nada se guarda hasta que confirmes: primero verás qué pasará con cada fila.»
+3. **«¿Aún no tienes el archivo?»** (§6.3), al lado de la zona de carga cuando el contenedor tiene sitio y debajo si no. Se mide el contenedor y no la ventana, porque el menú lateral se puede plegar.
+4. **«¿Cómo completo el archivo?»** (§6.4), plegada.
+5. **Preguntas frecuentes** al final, plegables:
    - ¿Qué pasa si el código ya existe?
    - ¿Puedo actualizar solo los precios?
    - ¿Se borran los productos que no estén en el archivo?
@@ -346,18 +340,25 @@ Pide como máximo 10 001 filas para saber si hubo recorte. El precio viaja como 
    - ¿Cuántos productos puedo subir a la vez?
    - ¿Puedo deshacer una importación?
 
-### 6.3 Paso 1: Descarga el archivo
+En el teléfono va antes la nota «Es más cómodo desde una PC».
 
-Muestra el botón principal según la intención de §6.2, con estados como los del reporte.
+### 6.3 ¿Aún no tienes el archivo?
 
-- **Plantilla:** «Tiene las columnas listas, tus categorías en un desplegable y una hoja con instrucciones y ejemplos.»
-- **Mi catálogo:** es el reporte completo sin filtros. «Trae todos tus productos con su código: cambia lo que necesites y súbelo. Lo que no cambies se queda igual.»
+«Descarga uno, complétalo en Excel y súbelo aquí.» Dos opciones, cada una con su icono, su texto y su botón, con estados como los del reporte:
 
-### 6.4 Paso 2: Complétalo
+- **Para cargar productos nuevos:** «La plantilla trae las columnas listas, tus categorías en un desplegable y una hoja con instrucciones.» Botón «Descargar plantilla».
+- **Para cambiar precios o datos:** es el reporte completo sin filtros. «Tu catálogo completo, con el código de cada producto. Lo que no cambies se queda igual.» Botón «Descargar mi catálogo».
 
-El título es «Complétalo» o, si se actualiza, «Cámbialo». La tarjeta del paso trae lo esencial, los cuatro consejos de abajo y el enlace «Ver la guía de cada columna».
+### 6.4 ¿Cómo completo el archivo?
 
-La **guía de la plantilla** va aparte, debajo de los pasos y a todo el ancho. Es una **maqueta de la plantilla**, una tabla HTML con aspecto de Excel: letras A–E, la fila de títulos con el estilo de la plantilla y dos filas de ejemplo.
+Una sección plegada, «Columnas, reglas y ejemplos de la plantilla», para que mande la zona de carga. Cerrada no se dibuja. Abierta trae:
+
+- Cuatro consejos breves:
+  - «No cambies los títulos de la primera fila.»
+  - «Una fila por producto.»
+  - «Para actualizar solo precios, deja las columnas Código y Precio con IGV y borra las demás.»
+  - «Puedes dejar filas vacías: se ignoran.»
+- Una **maqueta de la plantilla**, una tabla HTML con aspecto de Excel: letras A–E, la fila de títulos con el estilo de la plantilla y dos filas de ejemplo. Cabe entera: los textos se parten, pero un código o un precio nunca.
 
 Cada columna tiene su ficha de reglas. Se resalta al pasar el cursor o al enfocar la columna, y también aparece como lista de texto debajo, para el teclado y los lectores de pantalla:
 
@@ -369,18 +370,11 @@ Cada columna tiene su ficha de reglas. Se resalta al pasar el cursor o al enfoca
 | Categoría | Obligatoria para productos nuevos. Elígela del desplegable o escribe una nueva: **se creará**. No distingue mayúsculas. |
 | Precio con IGV | Mayor que 0, con hasta 2 decimales, en soles y **con IGV incluido**. Obligatorio para productos nuevos. Vale `1250.50`, `1250,50`, `1,250.50` o `S/ 1250.50`. |
 
-Debajo van cuatro consejos breves:
-
-- «No cambies los títulos de la primera fila.»
-- «Una fila por producto.»
-- «Para actualizar solo precios, deja las columnas Código y Precio con IGV y borra las demás.»
-- «Puedes dejar filas vacías: se ignoran.»
-
-### 6.5 Paso 3: Súbelo
+### 6.5 Sube tu Excel
 
 **Zona de carga.** Se puede arrastrar el archivo o hacer clic en ella: es un `button` real con un `input type="file"` oculto que acepta `.xlsx`.
 
-- Texto: «Arrastra tu Excel aquí o elige un archivo». Debajo: «Solo .xlsx · hasta 4 MB · hasta 5 000 productos».
+- Una ilustración de una hoja de cálculo con una flecha de subida, «Arrastra tu Excel aquí», un botón visible «Elegir archivo» (toda la zona es el botón) y debajo «Solo .xlsx · hasta 4 MB · hasta 5 000 productos».
 - Al arrastrar encima, el borde y el fondo pasan a verde.
 - El tamaño y la extensión se comprueban en el navegador antes de enviar, y otra vez en el servidor.
 
@@ -518,10 +512,9 @@ Si se corta la red, no se sabe si la base alcanzó a guardar. Entonces se revisa
 
 Moderno, luminoso y coherente con la app: Plus Jakarta Sans, fondo `#F4F5F2`, tarjetas blancas con bordes `#E3E7DE` y verde `#72CE0B` como acento.
 
-- **Cabecera:** una banda con un degradado verde muy suave y la ilustración de la hoja de cálculo, que es el elemento memorable. El resto se queda sobrio.
-- **Tarjetas de intención:** grandes, con icono, y la elegida con borde verde y check.
-- **Pasos:** tarjetas con el número del paso en un círculo verde, unidas por una línea; aquí la numeración sí es una secuencia real.
-- **Zona de carga:** grande, con borde discontinuo e icono, que reacciona al arrastrar.
+- **Cabecera:** compacta, como la de Productos.
+- **Zona de carga:** el elemento memorable. Es grande, con borde discontinuo, fondo verde muy suave, la ilustración de la hoja de cálculo con su flecha de subida y el botón verde «Elegir archivo». Reacciona al arrastrar. El resto se queda sobrio.
+- **Descargas y ayuda:** tarjetas blancas y botones secundarios; la guía y las preguntas, plegadas.
 - **Vista previa:** las tarjetas de resumen con su cifra grande; las barras de precios y categorías, finas y con etiquetas legibles.
 - **Movimiento:** solo como respuesta a una acción. La vista previa aparece con un fundido corto y la confirmación final tiene una animación breve. Nada se mueve solo; se respeta `prefers-reduced-motion`.
 - **Accesibilidad:**

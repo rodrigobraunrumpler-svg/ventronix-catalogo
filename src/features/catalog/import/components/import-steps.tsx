@@ -2,12 +2,15 @@
 
 import {
   Check,
+  ChevronDown,
   CircleAlert,
   Download,
   FileSpreadsheet,
   LoaderCircle,
-  Monitor,
+  RefreshCw,
+  Sparkles,
   Upload,
+  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -19,63 +22,6 @@ import { count, fileSize, plural } from '../format'
 import { checkFile, IMPORT_MAX_ROWS, templateTitles } from '../options'
 import { IMPORT_COLUMNS, type ImportColumn } from '../types'
 import { useDownload } from '../use-download'
-import type { Intent } from './import-intro'
-
-// Un paso numerado (spec §6.11): aquí la numeración sí es una secuencia. La línea que une los pasos
-// es decorativa y va en el hueco entre tarjetas, hasta el centro del círculo (24 + 18 px): vertical
-// cuando van uno debajo de otro y horizontal cuando comparten fila.
-function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
-  return (
-    <li
-      className={cn(
-        'relative grid min-w-0 content-start gap-4 rounded-[16px] border bg-card p-6',
-        number > 1 &&
-          'before:absolute before:-top-4 before:left-[41px] before:h-4 before:w-0.5 before:bg-[#c8ec9e] @4xl:before:top-[41px] @4xl:before:-left-4 @4xl:before:h-0.5 @4xl:before:w-4',
-      )}
-    >
-      {/* Arriba y no centrado: si el título se parte, el círculo sigue en la línea de los demás. */}
-      <h2 className="flex items-start gap-3 text-lg font-bold">
-        <span
-          aria-hidden
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-base font-extrabold text-primary-foreground"
-        >
-          {number}
-        </span>
-        {/* El espacio va fuera del texto oculto: dentro, algunos lectores lo recortan. */}
-        <span className="pt-1">
-          <span className="sr-only">Paso {number}:</span> {title}
-        </span>
-      </h2>
-      {children}
-    </li>
-  )
-}
-
-// Los tres pasos (spec §6.2) llenan el ancho de la pantalla: en una fila cuando el contenedor tiene
-// sitio (se mide el contenedor, no la ventana, porque el menú lateral se puede plegar) y uno debajo de
-// otro si no. La guía de cada columna va después, a todo el ancho, para que su tabla quepa entera.
-export function ImportSteps({ intent, upload }: { intent: Intent; upload: ReactNode }) {
-  return (
-    <div className="@container grid gap-4">
-      <p className="flex items-center gap-2 text-[13px] text-muted-foreground md:hidden">
-        <Monitor className="size-4 shrink-0" aria-hidden />
-        Es más cómodo desde una PC.
-      </p>
-      <ol className="grid gap-4 @4xl:grid-cols-3">
-        <Step number={1} title="Descarga el archivo">
-          <DownloadStep intent={intent} />
-        </Step>
-        <Step number={2} title={intent === 'create' ? 'Complétalo' : 'Cámbialo'}>
-          <FillStep intent={intent} />
-        </Step>
-        <Step number={3} title="Súbelo">
-          {upload}
-        </Step>
-      </ol>
-      <TemplateGuide intent={intent} />
-    </div>
-  )
-}
 
 // Todo el catálogo, sin filtros y por nombre (spec §6.3): «Descargar mi catálogo» es el reporte
 // completo.
@@ -87,21 +33,6 @@ const WHOLE_CATALOG: ExportFilters = {
   from: null,
   to: null,
   sort: 'name',
-}
-
-type Download = 'template' | 'catalog'
-
-const DOWNLOADS: Record<Download, { label: string; text: string; hint: string }> = {
-  template: {
-    label: 'Descargar plantilla',
-    text: 'Tiene las columnas listas, tus categorías en un desplegable y una hoja con instrucciones y ejemplos.',
-    hint: '¿Vas a cargar productos nuevos?',
-  },
-  catalog: {
-    label: 'Descargar mi catálogo',
-    text: 'Trae todos tus productos con su código: cambia lo que necesites y súbelo. Lo que no cambies se queda igual.',
-    hint: '¿Vas a cambiar productos que ya tienes?',
-  },
 }
 
 // Sin productos, la acción dice «No hay productos para descargar con estos filtros»; aquí no hay
@@ -118,11 +49,34 @@ async function catalogFile() {
   }
 }
 
-// Paso 1 (spec §6.3): el archivo de la intención elegida como botón principal; el otro, como enlace.
-export function DownloadStep({ intent }: { intent: Intent }) {
+type Download = 'template' | 'catalog'
+
+const DOWNLOADS: {
+  kind: Download
+  icon: LucideIcon
+  title: string
+  text: string
+  label: string
+}[] = [
+  {
+    kind: 'template',
+    icon: Sparkles,
+    title: 'Para cargar productos nuevos',
+    text: 'La plantilla trae las columnas listas, tus categorías en un desplegable y una hoja con instrucciones.',
+    label: 'Descargar plantilla',
+  },
+  {
+    kind: 'catalog',
+    icon: RefreshCw,
+    title: 'Para cambiar precios o datos',
+    text: 'Tu catálogo completo, con el código de cada producto. Lo que no cambies se queda igual.',
+    label: 'Descargar mi catálogo',
+  },
+]
+
+// «¿Aún no tienes el archivo?» (spec §6.3): la plantilla o tu catálogo, junto a la zona de carga.
+export function DownloadOptions() {
   const { pending, download } = useDownload<Download>()
-  const primary: Download = intent === 'create' ? 'template' : 'catalog'
-  const secondary: Download = primary === 'template' ? 'catalog' : 'template'
 
   function run(kind: Download) {
     if (kind === 'template') {
@@ -142,32 +96,46 @@ export function DownloadStep({ intent }: { intent: Intent }) {
     })
   }
 
-  const label = (kind: Download) => (pending === kind ? 'Preparando Excel…' : DOWNLOADS[kind].label)
   return (
-    <div className="grid content-start gap-4">
-      <p className="text-sm text-muted-foreground">{DOWNLOADS[primary].text}</p>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <Button onClick={() => void run(primary)} disabled={pending !== null}>
-          {pending === primary ? (
-            <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />
-          ) : (
-            <Download aria-hidden />
-          )}
-          {label(primary)}
-        </Button>
-        <span className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
-          {DOWNLOADS[secondary].hint}
-          <Button
-            variant="link"
-            className="h-auto px-0 py-0 text-sm"
-            onClick={() => void run(secondary)}
-            disabled={pending !== null}
-          >
-            {label(secondary)}
-          </Button>
-        </span>
+    <aside
+      aria-labelledby="import-files"
+      className="grid content-start gap-4 rounded-[18px] border bg-card p-5 sm:p-6"
+    >
+      <div className="grid gap-1">
+        <h2 id="import-files" className="text-lg font-bold">
+          ¿Aún no tienes el archivo?
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Descarga uno, complétalo en Excel y súbelo aquí.
+        </p>
       </div>
-    </div>
+      {DOWNLOADS.map(({ kind, icon: Icon, title, text, label }) => (
+        <div key={kind} className="grid gap-3 rounded-[14px] border bg-background/60 p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-secondary-foreground">
+              <Icon className="size-4.5" aria-hidden />
+            </span>
+            <div className="grid gap-0.5">
+              <p className="font-semibold">{title}</p>
+              <p className="text-[13px] text-muted-foreground">{text}</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="justify-self-start"
+            disabled={pending !== null}
+            onClick={() => void run(kind)}
+          >
+            {pending === kind ? (
+              <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden />
+            ) : (
+              <Download aria-hidden />
+            )}
+            {pending === kind ? 'Preparando Excel…' : label}
+          </Button>
+        </div>
+      ))}
+    </aside>
   )
 }
 
@@ -231,41 +199,13 @@ const TIPS = [
   'Puedes dejar filas vacías: se ignoran.',
 ]
 
-const FILL_TEXT: Record<Intent, string> = {
-  create:
-    'Completa la hoja «Productos» desde la fila 2. Código es obligatorio; un producto nuevo también necesita Nombre, Categoría y Precio con IGV.',
-  update:
-    'Lo que no cambies se queda igual. Tu catálogo trae las columnas de la plantilla y algunas más, que se ignoran al subirlo.',
-}
-
-// Paso 2 (spec §6.4): lo esencial y los consejos; la regla de cada columna está en la guía, debajo.
-function FillStep({ intent }: { intent: Intent }) {
-  return (
-    <div className="grid content-start gap-4">
-      <p className="text-sm text-muted-foreground">{FILL_TEXT[intent]}</p>
-      <ul className="grid gap-1.5 text-sm text-muted-foreground">
-        {TIPS.map((tip) => (
-          <li key={tip} className="flex gap-2">
-            <Check className="mt-0.5 size-4 shrink-0 text-ring" aria-hidden />
-            {tip}
-          </li>
-        ))}
-      </ul>
-      <a
-        href="#import-guide"
-        className="justify-self-start text-sm font-semibold underline decoration-primary decoration-2 underline-offset-4 hover:text-ring"
-      >
-        Ver la guía de cada columna
-      </a>
-    </div>
-  )
-}
-
-// Guía de la plantilla (spec §6.4), a todo el ancho: maqueta de la hoja con aspecto de Excel. Cada
-// título es un botón que resalta su columna y su regla al pasar el cursor, enfocarlo o tocarlo; las
-// reglas también están siempre visibles debajo, como texto, para el teclado y los lectores de pantalla.
-export function TemplateGuide({ intent }: { intent: Intent }) {
+// «¿Cómo completo el archivo?» (spec §6.4): plegada, para que mande la zona de carga. Dentro, los
+// consejos y una maqueta de la hoja con aspecto de Excel: cada título es un botón que resalta su
+// columna y su regla al pasar el cursor, enfocarlo o tocarlo; las reglas también están siempre a la
+// vista debajo, como texto, para el teclado y los lectores de pantalla.
+export function TemplateGuide() {
   const titles = templateTitles()
+  const [open, setOpen] = useState(false)
   const [active, setActive] = useState<ImportColumn | null>(null)
   const id = useId()
   const ruleId = (column: ImportColumn) => `${id}-${column}`
@@ -274,121 +214,136 @@ export function TemplateGuide({ intent }: { intent: Intent }) {
     onMouseLeave: () => setActive(null),
   })
   return (
-    <section
+    <details
       id="import-guide"
-      aria-labelledby="import-guide-title"
-      className="@container grid min-w-0 scroll-mt-24 gap-4 rounded-[16px] border bg-card p-6"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className="group rounded-[18px] border bg-card"
     >
-      <div className="grid gap-1">
-        <h2 id="import-guide-title" className="text-lg font-bold">
-          Guía de la plantilla
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {intent === 'create'
-            ? 'Así se ve la hoja «Productos».'
-            : 'Tu catálogo usa estas mismas columnas.'}{' '}
-          Pasa el cursor por un título, o tócalo, para ver su regla.
-        </p>
-      </div>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
-          <caption className="sr-only">Ejemplo de la hoja Productos de la plantilla</caption>
-          <thead>
-            <tr aria-hidden className="bg-muted text-center text-[11px] text-muted-foreground">
-              <td className="w-8 border-r" />
-              {IMPORT_COLUMNS.map((column, index) => (
-                <td
-                  key={column}
-                  className={cn(
-                    'border-r px-2 py-0.5 last:border-r-0',
-                    active === column && 'bg-[#e4f4cf] font-bold text-foreground',
-                  )}
-                >
-                  {String.fromCharCode(65 + index)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td
-                aria-hidden
-                className="border-t border-r bg-muted text-center text-[11px] text-muted-foreground"
-              >
-                1
-              </td>
-              {IMPORT_COLUMNS.map((column) => (
-                <th
-                  key={column}
-                  scope="col"
-                  className={cn(
-                    'border-t border-r p-0 last:border-r-0',
-                    active === column ? 'bg-[#3f7d0a]' : 'bg-[#121511]',
-                  )}
-                >
-                  <button
-                    type="button"
-                    aria-describedby={ruleId(column)}
-                    {...highlight(column)}
-                    onFocus={() => setActive(column)}
-                    onBlur={() => setActive(null)}
-                    onClick={() => setActive(column)}
-                    className="w-full cursor-help px-2.5 py-2 text-left font-bold text-white outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-inset"
-                  >
-                    {titles[column]}
-                  </button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {EXAMPLE_ROWS.map((row, index) => (
-              <tr key={row.code}>
-                <td
-                  aria-hidden
-                  className="border-t border-r bg-muted text-center text-[11px] text-muted-foreground"
-                >
-                  {index + 2}
-                </td>
-                {IMPORT_COLUMNS.map((column) => (
-                  <td
-                    key={column}
-                    className={cn(
-                      'border-t border-r px-2.5 py-1.5 last:border-r-0',
-                      // Los textos se parten para que la tabla quepa; un código o un precio, nunca.
-                      column === 'code' && 'whitespace-nowrap',
-                      column === 'price' && 'text-right whitespace-nowrap tabular-nums',
-                      active === column && 'bg-[#f6fbef]',
-                    )}
-                  >
-                    {row[column]}
-                  </td>
-                ))}
-              </tr>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[18px] p-5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-6 [&::-webkit-details-marker]:hidden">
+        <span className="grid gap-0.5">
+          <span className="text-lg font-bold">¿Cómo completo el archivo?</span>
+          <span className="text-sm text-muted-foreground">
+            Columnas, reglas y ejemplos de la plantilla.
+          </span>
+        </span>
+        <ChevronDown
+          className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          aria-hidden
+        />
+      </summary>
+      {/* Solo se dibuja abierta: cerrada no ocupa nada. */}
+      {open ? (
+        <div className="@container grid min-w-0 gap-4 border-t p-5 sm:p-6">
+          <ul className="grid gap-x-6 gap-y-1.5 text-sm text-muted-foreground @2xl:grid-cols-2">
+            {TIPS.map((tip) => (
+              <li key={tip} className="flex gap-2">
+                <Check className="mt-0.5 size-4 shrink-0 text-ring" aria-hidden />
+                {tip}
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
-      {/* Una ficha por columna: en una pantalla ancha, las cinco en una fila, como la tabla. */}
-      <ul className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-6 @7xl:grid-cols-5">
-        {IMPORT_COLUMNS.map((column, index) => (
-          <li
-            key={column}
-            id={ruleId(column)}
-            {...highlight(column)}
-            data-active={active === column || undefined}
-            className={cn(
-              'grid content-start gap-1 rounded-[12px] border bg-background/60 px-4 py-3 text-sm transition-colors data-active:border-ring data-active:bg-[#f6fbef] motion-reduce:transition-none',
-              RULE_SPANS[index],
-            )}
-          >
-            <span className="font-semibold">
-              {titles[column]}
-              <span className="sr-only">: </span>
-            </span>
-            <span className="text-muted-foreground">{RULES[column]}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+          </ul>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+              <caption className="sr-only">Ejemplo de la hoja Productos de la plantilla</caption>
+              <thead>
+                <tr aria-hidden className="bg-muted text-center text-[11px] text-muted-foreground">
+                  <td className="w-8 border-r" />
+                  {IMPORT_COLUMNS.map((column, index) => (
+                    <td
+                      key={column}
+                      className={cn(
+                        'border-r px-2 py-0.5 last:border-r-0',
+                        active === column && 'bg-[#e4f4cf] font-bold text-foreground',
+                      )}
+                    >
+                      {String.fromCharCode(65 + index)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td
+                    aria-hidden
+                    className="border-t border-r bg-muted text-center text-[11px] text-muted-foreground"
+                  >
+                    1
+                  </td>
+                  {IMPORT_COLUMNS.map((column) => (
+                    <th
+                      key={column}
+                      scope="col"
+                      className={cn(
+                        'border-t border-r p-0 last:border-r-0',
+                        active === column ? 'bg-[#3f7d0a]' : 'bg-[#121511]',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        aria-describedby={ruleId(column)}
+                        {...highlight(column)}
+                        onFocus={() => setActive(column)}
+                        onBlur={() => setActive(null)}
+                        onClick={() => setActive(column)}
+                        className="w-full cursor-help px-2.5 py-2 text-left font-bold text-white outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-inset"
+                      >
+                        {titles[column]}
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {EXAMPLE_ROWS.map((row, index) => (
+                  <tr key={row.code}>
+                    <td
+                      aria-hidden
+                      className="border-t border-r bg-muted text-center text-[11px] text-muted-foreground"
+                    >
+                      {index + 2}
+                    </td>
+                    {IMPORT_COLUMNS.map((column) => (
+                      <td
+                        key={column}
+                        className={cn(
+                          'border-t border-r px-2.5 py-1.5 last:border-r-0',
+                          // Los textos se parten para que la tabla quepa; un código o un precio, nunca.
+                          column === 'code' && 'whitespace-nowrap',
+                          column === 'price' && 'text-right whitespace-nowrap tabular-nums',
+                          active === column && 'bg-[#f6fbef]',
+                        )}
+                      >
+                        {row[column]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Una ficha por columna: en una pantalla ancha, las cinco en una fila, como la tabla. */}
+          <ul className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-6 @7xl:grid-cols-5">
+            {IMPORT_COLUMNS.map((column, index) => (
+              <li
+                key={column}
+                id={ruleId(column)}
+                {...highlight(column)}
+                data-active={active === column || undefined}
+                className={cn(
+                  'grid content-start gap-1 rounded-[12px] border bg-background/60 px-4 py-3 text-sm transition-colors data-active:border-ring data-active:bg-[#f6fbef] motion-reduce:transition-none',
+                  RULE_SPANS[index],
+                )}
+              >
+                <span className="font-semibold">
+                  {titles[column]}
+                  <span className="sr-only">: </span>
+                </span>
+                <span className="text-muted-foreground">{RULES[column]}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </details>
   )
 }
 
@@ -408,8 +363,63 @@ export function useIgnoreStrayDrops() {
   }, [])
 }
 
-// Paso 3 (spec §6.5): un button real con un input oculto. El tamaño y la extensión se comprueban
-// aquí antes de enviar, y otra vez en el servidor.
+// Hoja de cálculo con los colores de la marca y una flecha de subida: el elemento memorable de la
+// pantalla, en el centro de la zona de carga (spec §6.11).
+function SheetIllustration({ className }: { className?: string }) {
+  const rows = [0, 1, 2, 3]
+  return (
+    <svg viewBox="0 0 260 180" aria-hidden className={className}>
+      <rect x="18" y="14" width="214" height="146" rx="14" fill="#ffffff" stroke="#e3e7de" />
+      <path d="M18 28a14 14 0 0 1 14-14h186a14 14 0 0 1 14 14v18H18z" fill="#121511" />
+      {[30, 86, 142, 190].map((x, index) => (
+        <rect
+          key={x}
+          x={x}
+          y="26"
+          width={index === 3 ? 30 : 40}
+          height="8"
+          rx="4"
+          fill={index === 3 ? '#72ce0b' : '#5d6559'}
+        />
+      ))}
+      {rows.map((row) => (
+        <g key={row}>
+          <line x1="18" x2="232" y1={70 + row * 24} y2={70 + row * 24} stroke="#e3e7de" />
+          <rect x="30" y={53 + row * 24} width="44" height="8" rx="4" fill="#d7dccf" />
+          <rect
+            x="86"
+            y={53 + row * 24}
+            width={row % 2 ? 36 : 48}
+            height="8"
+            rx="4"
+            fill="#e3e7de"
+          />
+          <rect
+            x="142"
+            y={53 + row * 24}
+            width="38"
+            height="8"
+            rx="4"
+            fill={row === 1 ? '#c8ec9e' : '#e3e7de'}
+          />
+          <rect x="190" y={53 + row * 24} width="30" height="8" rx="4" fill="#e3e7de" />
+        </g>
+      ))}
+      <circle cx="222" cy="150" r="22" fill="#72ce0b" />
+      <path
+        d="M222 161v-21m-9 9l9-9 9 9"
+        fill="none"
+        stroke="#0c0f0a"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+// La zona de carga (spec §6.5), lo principal de la pantalla: un button real, grande, con un input
+// oculto. El tamaño y la extensión se comprueban aquí antes de enviar, y otra vez en el servidor.
 export function UploadStep({
   file,
   status,
@@ -456,8 +466,8 @@ export function UploadStep({
         }}
       />
       {file && !message ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-[12px] border bg-background/60 px-4 py-3">
-          <FileSpreadsheet className="size-5 shrink-0 text-ring" aria-hidden />
+        <div className="flex flex-wrap items-center gap-3 rounded-[14px] border bg-background/60 px-5 py-4">
+          <FileSpreadsheet className="size-6 shrink-0 text-ring" aria-hidden />
           <span className="grid min-w-0 flex-1">
             <span className="truncate font-semibold">{file.name}</span>
             <span className="text-[13px] text-muted-foreground">{fileSize(file.size)}</span>
@@ -475,7 +485,7 @@ export function UploadStep({
           data-dragging={dragging || undefined}
           onDragEnter={(event) => {
             event.preventDefault()
-            setDragging(true)
+            if (!disabled) setDragging(true)
           }}
           onDragOver={(event) => event.preventDefault()}
           onDragLeave={(event) => {
@@ -483,12 +493,15 @@ export function UploadStep({
               setDragging(false)
           }}
           onDrop={drop}
-          className="grid cursor-pointer justify-items-center gap-2 rounded-[16px] border-2 border-dashed border-[#cfd6c6] bg-background/60 px-6 py-10 text-center transition-colors outline-none hover:border-ring/60 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-70 data-dragging:border-ring data-dragging:bg-[#eef7e2] motion-reduce:transition-none"
+          className="group grid min-h-[240px] cursor-pointer sm:min-h-[300px] content-center justify-items-center gap-3 rounded-[16px] border-2 border-dashed border-[#cfd6c6] bg-[#f8fbf4] px-6 py-10 text-center transition-colors outline-none hover:border-ring/60 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait disabled:opacity-70 data-dragging:border-ring data-dragging:bg-[#eef7e2] motion-reduce:transition-none"
         >
-          <span className="grid size-12 place-items-center rounded-full bg-[#eef7e2] text-ring">
-            <Upload className="size-5" aria-hidden />
+          <SheetIllustration className="mb-1 w-40 sm:w-44" />
+          <span className="text-xl font-extrabold tracking-[-0.01em]">Arrastra tu Excel aquí</span>
+          {/* Parece un botón para que se vea qué pulsar; el botón es toda la zona. */}
+          <span className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-primary-foreground transition-colors group-hover:bg-primary/90">
+            <Upload className="size-4" aria-hidden />
+            Elegir archivo
           </span>
-          <span className="font-semibold">Arrastra tu Excel aquí o elige un archivo</span>
           <span className="text-[13px] text-muted-foreground">
             Solo .xlsx · hasta 4 MB · hasta {count(IMPORT_MAX_ROWS)} productos
           </span>

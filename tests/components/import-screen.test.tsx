@@ -102,7 +102,7 @@ function renderScreen() {
   const invalidate = vi.spyOn(client, 'invalidateQueries')
   render(
     <QueryClientProvider client={client}>
-      <ImportScreen hasProducts />
+      <ImportScreen />
       <Toaster />
     </QueryClientProvider>,
   )

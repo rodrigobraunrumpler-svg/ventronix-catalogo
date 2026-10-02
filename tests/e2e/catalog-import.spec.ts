@@ -109,7 +109,9 @@ const capture = (page: Page, name: string) =>
 
 const box = async (locator: Locator) => (await locator.boundingBox())!
 
-test('se entra desde Productos y cada intención descarga su archivo', async ({ page }) => {
+test('se entra desde Productos: lo primero es dónde subir el Excel, y cada archivo se descarga', async ({
+  page,
+}) => {
   await seed()
   await login(page)
   await page.getByRole('link', { name: 'Carga masiva' }).click()
@@ -117,38 +119,44 @@ test('se entra desde Productos y cada intención descarga su archivo', async ({ 
   await expect(
     page.getByRole('heading', { level: 1, name: 'Carga masiva de productos' }),
   ).toBeVisible()
+  // La zona de carga se ve entera al entrar, sin bajar, en PC y en el teléfono.
+  const zone = page.getByRole('button', { name: /Arrastra tu Excel/ })
+  await expect(zone).toBeInViewport({ ratio: 1 })
   await expectNoHorizontalScroll(page)
-  await capture(page, 'pasos')
+  await capture(page, 'entrada')
+
   if (test.info().project.name === 'desktop') {
-    // En PC la pantalla ocupa todo el contenedor, como Productos: los tres pasos en una fila y la guía
-    // de la plantilla debajo, a todo el ancho, con su tabla entera (sin barra propia).
+    const guide = page.getByText('¿Cómo completo el archivo?')
+    await guide.click()
     for (const width of [1024, 1280, 1440, 1920, 2338]) {
-      await page.setViewportSize({ width, height: 1000 })
-      const steps = await Promise.all(
-        [/^Paso 1/, /^Paso 2/, /^Paso 3/].map((name) => box(page.getByRole('heading', { name }))),
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await expect(zone).toBeInViewport({ ratio: 1 })
+      // La pantalla ocupa todo el contenedor, como Productos: con sitio, la zona de carga y las
+      // descargas van lado a lado y llegan hasta el borde.
+      const main = await box(page.locator('main'))
+      const files = await box(
+        page.getByRole('complementary', { name: '¿Aún no tienes el archivo?' }),
       )
-      // Con 1024 px y el menú abierto no caben en una fila: van uno debajo de otro.
-      expect(new Set(steps.map((step) => Math.round(step.y))).size).toBe(width >= 1280 ? 1 : 3)
+      expect(main.x + main.width - (files.x + files.width)).toBeLessThanOrEqual(41)
+      if (width >= 1280)
+        expect(files.x).toBeGreaterThan((await box(zone)).x + (await box(zone)).width)
+      // La guía, abierta, trae su tabla entera, sin barra propia.
       const table = page.getByRole('table', {
         name: 'Ejemplo de la hoja Productos de la plantilla',
       })
       expect(
         await table.locator('..').evaluate((element) => element.scrollWidth - element.clientWidth),
       ).toBeLessThanOrEqual(0)
-      const main = await box(page.locator('main'))
-      const banner = await box(page.locator('main header > div'))
-      expect(main.x + main.width - (banner.x + banner.width)).toBeLessThanOrEqual(41)
       await expectNoHorizontalScroll(page)
     }
     await page.setViewportSize({ width: 1440, height: 900 })
   }
 
-  // Con productos, propone actualizarlos: el botón principal es el catálogo completo.
   const catalog = await download(page, 'Descargar mi catálogo')
   expect(catalog.suggestedFilename()).toMatch(/^productos-\d{4}-\d{2}-\d{2}\.xlsx$/)
   await expect(page.getByText('Catálogo descargado · 2 productos')).toBeVisible()
 
-  await page.getByText('Cargar productos nuevos', { exact: true }).click()
   const template = await download(page, 'Descargar plantilla')
   expect(template.suggestedFilename()).toBe('plantilla-carga-masiva.xlsx')
   const book = await readDownload(template)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useQueryClient } from '@tanstack/react-query'
-import { FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet, Monitor, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ import { DEFAULT_IMPORT_OPTIONS } from '../options'
 import type { CategoryDecision, ImportOptions, ImportOutcome, ImportPreview } from '../types'
 import { useDownload } from '../use-download'
 import { ErrorsNotice, ImportActionBar, ReviewNotice, type BarDownload } from './import-action-bar'
-import { ImportFaq, ImportHeader, IntentCards, type Intent } from './import-intro'
+import { ImportFaq, ImportHeader } from './import-intro'
 import {
   CategoryDecisions,
   ImportOptionsPanel,
@@ -28,7 +28,7 @@ import {
   VisualSummary,
 } from './import-preview'
 import { ImportResult } from './import-result'
-import { ImportSteps, UploadStep, useIgnoreStrayDrops } from './import-steps'
+import { DownloadOptions, TemplateGuide, UploadStep, useIgnoreStrayDrops } from './import-steps'
 import { PreviewRows } from './preview-rows'
 
 type Stage = 'choose' | 'reading' | 'preview' | 'importing' | 'done'
@@ -174,9 +174,8 @@ function PreviewStage({
 
 // Carga masiva (spec del Excel §6): elegir el archivo, revisar qué pasará, importar y descargar el
 // comprobante. El archivo se queda en el navegador y se reenvía en cada petición.
-export function ImportScreen({ hasProducts }: { hasProducts: boolean }) {
+export function ImportScreen() {
   const queryClient = useQueryClient()
-  const [intent, setIntent] = useState<Intent>(hasProducts ? 'update' : 'create')
   const [stage, setStage] = useState<Stage>('choose')
   const [file, setFile] = useState<File | null>(null)
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_IMPORT_OPTIONS)
@@ -339,22 +338,41 @@ export function ImportScreen({ hasProducts }: { hasProducts: boolean }) {
     )
   }
 
+  // Lo principal es dónde subir el Excel; al lado, de dónde sacarlo, y debajo, la ayuda plegada.
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-6">
       <ImportHeader />
-      <IntentCards value={intent} onChange={setIntent} />
-      <ImportSteps
-        intent={intent}
-        upload={
-          <UploadStep
-            file={file}
-            status={stage === 'reading' ? 'Leyendo tu Excel…' : null}
-            error={error}
-            disabled={stage === 'reading'}
-            onFile={(chosen) => void chooseFile(chosen)}
-          />
-        }
-      />
+      <p className="flex items-center gap-2 text-[13px] text-muted-foreground md:hidden">
+        <Monitor className="size-4 shrink-0" aria-hidden />
+        Es más cómodo desde una PC.
+      </p>
+      <div className="@container">
+        <div className="grid items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
+          <section
+            aria-labelledby="import-upload"
+            className="grid gap-4 rounded-[18px] border bg-card p-5 sm:p-6"
+          >
+            <div className="grid gap-1">
+              <h2 id="import-upload" className="text-lg font-bold">
+                Sube tu Excel
+              </h2>
+              <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-ring" aria-hidden />
+                Nada se guarda hasta que confirmes: primero verás qué pasará con cada fila.
+              </p>
+            </div>
+            <UploadStep
+              file={file}
+              status={stage === 'reading' ? 'Leyendo tu Excel…' : null}
+              error={error}
+              disabled={stage === 'reading'}
+              onFile={(chosen) => void chooseFile(chosen)}
+            />
+          </section>
+          <DownloadOptions />
+        </div>
+      </div>
+      <TemplateGuide />
       <ImportFaq />
     </div>
   )

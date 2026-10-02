@@ -3,8 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  DownloadStep,
-  ImportSteps,
+  DownloadOptions,
   TemplateGuide,
   UploadStep,
 } from '@/features/catalog/import/components/import-steps'
@@ -28,24 +27,22 @@ afterEach(() => {
   vi.resetAllMocks()
 })
 
-function renderDownload(intent: 'create' | 'update') {
+function renderDownloads() {
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   render(
     <>
-      <DownloadStep intent={intent} />
+      <DownloadOptions />
       <Toaster />
     </>,
   )
   return { click, user: userEvent.setup() }
 }
 
-describe('Paso 1: descarga el archivo', () => {
-  it('para cargar productos nuevos destaca la plantilla y la descarga', async () => {
+describe('¿Aún no tienes el archivo?', () => {
+  it('descarga la plantilla para productos nuevos', async () => {
     actions.downloadImportTemplate.mockResolvedValue(excel('plantilla-carga-masiva.xlsx'))
-    const { click, user } = renderDownload('create')
-    expect(
-      screen.getByText(/Tiene las columnas listas, tus categorías en un desplegable/),
-    ).toBeVisible()
+    const { click, user } = renderDownloads()
+    expect(screen.getByText(/las columnas listas, tus categorías en un desplegable/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Descargar plantilla' }))
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
       'plantilla-carga-masiva.xlsx',
@@ -57,7 +54,7 @@ describe('Paso 1: descarga el archivo', () => {
     actions.exportProducts.mockResolvedValue(
       excel('productos-2026-10-03.xlsx', { count: 52, truncated: false }),
     )
-    const { user } = renderDownload('update')
+    const { user } = renderDownloads()
     expect(screen.getByText(/Lo que no cambies se queda igual/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Descargar mi catálogo' }))
     expect(actions.exportProducts).toHaveBeenCalledWith(
@@ -80,7 +77,7 @@ describe('Paso 1: descarga el archivo', () => {
       ok: false,
       error: { code: 'VALIDATION', message: 'No hay productos para descargar con estos filtros.' },
     })
-    const { user } = renderDownload('update')
+    const { user } = renderDownloads()
     await user.click(screen.getByRole('button', { name: 'Descargar mi catálogo' }))
     expect(
       await screen.findByText('Tu catálogo todavía no tiene productos. Empieza con la plantilla.'),
@@ -98,48 +95,27 @@ describe('Paso 1: descarga el archivo', () => {
   })
 })
 
-describe('los pasos', () => {
-  it('van en orden, el paso 2 trae los consejos y la guía de cada columna va después', () => {
-    render(<ImportSteps intent="create" upload={<p>Zona de carga</p>} />)
-    const headings = [
-      'Paso 1: Descarga el archivo',
-      'Paso 2: Complétalo',
-      'Paso 3: Súbelo',
-      'Guía de la plantilla',
-    ].map((name) => screen.getByRole('heading', { level: 2, name }))
-    headings.reduce((previous, current) => {
-      expect(
-        previous.compareDocumentPosition(current) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      return current
-    })
-    expect(screen.getByText('Puedes dejar filas vacías: se ignoran.')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Ver la guía de cada columna' })).toHaveAttribute(
-      'href',
-      '#import-guide',
-    )
-  })
-})
-
-describe('Paso 2: la guía de la plantilla', () => {
-  it('muestra la maqueta y las reglas de cada columna', async () => {
-    render(<TemplateGuide intent="create" />)
-    expect(screen.getByRole('heading', { name: 'Guía de la plantilla' })).toBeVisible()
+describe('¿Cómo completo el archivo?', () => {
+  it('se despliega con los consejos, la maqueta y la regla de cada columna', async () => {
+    const user = userEvent.setup()
+    render(<TemplateGuide />)
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    await user.click(screen.getByText('¿Cómo completo el archivo?'))
     expect(
       screen.getByRole('table', { name: 'Ejemplo de la hoja Productos de la plantilla' }),
     ).toBeVisible()
+    expect(screen.getByText('Puedes dejar filas vacías: se ignoran.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Precio con IGV (S/)' })).toBeVisible()
     expect(screen.getByText('LAP-001')).toBeVisible()
-    expect(screen.getByText(/Siempre obligatorio/)).toBeVisible()
 
     const code = screen.getByRole('button', { name: 'Código' })
     expect(code).toHaveAccessibleDescription(/Siempre obligatorio y único, hasta 64 caracteres/)
-    await userEvent.setup().click(code)
+    await user.click(code)
     expect(screen.getByText(/Siempre obligatorio/).closest('li')).toHaveAttribute('data-active')
   })
 })
 
-describe('Paso 3: la zona de carga', () => {
+describe('la zona de carga', () => {
   function renderUpload(props: Partial<Parameters<typeof UploadStep>[0]> = {}) {
     const onFile = vi.fn()
     render(
@@ -158,14 +134,13 @@ describe('Paso 3: la zona de carga', () => {
 
   it('acepta un .xlsx elegido o soltado', () => {
     const { onFile, input } = renderUpload()
-    expect(
-      screen.getByRole('button', { name: /Arrastra tu Excel aquí o elige un archivo/ }),
-    ).toHaveTextContent('Solo .xlsx · hasta 4 MB · hasta 5 000 productos')
+    const zone = screen.getByRole('button', { name: /Arrastra tu Excel aquí/ })
+    expect(zone).toHaveTextContent('Elegir archivo')
+    expect(zone).toHaveTextContent('Solo .xlsx · hasta 4 MB · hasta 5 000 productos')
     const file = new File(['x'], 'productos.xlsx')
     fireEvent.change(input, { target: { files: [file] } })
     expect(onFile).toHaveBeenCalledWith(file)
 
-    const zone = screen.getByRole('button', { name: /Arrastra tu Excel/ })
     fireEvent.dragEnter(zone, { dataTransfer: { files: [], types: ['Files'] } })
     expect(zone).toHaveAttribute('data-dragging')
     fireEvent.drop(zone, { dataTransfer: { files: [file], types: ['Files'] } })
