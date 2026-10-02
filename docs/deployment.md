@@ -62,7 +62,7 @@ Crea la cuenta con `pnpm owner:create`, usando la URL de producción y la clave 
 ## 2. Vercel
 
 1. Importa el repositorio en Vercel, que detecta Next.js y pnpm. La versión de Node (24.x) la toma de `engines` en `package.json`.
-2. En Settings → Environment Variables, añade estas dos variables **solo en el entorno Production**:
+2. En Settings → Environment Variables, añade estas cuatro variables **solo en el entorno Production**. Si tienes un `.env.production` con ellas (no se versiona), pega su contenido de una vez en esa pantalla:
 
    | Variable                               | Valor                                 |
    | -------------------------------------- | ------------------------------------- |
