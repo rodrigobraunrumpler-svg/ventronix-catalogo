@@ -11,6 +11,9 @@ export default defineConfig({
     },
   },
   test: {
+    // En UTC, como GitHub Actions y Vercel. El equipo de desarrollo está en hora de Lima, y eso
+    // escondería los errores de zona horaria: las fechas de la app siempre se calculan en Lima.
+    env: { TZ: 'UTC' },
     projects: [
       {
         extends: true,
