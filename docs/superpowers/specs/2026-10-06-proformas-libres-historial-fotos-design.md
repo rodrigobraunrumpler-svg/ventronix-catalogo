@@ -83,6 +83,10 @@ Maqueta: «Proformas · historial en PC» y «… en el teléfono».
   - ordenada por número, de la más reciente a la más antigua;
   - acciones: «Ver PDF», «Descargar PDF» y «Reenviar».
 - **Páginas:** «Proformas 1–20 de 48», con Anterior, los números de página y Siguiente.
+- **Todo se resuelve en el servidor:** la base filtra, cuenta y suma, y devuelve solo las 20 proformas de la página.
+  - La búsqueda espera a que se termine de escribir.
+  - Cambiar un filtro vuelve a la página 1.
+  - Filtros y página van en la URL: recargar o compartir el enlace muestra lo mismo.
 - **En el teléfono:** tarjetas con N°, fecha, cliente, documento, total, «Descargar» y «Reenviar», y las páginas abajo.
 - **Estados vacíos:**
   - «Todavía no hay proformas guardadas», con el botón «Nueva proforma»;
@@ -105,7 +109,12 @@ Maqueta: «Nueva proforma con producto libre».
   - El formulario lleva la nota «Para productos que no están en el catálogo. No se guardan en él.».
   - Cada línea muestra su foto, o «Sin foto». Las libres llevan la etiqueta «Producto libre».
   - Las líneas libres no avisan de «precio cambiado» ni de «Ya no está en el catálogo».
-- **Cliente:** al escribir un RUC o DNI que ya tiene proformas, sus datos se completan solos («Cliente con 6 proformas: datos completados»).
+- **Cliente** (confirmado): al escribir un RUC (11 dígitos) o un DNI (8) que ya tiene proformas, se toma su proforma más reciente, con una consulta por el índice del documento.
+  - Se completan el nombre, el celular y la dirección, solo en los campos vacíos, y todo sigue editable.
+  - El tiempo de entrega no se copia: cambia en cada venta.
+  - Aviso: «Cliente con 6 proformas: datos completados».
+  - Un RUC sin historial se consulta en SUNAT, como hoy. El aviso de SUNAT (baja o no habido) se mantiene en los dos casos.
+  - No hay una lista aparte de clientes: los datos salen del historial.
 - **Resumen:**
   - el interruptor **«Incluir fotos en el PDF»** (§4.5);
   - «Generar proforma», con «Recibe su número correlativo y queda guardada en el historial de Proformas.».
@@ -254,8 +263,8 @@ Cada entrega del §2 se publica por separado.
 | El cliente espera ver proformas antiguas | Se avisa: el historial empieza con esta versión. |
 | «Corregir» cambia una proforma ya enviada | Mantiene el número, como hoy. El historial muestra la última versión. |
 
-## 12. Para confirmar con el cliente
+## 12. Confirmaciones
 
-- Completar los datos del cliente desde el historial al escribir su RUC o DNI (§4.3).
-- 20 proformas por página.
-- Que «Corregir» actualice la misma proforma del historial, sin guardar versiones.
+- **Confirmado:** completar los datos del cliente desde el historial al escribir su RUC o DNI (§4.3).
+- **Confirmado:** 20 proformas por página, con los filtros y las páginas resueltos en el servidor (§4.2).
+- **Por confirmar:** que «Corregir» actualice la misma proforma del historial, sin guardar versiones. «Corregir» es el botón que ya existe tras «Generar»: vuelve a la proforma y conserva su número.
