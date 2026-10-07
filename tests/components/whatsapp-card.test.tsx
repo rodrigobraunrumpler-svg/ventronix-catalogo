@@ -66,7 +66,9 @@ describe('WhatsAppCard', () => {
     ).toBeVisible()
     expect(within(dialog).getByText(/Esperando a que escribas el código/)).toBeVisible()
     finish(ok(linked))
-    expect(await screen.findByText('WhatsApp vinculado.')).toBeVisible()
+    // Sonner pinta el aviso invisible y lo muestra en un efecto posterior: se espera a que se vea, no
+    // solo a que exista (bajo carga, a veces se miraba antes).
+    await vi.waitFor(() => expect(screen.getByText('WhatsApp vinculado.')).toBeVisible())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     rerender(<WhatsAppCard status={linked} onLink={onLink} onUnlink={vi.fn<Unlink>()} />)
     expect(screen.getByText(/987 654 321/)).toBeVisible()
