@@ -266,10 +266,12 @@ function HistoryTable({
   )
 }
 
-// Móvil: tarjetas con número, fecha, cliente, documento y total (spec §4.2).
+// Teléfono, tablet y laptop pequeño (menos de 1280 px): tarjetas con número, fecha, cliente,
+// documento y total (spec §4.2).
 function HistoryCards({
   items,
   today,
+  onView,
   onDownload,
   onClient,
   onResend,
@@ -299,6 +301,18 @@ function HistoryCards({
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
+            {/* Desde la tablet; en el teléfono basta «Descargar», como hasta ahora. */}
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Ver PDF de la proforma ${formatProformaNumber(row.number)}`}
+              disabled={pendingId === row.id}
+              className="max-md:hidden"
+              onClick={() => onView(row)}
+            >
+              <Eye aria-hidden />
+              Ver PDF
+            </Button>
             <Button
               variant="outline"
               size="sm"

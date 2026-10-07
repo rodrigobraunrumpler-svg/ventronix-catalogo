@@ -90,6 +90,13 @@ describe('HistoryResults', () => {
     expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ number: 41 }))
   })
 
+  it('las tarjetas (tablet y laptop pequeño) también abren el PDF', async () => {
+    const { onView, user } = renderResults()
+    const cards = within(screen.getByRole('list'))
+    await user.click(cards.getByRole('button', { name: 'Ver PDF de la proforma N° 0042' }))
+    expect(onView).toHaveBeenCalledWith(expect.objectContaining({ number: 42 }))
+  })
+
   it('marca «Vencida» la que ya pasó su validez, en días de Lima', () => {
     renderResults(page(), '2026-10-10')
     const [first] = within(screen.getByRole('table')).getAllByRole('row').slice(1)

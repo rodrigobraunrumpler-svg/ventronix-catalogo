@@ -258,10 +258,18 @@ test('Proformas llena el contenedor sin desbordarse y «Nueva proforma» está a
     })
   expect(await overflow()).toEqual({ page: 0, section: 0 })
   // En PC, también en un laptop de 1280 px con el menú abierto: los botones no se cortan.
+  // Con menos de 1280 px van las tarjetas; desde la tablet también abren el PDF, en el teléfono no.
+  const view = history(page).getByRole('button', { name: 'Ver PDF de la proforma N° 0025' })
   if (page.viewportSize()!.width >= 1280) {
     await page.setViewportSize({ width: 1280, height: 800 })
     expect(await overflow()).toEqual({ page: 0, section: 0 })
+    await page.setViewportSize({ width: 1100, height: 800 })
+    await expect(history(page).getByRole('table')).toBeHidden()
+    await expect(view).toBeVisible()
+    expect(await overflow()).toEqual({ page: 0, section: 0 })
     await page.setViewportSize({ width: 1440, height: 900 })
+  } else {
+    await expect(view).toHaveCount(0)
   }
   const main = await page.locator('#main').boundingBox()
   const list = await history(page).boundingBox()
