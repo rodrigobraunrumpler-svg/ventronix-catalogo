@@ -1,6 +1,7 @@
 'use client'
 
 import { Pencil } from 'lucide-react'
+import Image from 'next/image'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { ProformaControl } from '@/features/proforma/components/proforma-control'
 import { formatDate } from '@/lib/dates'
+import { usePhotoUrl } from '@/lib/use-photos'
 import { useReturnFocus } from '@/lib/use-return-focus'
 import type { ProductListItem } from '../../types'
 import { CategoryBadge, CodeChip, Price } from './product-list'
@@ -31,6 +33,8 @@ export function ProductDetail({
   const [shown, setShown] = useState(product)
   if (product !== null && product !== shown) setShown(product)
   const data = product ?? shown
+  // La ficha usa la foto de 600 px.
+  const photo = usePhotoUrl(data?.image_path ?? null)
   const returnFocus = useReturnFocus(product !== null)
 
   return (
@@ -51,6 +55,20 @@ export function ProductDetail({
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-5 overflow-y-auto px-6 py-5">
+              {data.image_path ? (
+                <span className="grid h-56 place-items-center overflow-hidden rounded-xl border bg-muted">
+                  {photo ? (
+                    <Image
+                      src={photo}
+                      alt={`Foto de ${data.name}`}
+                      width={480}
+                      height={224}
+                      unoptimized
+                      className="size-full object-contain"
+                    />
+                  ) : null}
+                </span>
+              ) : null}
               <div className="grid gap-1">
                 <h3 className="text-xs font-semibold text-muted-foreground">Precio unitario</h3>
                 <p className="text-lg">

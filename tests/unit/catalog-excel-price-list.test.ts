@@ -14,6 +14,7 @@ const product = (code: string, name: string, category: string, price: string): P
   unit_price: price,
   created_at: '2026-10-01T10:00:00Z',
   updated_at: '2026-10-01T10:00:00Z',
+  image_path: null,
 })
 
 async function sheetOf(buffer: Buffer) {

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Client } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { getProduct } from '@/features/catalog/products/queries'
+import { createProductRow, updateProductRow } from '@/features/catalog/products/repository'
 import { adminClient, ensureUser, publicClient, signedInClient } from '../support/local-supabase'
 import { connect, resetCatalog, sqlState } from './db'
 
@@ -87,6 +89,27 @@ describe('bucket de fotos', () => {
 })
 
 describe('foto del producto', () => {
+  it('se guarda, se lee y se quita con el producto', async () => {
+    await resetCatalog(db)
+    const { rows } = await db.query<{ id: string }>(
+      "insert into public.categories (name) values ('Laptops') returning id",
+    )
+    const path = `products/${randomUUID()}.jpg`
+    const input = {
+      code: 'LAP-002',
+      name: 'Laptop con foto',
+      description: null,
+      category_id: rows[0].id,
+      unit_price: '100.00',
+      image_path: path,
+    }
+    const created = await createProductRow(supabase, input)
+    if (!created.ok) throw new Error(created.error.message)
+    expect(await getProduct(supabase, created.data.id)).toMatchObject({ image_path: path })
+    await updateProductRow(supabase, created.data.id, { ...input, image_path: null })
+    expect(await getProduct(supabase, created.data.id)).toMatchObject({ image_path: null })
+  })
+
   it('la base solo acepta rutas de products/ y la lista la devuelve', async () => {
     await resetCatalog(db)
     const { rows } = await db.query<{ id: string }>(

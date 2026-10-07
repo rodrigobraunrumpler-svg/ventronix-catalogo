@@ -26,6 +26,28 @@ describe('categorySchema', () => {
 })
 
 describe('productSchema', () => {
+  it('la foto es opcional y solo acepta una ruta de products/', () => {
+    const base = {
+      code: 'LAP-1',
+      name: 'Laptop',
+      category_id: '7a2d3b8f-4c5e-4d6f-9a0b-1c2d3e4f5a6b',
+      unit_price: '10',
+    }
+    expect(productSchema.parse(base).image_path).toBeNull()
+    expect(
+      productSchema.parse({
+        ...base,
+        image_path: 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg',
+      }).image_path,
+    ).toBe('products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg')
+    expect(
+      productSchema.safeParse({
+        ...base,
+        image_path: 'lines/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg',
+      }).success,
+    ).toBe(false)
+  })
+
   it('guarda el código sin espacios exteriores y en mayúsculas', () => {
     expect(productSchema.parse({ ...validProduct, code: '  lap-001 ' }).code).toBe('LAP-001')
   })
@@ -79,6 +101,7 @@ describe('productSchema', () => {
       description: 'Diseño ligero',
       category_id: categoryId,
       unit_price: '2590.00',
+      image_path: null,
     })
   })
 })

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { uploadPhoto } from '@/lib/use-photos'
 import { useReturnFocus } from '@/lib/use-return-focus'
 import { useCategoryOptions } from '../../categories/hooks'
 import type { ProductListItem } from '../../types'
@@ -80,6 +81,7 @@ export function ProductDialog({ state, onClose, onCreateCategory }: ProductDialo
             }}
             onCancel={onClose}
             onCreateCategory={onCreateCategory}
+            uploadPhoto={(file) => uploadPhoto('products', file)}
           />
         )}
       </DialogContent>

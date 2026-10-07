@@ -396,6 +396,7 @@ describe('ProformaEditor', () => {
       unit_price: price,
       created_at: '',
       updated_at: '',
+      image_path: null,
     })
     const lenovo = product('p1', 'Lenovo ThinkPad E14', 'LAP-001', '3590.00')
     const hp = product('p2', 'HP ProBook 440', 'LAP-002', '3790.00')

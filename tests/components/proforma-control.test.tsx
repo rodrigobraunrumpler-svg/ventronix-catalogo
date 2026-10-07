@@ -16,6 +16,7 @@ const laptop: ProductListItem = {
   unit_price: '2590.00',
   created_at: '2026-09-30T00:00:00Z',
   updated_at: '2026-09-30T00:00:00Z',
+  image_path: null,
   category_name: 'Laptops',
 }
 

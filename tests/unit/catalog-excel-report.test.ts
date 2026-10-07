@@ -15,6 +15,7 @@ const product = (overrides: Partial<ProductListItem>): ProductListItem => ({
   // 03:00 UTC del 2 de octubre = 1 de octubre en Lima.
   created_at: '2026-10-02T03:00:00Z',
   updated_at: '2026-10-05T15:00:00Z',
+  image_path: null,
   ...overrides,
 })
 

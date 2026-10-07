@@ -136,6 +136,7 @@ describe('productos con la sesión de la cuenta autorizada', () => {
     description: null,
     category_id: laptops,
     unit_price: '2590.00',
+    image_path: null,
     ...overrides,
   })
 

@@ -5,19 +5,22 @@ import { ChevronDown, Eye } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import { PhotoField } from '@/components/photo-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ActionResult } from '@/lib/action-result'
 import { clearDraft, readDraft, saveDraft } from '@/lib/drafts'
+import { thumbPath } from '@/lib/photos'
+import { usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
 import { categoryColor } from '../../categories/theme'
 import { formatPrice, unitPriceSchema } from '../../money'
 import { productSchema } from '../../schemas'
 import type { CategoryOption, Product, ProductInput, ProductListItem } from '../../types'
 
-const FIELDS = ['code', 'name', 'description', 'category_id', 'unit_price'] as const
+const FIELDS = ['code', 'name', 'description', 'category_id', 'unit_price', 'image_path'] as const
 type Field = (typeof FIELDS)[number]
 
 // Borrador: los valores tal como se escribieron y la versión del producto (updated_at) sobre la que
@@ -28,12 +31,21 @@ const valuesSchema = z.object({
   description: z.string(),
   category_id: z.string(),
   unit_price: z.string(),
+  // Los borradores anteriores a las fotos no la tienen.
+  image_path: z.string().nullable().default(null),
 })
 const draftSchema = z.object({ base: z.string().nullable(), values: valuesSchema })
 type FormValues = z.infer<typeof valuesSchema>
 type WatchedValues = Partial<Record<Field, string | null>>
 
-const EMPTY: FormValues = { code: '', name: '', description: '', category_id: '', unit_price: '' }
+const EMPTY: FormValues = {
+  code: '',
+  name: '',
+  description: '',
+  category_id: '',
+  unit_price: '',
+  image_path: null,
+}
 
 export const productDraftKey = (id?: string) => `producto:${id ?? 'nuevo'}`
 
@@ -43,10 +55,11 @@ const toFormValues = (values: WatchedValues): FormValues => ({
   description: values.description ?? '',
   category_id: values.category_id ?? '',
   unit_price: values.unit_price ?? '',
+  image_path: values.image_path ?? null,
 })
 
 const differs = (values: WatchedValues, from: FormValues) =>
-  FIELDS.some((field) => (values[field] ?? '') !== from[field])
+  FIELDS.some((field) => (values[field] ?? '') !== (from[field] ?? ''))
 
 type ProductFormProps = {
   product?: ProductListItem
@@ -56,6 +69,8 @@ type ProductFormProps = {
   onSaved: (product: Product, options: { another: boolean }) => void
   onCancel: () => void
   onCreateCategory: () => void
+  // Sube la foto elegida y devuelve su ruta (spec de productos libres §4.7).
+  uploadPhoto: (file: File) => Promise<string>
 }
 
 function FieldMessage({ id, error, help }: { id: string; error?: string; help?: ReactNode }) {
@@ -81,6 +96,7 @@ export function ProductForm({
   onSaved,
   onCancel,
   onCreateCategory,
+  uploadPhoto,
 }: ProductFormProps) {
   const [serverError, setServerError] = useState<string | null>(null)
   const draftKey = productDraftKey(product?.id)
@@ -92,6 +108,7 @@ export function ProductForm({
     description: product?.description ?? '',
     category_id: product?.category_id ?? defaultCategoryId ?? '',
     unit_price: product?.unit_price ?? '',
+    image_path: product?.image_path ?? null,
   }))
   // Solo se recupera el borrador de esta misma versión del producto (o del alta).
   const [restored, setRestored] = useState<FormValues | null>(() => {
@@ -107,6 +124,7 @@ export function ProductForm({
     handleSubmit,
     setError,
     setFocus,
+    setValue,
     getValues,
     reset,
     control,
@@ -116,6 +134,8 @@ export function ProductForm({
     defaultValues: restored ?? initial,
   })
   const live = useWatch({ control })
+  // La miniatura basta para la vista previa del formulario.
+  const photoUrl = usePhotoUrl(live.image_path ? thumbPath(live.image_path) : null)
 
   // Al abrir, el foco va a Código (también si el formulario llega después de cargar) y no a
   // «Descartar»: Enter no debe borrar un borrador por accidente.
@@ -198,6 +218,19 @@ export function ProductForm({
             {serverError}
           </p>
         ) : null}
+
+        <div className="grid gap-1 sm:col-span-2">
+          <PhotoField
+            value={live.image_path ?? null}
+            url={photoUrl}
+            alt={`Foto de ${live.name?.trim() || 'tu producto'}`}
+            upload={uploadPhoto}
+            onChange={(path) => setValue('image_path', path, { shouldDirty: true })}
+          />
+          {errors.image_path ? (
+            <p className="text-xs font-medium text-destructive">{errors.image_path.message}</p>
+          ) : null}
+        </div>
 
         <div className="grid content-start gap-1.5">
           <Label htmlFor="product-code">Código</Label>

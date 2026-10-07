@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { photoPathSchema } from '@/lib/photos'
 import { unitPriceSchema } from './money'
 
 // Importable en cliente y servidor. Las claves desconocidas (id, fechas) se descartan al parsear.
@@ -33,6 +34,10 @@ export const productSchema = z.object({
     .transform((description) => description || null),
   category_id: z.uuid('Selecciona una categoría.'),
   unit_price: unitPriceSchema,
+  // Opcional (spec de productos libres §4.7): solo una ruta products/<uuid>.jpg del bucket.
+  image_path: photoPathSchema('products')
+    .nullish()
+    .transform((path) => path ?? null),
 })
 
 // Valores del formulario (entrada) frente a datos normalizados (salida).

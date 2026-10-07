@@ -9,7 +9,7 @@ type Client = SupabaseClient<Database>
 
 // El precio se proyecta como texto: nunca pasa por un número de coma flotante (spec §6).
 export const productColumns =
-  'id, code, name, description, category_id, unit_price::text, created_at, updated_at'
+  'id, code, name, description, category_id, unit_price::text, created_at, updated_at, image_path'
 
 type ProductRow = Omit<Product, 'unit_price'> & { unit_price: string }
 
@@ -43,6 +43,7 @@ const itemSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   category_name: z.string(),
+  image_path: z.string().nullable(),
 })
 
 const pageSchema = z.object({

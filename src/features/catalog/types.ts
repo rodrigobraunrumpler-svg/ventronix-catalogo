@@ -18,6 +18,7 @@ export type ProductInput = {
   description: string | null
   category_id: string
   unit_price: string
+  image_path: string | null // foto opcional: products/<uuid>.jpg
 }
 
 export type Product = ProductInput & {

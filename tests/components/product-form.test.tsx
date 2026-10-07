@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -19,6 +20,7 @@ const saved: Product = {
   unit_price: '1299.50',
   created_at: '2026-09-29T00:00:00Z',
   updated_at: '2026-09-29T00:00:00Z',
+  image_path: null,
 }
 
 const field = (label: string) => screen.getByLabelText(label)
@@ -28,14 +30,19 @@ function renderForm(props: Partial<Parameters<typeof ProductForm>[0]> = {}) {
   const onSaved = vi.fn()
   const onCreateCategory = vi.fn()
   render(
-    <ProductForm
-      categories={categories}
-      onSubmit={onSubmit}
-      onSaved={onSaved}
-      onCancel={vi.fn()}
-      onCreateCategory={onCreateCategory}
-      {...props}
-    />,
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <ProductForm
+        categories={categories}
+        onSubmit={onSubmit}
+        onSaved={onSaved}
+        onCancel={vi.fn()}
+        onCreateCategory={onCreateCategory}
+        uploadPhoto={vi.fn(async () => '')}
+        {...props}
+      />
+    </QueryClientProvider>,
   )
   return { onSubmit, onSaved, onCreateCategory, user: userEvent.setup() }
 }
@@ -71,7 +78,26 @@ describe('ProductForm', () => {
       description: null,
       category_id: categories[1].id,
       unit_price: '1299.50',
+      image_path: null,
     })
+  })
+
+  it('sube la foto elegida y la envía con el producto', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:foto')
+    URL.revokeObjectURL = vi.fn()
+    const path = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
+    const uploadPhoto = vi.fn(async () => path)
+    const { onSubmit, user } = renderForm({ uploadPhoto })
+    await fillValid(user)
+    await user.upload(
+      screen.getByLabelText('Foto'),
+      new File(['foto'], 'laptop.png', { type: 'image/png' }),
+    )
+    await vi.waitFor(() => expect(uploadPhoto).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: 'Crear producto' }))
+    await vi.waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ image_path: path })),
+    )
   })
 
   it('acepta el precio con punto decimal', async () => {
