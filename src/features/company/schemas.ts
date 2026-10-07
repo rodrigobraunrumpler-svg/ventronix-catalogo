@@ -86,6 +86,8 @@ export const companyProfileSchema = z.object({
     .max(365, validityMessage),
   bank_accounts: z.array(bankAccountSchema).max(ACCOUNT_LIMIT, `Hasta ${ACCOUNT_LIMIT} cuentas.`),
   wallets: z.array(walletSchema).max(WALLET_LIMIT, `Hasta ${WALLET_LIMIT} números.`),
+  // Vacío: el mensaje original (spec de proformas libres §3). Hasta 500 caracteres.
+  whatsapp_message: optionalText(500),
 })
 
 export type CompanyFormValues = z.input<typeof companyProfileSchema>
@@ -107,5 +109,6 @@ export type CompanyProfile = {
   default_validity_days: number
   bank_accounts: BankAccount[]
   wallets: Wallet[]
+  whatsapp_message: string | null
   updated_at: string
 }

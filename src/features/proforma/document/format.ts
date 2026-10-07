@@ -23,6 +23,22 @@ export function documentFileName(number: number | null, clientName: string) {
   return `Proforma-${id}${slug ? `-${slug}` : ''}.pdf`
 }
 
+// Mensaje que acompaña al PDF (spec de proformas libres §3 y §4.6): el de Empresa o, si está vacío,
+// el de siempre. Los datos van entre llaves.
+export const DEFAULT_WHATSAPP_MESSAGE =
+  'Hola, {cliente}. Le envío la proforma {numero} por {total}, válida hasta el {vence}. Quedamos atentos. — {empresa}'
+
+export const WHATSAPP_MESSAGE_LIMIT = 500
+
+// Los datos que se pueden insertar, en el orden de los botones de Empresa.
+export const MESSAGE_FIELDS = [
+  { token: '{cliente}', label: 'Cliente' },
+  { token: '{numero}', label: 'N° de proforma' },
+  { token: '{total}', label: 'Total' },
+  { token: '{vence}', label: 'Válida hasta' },
+  { token: '{empresa}', label: 'Empresa' },
+] as const
+
 type WhatsappMessageInput = {
   clientName: string
   numberLabel: string
@@ -31,16 +47,42 @@ type WhatsappMessageInput = {
   sender: string
 }
 
-// Mensaje ya escrito (spec del documento §7). Sin doble punto si el nombre termina en «S.A.C.».
-export function whatsappMessage({
-  clientName,
-  numberLabel,
-  total,
-  validUntil,
-  sender,
-}: WhatsappMessageInput) {
-  const name = clientName.trim().replace(/\.+$/, '')
-  return `Hola, ${name}. Le envío la proforma ${numberLabel} por ${total}, válida hasta el ${validUntil}. Quedamos atentos. — ${sender}`
+// Un dato entre llaves, quizá seguido de punto. Mayúsculas, tildes y espacios no importan:
+// «{Número}» y «{ numero }» son {numero} (plan, decisión 19).
+const FIELD_PATTERN = /\{([^{}\n]{1,20})\}(\.?)/g
+const fieldKey = (text: string) =>
+  text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+
+// Lo que no es un dato queda tal cual. Un dato seguido de punto no lo duplica: «S.A.C.».
+export function whatsappMessage(template: string | null, data: WhatsappMessageInput) {
+  const values = new Map([
+    ['cliente', data.clientName.trim()],
+    ['numero', data.numberLabel],
+    ['total', data.total],
+    ['vence', data.validUntil],
+    ['empresa', data.sender],
+  ])
+  return (template?.trim() || DEFAULT_WHATSAPP_MESSAGE).replace(
+    FIELD_PATTERN,
+    (whole: string, text: string, dot: string) => {
+      const value = values.get(fieldKey(text))
+      if (value === undefined) return whole
+      return dot ? `${value.replace(/\.+$/, '')}.` : value
+    },
+  )
+}
+
+// Lo que va entre llaves y no es un dato: se enviaría tal cual, y el editor de Empresa lo avisa.
+export function unknownMessageFields(template: string) {
+  const known = new Set(MESSAGE_FIELDS.map((field) => field.token.slice(1, -1)))
+  const unknown = [...template.matchAll(FIELD_PATTERN)]
+    .map(([, text]) => text)
+    .filter((text) => !known.has(fieldKey(text)))
+  return [...new Set(unknown)].map((text) => `{${text}}`)
 }
 
 // Chat del cliente en WhatsApp con el mensaje: código de Perú delante del celular.

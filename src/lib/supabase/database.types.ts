@@ -59,6 +59,7 @@ export type Database = {
           trade_name: string | null
           updated_at: string
           wallets: NonNullable<Json>
+          whatsapp_message: string | null
         }
         Insert: {
           address?: string | null
@@ -74,6 +75,7 @@ export type Database = {
           trade_name?: string | null
           updated_at?: string
           wallets?: NonNullable<Json>
+          whatsapp_message?: string | null
         }
         Update: {
           address?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           trade_name?: string | null
           updated_at?: string
           wallets?: NonNullable<Json>
+          whatsapp_message?: string | null
         }
         Relationships: []
       }

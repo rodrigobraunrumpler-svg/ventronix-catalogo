@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CompanyProfile } from '@/features/company/schemas'
 import { ProformaReady } from '@/features/proforma/components/proforma-ready'
 import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
 import { EMPTY_DRAFT } from '@/features/proforma/draft'
@@ -19,11 +20,15 @@ const pdf: GeneratedDocument = {
 function renderReady(
   generatePdf: Generate = vi.fn<Generate>(async () => ({ ok: true, data: pdf })),
   sendByWhatsApp?: Send,
+  profile: Partial<CompanyProfile> = {},
 ) {
   render(
     <ProformaProvider>
       <ProformaReady
-        company={{ status: 'ready', profile: { ...completeCompany, trade_name: 'Ventronix' } }}
+        company={{
+          status: 'ready',
+          profile: { ...completeCompany, trade_name: 'Ventronix', ...profile },
+        }}
         generatePdf={generatePdf}
         sendByWhatsApp={sendByWhatsApp}
         onCorrect={vi.fn()}
@@ -92,6 +97,22 @@ describe('ProformaReady', () => {
       '_blank',
     )
     expect(screen.queryByText(/bloqueó/)).not.toBeInTheDocument()
+  })
+
+  it('abre el chat con el mensaje de Empresa', async () => {
+    seed()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window)
+    const { user } = renderReady(undefined, undefined, {
+      whatsapp_message: 'Hola {cliente}, su {numero} por {total}.',
+    })
+    const send = screen.getByRole('button', { name: 'Enviar por WhatsApp' })
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    await user.click(send)
+    expect(open).toHaveBeenCalledWith(
+      `https://wa.me/51900000000?text=${encodeURIComponent('Hola Cliente de ejemplo S.A.C., su N° 0001 por S/ 2,590.00.')}`,
+      '_blank',
+    )
   })
 
   it('si no se puede preparar el PDF, lo dice y deja reintentar', async () => {

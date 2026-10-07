@@ -36,12 +36,12 @@ export async function sendProformaDocument(
   }
   const document = await renderProformaDocument(supabase, input)
   if (!document.ok) return document
-  const { model, pdf } = document.data
+  const { model, pdf, company } = document.data
   const result = await provider.sendDocument({
     phone,
     fileName: model.fileName,
     document: pdf,
-    caption: whatsappMessage({
+    caption: whatsappMessage(company.whatsapp_message, {
       clientName: input.client.name,
       numberLabel: model.numberLabel ?? '',
       total: model.total,

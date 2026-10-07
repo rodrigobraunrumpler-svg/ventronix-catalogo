@@ -42,6 +42,7 @@ describe('companyProfileSchema', () => {
         { bank: 'BCP', account: '191-1234567-0-12', cci: '00219100123456701254', holder: null },
       ],
       wallets: [{ kind: 'plin', number: '987654321' }],
+      whatsapp_message: null,
     })
   })
 
@@ -106,6 +107,19 @@ describe('companyProfileSchema', () => {
     expect(issues({ ...valid, wallets: [{ kind: 'tunki', number: '987654321' }] })[0]).toMatch(
       /^wallets\.0\.kind/,
     )
+  })
+
+  it('el mensaje de WhatsApp vacío vuelve al original y tiene hasta 500 caracteres', () => {
+    expect(companyProfileSchema.parse({ ...valid, whatsapp_message: '  ' }).whatsapp_message).toBe(
+      null,
+    )
+    expect(
+      companyProfileSchema.parse({ ...valid, whatsapp_message: ' Hola {cliente} ' })
+        .whatsapp_message,
+    ).toBe('Hola {cliente}')
+    expect(issues({ ...valid, whatsapp_message: 'x'.repeat(501) })).toEqual([
+      'whatsapp_message: Usa como máximo 500 caracteres.',
+    ])
   })
 })
 

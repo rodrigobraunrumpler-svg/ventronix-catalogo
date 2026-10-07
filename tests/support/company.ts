@@ -13,6 +13,7 @@ export const emptyCompany: CompanyProfile = {
   default_validity_days: 7,
   bank_accounts: [],
   wallets: [],
+  whatsapp_message: null,
   updated_at: '2026-09-30T00:00:00Z',
 }
 

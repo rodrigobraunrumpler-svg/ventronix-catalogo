@@ -65,6 +65,7 @@ describe('datos de la empresa', () => {
       default_validity_days: 7,
       bank_accounts: [],
       wallets: [],
+      whatsapp_message: null,
     })
   })
 
@@ -108,5 +109,18 @@ describe('datos de la empresa', () => {
 
   it('la base rechaza un RUC con otro formato', async () => {
     expect(await sqlState(db.query("update public.company_profile set ruc = '123'"))).toBe('23514')
+  })
+
+  it('guarda el mensaje de WhatsApp; la base no admite más de 500 caracteres', async () => {
+    const message = 'Hola {cliente}, le envío la {numero}.'
+    expect(
+      await saveCompanyProfileRow(supabase, { ...input, whatsapp_message: message }),
+    ).toMatchObject({ ok: true, data: { whatsapp_message: message } })
+    expect(await getCompanyProfile(supabase)).toMatchObject({ whatsapp_message: message })
+    expect(
+      await sqlState(
+        db.query("update public.company_profile set whatsapp_message = repeat('x', 501)"),
+      ),
+    ).toBe('23514')
   })
 })

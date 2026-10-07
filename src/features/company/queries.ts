@@ -6,7 +6,7 @@ import { WALLET_KINDS, type CompanyProfile } from './schemas'
 type Client = SupabaseClient<Database>
 
 export const companyColumns =
-  'legal_name, trade_name, ruc, address, phones, email, payment_terms, return_policy, default_validity_days, bank_accounts, wallets, updated_at'
+  'legal_name, trade_name, ruc, address, phones, email, payment_terms, return_policy, default_validity_days, bank_accounts, wallets, whatsapp_message, updated_at'
 
 // Lo guardado ya pasó por companyProfileSchema: aquí solo se comprueba la forma de las listas.
 const storedLists = z.object({

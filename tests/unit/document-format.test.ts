@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_WHATSAPP_MESSAGE,
+  MESSAGE_FIELDS,
   documentDates,
   documentFileName,
   flowPieces,
+  unknownMessageFields,
   whatsappLink,
   whatsappMessage,
   wrapCode,
@@ -35,19 +38,49 @@ describe('documentFileName', () => {
   })
 })
 
-describe('WhatsApp', () => {
-  const message = whatsappMessage({
+describe('mensaje de WhatsApp', () => {
+  const data = {
     clientName: 'Cliente de ejemplo S.A.C.',
     numberLabel: 'N° 0001',
     total: 'S/ 8,114.00',
     validUntil: '07/10/2026',
     sender: 'Ventronix',
+  }
+
+  it('sin mensaje en Empresa usa el original, sin doble punto', () => {
+    const expected =
+      'Hola, Cliente de ejemplo S.A.C. Le envío la proforma N° 0001 por S/ 8,114.00, válida hasta el 07/10/2026. Quedamos atentos. — Ventronix'
+    expect(whatsappMessage(null, data)).toBe(expected)
+    expect(whatsappMessage('   ', data)).toBe(expected)
   })
 
-  it('escribe el saludo, el número, el total y la validez sin doble punto', () => {
-    expect(message).toBe(
-      'Hola, Cliente de ejemplo S.A.C. Le envío la proforma N° 0001 por S/ 8,114.00, válida hasta el 07/10/2026. Quedamos atentos. — Ventronix',
+  it('reemplaza los datos del mensaje de Empresa y deja tal cual lo demás', () => {
+    expect(
+      whatsappMessage(
+        'Buen día, {cliente}. Adjunto la {numero} por {total} ({vence}). {precio} — {empresa}',
+        data,
+      ),
+    ).toBe(
+      'Buen día, Cliente de ejemplo S.A.C. Adjunto la N° 0001 por S/ 8,114.00 (07/10/2026). {precio} — Ventronix',
     )
+  })
+
+  it('reconoce los datos aunque se escriban con mayúsculas, tildes o espacios', () => {
+    expect(whatsappMessage('Hola {Cliente}, su {Número} por { TOTAL }.', data)).toBe(
+      'Hola Cliente de ejemplo S.A.C., su N° 0001 por S/ 8,114.00.',
+    )
+  })
+
+  it('dice qué va entre llaves y no es un dato, sin repetirlo', () => {
+    expect(unknownMessageFields('Hola {cliente}: {precio}, {Fecha} y {precio}')).toEqual([
+      '{precio}',
+      '{Fecha}',
+    ])
+    expect(unknownMessageFields(DEFAULT_WHATSAPP_MESSAGE)).toEqual([])
+  })
+
+  it('el mensaje original usa todos los datos', () => {
+    for (const field of MESSAGE_FIELDS) expect(DEFAULT_WHATSAPP_MESSAGE).toContain(field.token)
   })
 
   it('abre el chat del celular peruano con el mensaje', () => {

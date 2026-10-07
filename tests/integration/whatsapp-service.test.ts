@@ -3,6 +3,7 @@ import type { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { DocumentInput } from '@/features/proforma/document/input'
 import { sendProformaDocument } from '@/features/proforma/document/send'
+import type { SendDocumentInput, WhatsAppProvider } from '@/features/whatsapp/provider'
 import {
   linkWhatsAppNumber,
   unlinkWhatsAppNumber,
@@ -102,6 +103,24 @@ describe('WhatsApp de la empresa', () => {
 })
 
 describe('proforma por WhatsApp', () => {
+  it('el mensaje es el de Empresa, con los datos de la proforma', async () => {
+    await db.query(
+      "update public.company_profile set trade_name = 'Ventronix', whatsapp_message = 'Hola {cliente}: su {numero} por {total} vence el {vence}. {empresa}'",
+    )
+    const sent: SendDocumentInput[] = []
+    const provider: WhatsAppProvider = {
+      ...stubWhatsAppProvider(supabase),
+      sendDocument: async (document) => {
+        sent.push(document)
+        return { ok: true }
+      },
+    }
+    expect(await sendProformaDocument(supabase, proforma(), provider)).toMatchObject({ ok: true })
+    expect(sent[0].caption).toBe(
+      'Hola Cliente de ejemplo S.A.C.: su N° 0001 por S/ 2,590.00 vence el 07/10/2026. Ventronix',
+    )
+  })
+
   it('envía la proforma generada y responde con el celular del cliente', async () => {
     const provider = stubWhatsAppProvider(supabase)
     await linkWhatsAppNumber(supabase, provider, { phone: '987654321', code: 'ABCD1234' })

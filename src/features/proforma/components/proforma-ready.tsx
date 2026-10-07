@@ -89,7 +89,7 @@ export function ProformaReady({
     ? documentDates(new Date(draft.issuedAt), validityDays).validUntil
     : ''
   const phoneOk = isValidMobile(digitsOnly(draft.client.phone))
-  const message = whatsappMessage({
+  const message = whatsappMessage(profile?.whatsapp_message ?? null, {
     clientName: draft.client.name,
     numberLabel,
     total,
