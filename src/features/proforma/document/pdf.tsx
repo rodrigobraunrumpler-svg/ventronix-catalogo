@@ -154,13 +154,18 @@ function sheet(compact: boolean) {
     td: { paddingVertical: pick(8.25, 3.5), paddingHorizontal: 7.5 },
     quantity: { width: 42 },
     // Columna «FOTO» (spec de productos libres §4.5): unos 1,5 cm, con la foto entera, sin recortar.
+    // El recuadro es blanco con borde fino: la foto que no es cuadrada no deja franjas grises.
     photo: { width: pick(46, 34), paddingHorizontal: 4 },
     photoImage: {
       width: pick(38, 26),
       height: pick(38, 26),
       objectFit: 'contain',
-      backgroundColor: '#f1f3ee',
+      borderWidth: 0.75,
+      borderColor: color.line,
       borderRadius: 3,
+      // react-pdf dibuja la foto encima del borde (solo descuenta el padding): así queda dentro, a
+      // 1 pt del borde.
+      padding: 1.75,
     },
     photoNote: { marginTop: pick(4, 2), fontSize: pick(8, 7), color: color.muted },
     code: { width: pick(64.5, 74) },

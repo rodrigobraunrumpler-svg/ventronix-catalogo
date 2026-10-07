@@ -1,8 +1,8 @@
 import { inflateSync } from 'node:zlib'
 
-// Texto de un PDF de react-pdf (pdfkit) tal como sale al copiarlo: cada fuente traduce sus glifos
-// con su mapa ToUnicode. Una línea por cada texto dibujado.
-export function pdfText(pdf: Buffer) {
+// Los objetos de un PDF de react-pdf (pdfkit), por número: su diccionario y, si lo tiene, su flujo
+// ya descomprimido.
+export function pdfObjects(pdf: Buffer) {
   const raw = pdf.toString('latin1')
   const dicts = new Map<string, string>()
   const streams = new Map<string, string>()
@@ -20,6 +20,13 @@ export function pdfText(pdf: Buffer) {
       )
     }
   }
+  return { raw, dicts, streams }
+}
+
+// Texto de un PDF de react-pdf (pdfkit) tal como sale al copiarlo: cada fuente traduce sus glifos
+// con su mapa ToUnicode. Una línea por cada texto dibujado.
+export function pdfText(pdf: Buffer) {
+  const { raw, dicts, streams } = pdfObjects(pdf)
 
   // Glifo (4 cifras hexadecimales) → texto, según el mapa ToUnicode de la fuente.
   const glyphs = (fontId: string) => {
