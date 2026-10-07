@@ -23,7 +23,7 @@ export function useAddSingleResult() {
     if (normalizeSearch(filters.search) === '') return
     const query = toProductQuery(filters)
     const page = await queryClient
-      .fetchQuery({
+      .query({
         queryKey: catalogKeys.productList(query),
         queryFn: ({ signal }) => listProducts(createClient(), query, signal),
       })
@@ -61,7 +61,7 @@ export function useRucLookup() {
   const queryClient = useQueryClient()
   return (ruc: string): Promise<RucLookupResult> =>
     queryClient
-      .fetchQuery({
+      .query({
         queryKey: proformaKeys.ruc(ruc),
         queryFn: async () => {
           const result = await settle(lookupRuc(ruc))

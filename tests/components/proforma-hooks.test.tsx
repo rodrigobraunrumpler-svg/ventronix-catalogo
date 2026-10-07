@@ -1,12 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { catalogKeys } from '@/features/catalog/query-keys'
 import { toProductQuery } from '@/features/catalog/list-options'
 import type { ProductFilters, ProductListItem, ProductPage } from '@/features/catalog/types'
-import { useAddSingleResult } from '@/features/proforma/hooks'
+import { lookupRuc } from '@/features/proforma/actions'
+import { useAddSingleResult, useRucLookup } from '@/features/proforma/hooks'
+import type { RucLookupResult } from '@/features/proforma/ruc'
 import { ProformaProvider } from '@/features/proforma/store'
+
+vi.mock('@/features/proforma/actions', () => ({ lookupRuc: vi.fn() }))
 
 const laptop: ProductListItem = {
   id: '8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c',
@@ -66,5 +70,33 @@ describe('useAddSingleResult', () => {
         'Laptop de 14 pulgadas: 2 unidades en la proforma',
       ),
     )
+  })
+})
+
+describe('useRucLookup', () => {
+  it('guarda lo que encuentra SUNAT; «no disponible» se vuelve a consultar', async () => {
+    const found: RucLookupResult = {
+      kind: 'found',
+      company: {
+        ruc: '20000000001',
+        legalName: 'EMPRESA DE PRUEBA S.A.C.',
+        address: 'AV. PRUEBA 123, HUAMANGA',
+        status: 'ACTIVO',
+        condition: 'HABIDO',
+      },
+    }
+    vi.mocked(lookupRuc)
+      .mockResolvedValueOnce({ ok: true, data: { kind: 'unavailable' } })
+      .mockResolvedValueOnce({ ok: true, data: found })
+    const queryClient = new QueryClient()
+    const { result } = renderHook(() => useRucLookup(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    })
+    expect(await result.current('20000000001')).toEqual({ kind: 'unavailable' })
+    expect(await result.current('20000000001')).toEqual(found)
+    expect(await result.current('20000000001')).toEqual(found)
+    expect(lookupRuc).toHaveBeenCalledTimes(2)
   })
 })

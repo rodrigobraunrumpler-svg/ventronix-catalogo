@@ -74,7 +74,7 @@ export function useStoredDocument() {
   async function fetchFile(row: ProformaRow) {
     setPending(row.id)
     try {
-      const stored = await queryClient.fetchQuery({
+      const stored = await queryClient.query({
         queryKey: historyKeys.document(row.id),
         queryFn: () => fetchStoredDocument(row.id),
         staleTime: DOCUMENT_STALE_MS,
@@ -112,7 +112,7 @@ export function useClientLookup() {
   const queryClient = useQueryClient()
   return (document: string): Promise<ClientMatch | null> =>
     queryClient
-      .fetchQuery({
+      .query({
         queryKey: historyKeys.client(document),
         queryFn: () => findClient(createClient(), document),
         staleTime: 0,
