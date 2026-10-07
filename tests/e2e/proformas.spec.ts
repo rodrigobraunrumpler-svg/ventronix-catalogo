@@ -89,7 +89,9 @@ test('«Nueva proforma» pregunta antes de borrar una proforma sin generar', asy
   await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
   await page.keyboard.press('Escape')
   // La proforma en curso se ve en su barra, como en Productos.
-  await expect(page.getByRole('region', { name: 'Proforma' })).toContainText('1 producto')
+  await expect(page.getByRole('region', { name: 'Proforma', exact: true })).toContainText(
+    '1 producto',
+  )
 
   await start.click()
   const prompt = page.getByRole('alertdialog', { name: '¿Empezar una proforma nueva?' })

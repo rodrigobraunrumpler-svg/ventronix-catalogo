@@ -1,5 +1,6 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import {
   Dialog,
@@ -19,6 +20,7 @@ import type { DocumentInput } from '../document/input'
 import { useCurrentPrices, useRucLookup } from '../hooks'
 import { formatProformaNumber } from '../number'
 import { firstPendingField, type CompanyStatus } from '../readiness'
+import { historyKeys } from '../history/hooks'
 import { useProforma } from '../store'
 import { ProformaPanel } from './proforma-panel'
 
@@ -36,6 +38,7 @@ export function ProformaDialog({
   historyLink?: boolean
 }) {
   const { draft } = useProforma()
+  const queryClient = useQueryClient()
   const company = useCompanyProfile()
   const prices = useCurrentPrices(
     draft.lines.flatMap((line) => (line.productId ? [line.productId] : [])),
@@ -97,7 +100,14 @@ export function ProformaDialog({
           prices={prices.data}
           lookupRuc={lookupRuc}
           reserveNumber={() => settle(reserveProformaNumber())}
-          generatePdf={(input) => settle(generateProformaDocument(input))}
+          generatePdf={async (input) => {
+            const result = await settle(generateProformaDocument(input))
+            // La proforma generada ya está en el historial (spec de productos libres §6).
+            if (result.ok && !input.draft) {
+              void queryClient.invalidateQueries({ queryKey: historyKeys.all })
+            }
+            return result
+          }}
           searchProducts={(term, signal) =>
             listProducts(createClient(), { search: term, category: null, page: 1 }, signal).then(
               (page) => page.items,

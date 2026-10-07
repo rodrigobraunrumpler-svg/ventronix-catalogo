@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { listProformas } from '@/features/proforma/history/queries'
 import { ensureUser, publicClient, signedInClient } from '../support/local-supabase'
 import { connect, resetProformas, sqlState } from './db'
 
@@ -182,5 +183,14 @@ describe('permisos', () => {
     await insert({ number: 1 })
     expect(await sqlState(insert({ number: 2, client_document: '123' }))).toBe('23514')
     expect(await sqlState(insert({ number: 1 }))).toBe('23505')
+  })
+})
+
+describe('listProformas', () => {
+  it('pasa la página de la base a la app', async () => {
+    await insert({ number: 1, total: '7960.00' })
+    expect(
+      await listProformas(supabase, { search: '', page: 1, dateFrom: null, dateTo: null }),
+    ).toMatchObject({ total: 1, sum: '7960.00', all: 1, items: [{ number: 1, total: '7960.00' }] })
   })
 })
