@@ -72,7 +72,7 @@ Maqueta: «Proformas · historial en PC» y «… en el teléfono».
 - **Cabecera:**
   - título «Proformas» con las cifras «N proformas · N este mes»;
   - subtítulo «Todas las proformas generadas. Búscalas por cliente o fecha y reenvíalas cuando el cliente las pierda.»;
-  - botones «Descargar Excel» (secundario) y «Nueva proforma» (principal).
+  - botones «Descargar Excel» (secundario) y «Nueva proforma» (principal). Sin nada que descargar, «Descargar Excel» se ve desactivado y explica por qué al pasar el mouse o al pulsarlo: «Todavía no hay proformas para descargar.» o «No hay proformas para descargar con estos filtros.». El «Excel» de Productos hace lo mismo.
 - **Filtros:**
   - búsqueda por nombre del cliente, RUC, DNI, celular o N° de proforma, sin tildes ni mayúsculas; con un número, esa proforma va primero;
   - filtro de fecha como el de Productos (hoy, 7 y 30 días, este mes, mes anterior y un rango propio), en días de Lima;
@@ -298,4 +298,5 @@ Añadidas a pedido del usuario, sobre lo acordado:
   - datos del mensaje tolerantes y aviso de los desconocidos;
   - confirmación de cada producto libre añadido;
   - «Quedó guardada en el historial» al generar;
-  - al cambiar de página desde abajo, la lista vuelve a su inicio.
+  - al cambiar de página desde abajo, la lista vuelve a su inicio;
+  - «Descargar Excel» sin nada que descargar explica por qué, en Proformas y en Productos.

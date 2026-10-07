@@ -4556,6 +4556,8 @@ git commit -m "feat: browse the proforma history with search, dates and pages"
   - `src/features/proforma/history/excel.ts`
   - `src/features/proforma/history/components/history-excel-button.tsx`
   - `tests/unit/proforma-history-excel.test.ts`
+  - `tests/components/history-excel-button.test.tsx`
+  - `tests/components/export-menu.test.tsx`
 - Modify:
   - `src/features/catalog/excel/theme.ts`
   - `src/features/catalog/excel/report.ts`
@@ -4563,7 +4565,9 @@ git commit -m "feat: browse the proforma history with search, dates and pages"
   - `src/features/proforma/history/queries.ts`
   - `src/features/proforma/history/actions.ts`
   - `src/features/proforma/history/components/proformas-screen.tsx`
-- Test: `tests/unit/proforma-history-excel.test.ts`, `tests/unit/catalog-excel-report.test.ts` (sin cambios: protege el refactor)
+  - `src/features/catalog/products/components/export-menu.tsx`
+  - `tests/e2e/catalog-excel.spec.ts`
+- Test: `tests/unit/proforma-history-excel.test.ts`, `tests/components/history-excel-button.test.tsx`, `tests/components/export-menu.test.tsx`, `tests/e2e/catalog-excel.spec.ts`, `tests/unit/catalog-excel-report.test.ts` (sin cambios: protege el refactor)
 
 **Interfaces:**
 - Consumes: `export_proformas` (tarea 7); `historyArgs`, `ProformaRow` (tarea 10); `labelDateRange`, `describeDateRange` (tarea 6).
@@ -4574,7 +4578,8 @@ git commit -m "feat: browse the proforma history with search, dates and pages"
   - `exportProformaRows(supabase, query, maxRows)` en `history/queries.ts`;
   - `buildProformasReport(input)` en `history/excel.ts`;
   - la Server Action `exportProformas(filters)` → `ActionResult<ExcelFile>`;
-  - `HistoryExcelButton({ filters, disabled })`.
+  - `HistoryExcelButton({ filters, unavailable })`: con `unavailable` (el motivo) se ve desactivado, pero sigue enfocable y explica por qué al pasar el mouse, al pulsarlo y a los lectores de pantalla;
+  - el «Excel» de Productos (`ExportMenu`) hace lo mismo: hoy su texto «No hay productos para descargar con estos filtros.» no se ve, porque un botón desactivado no recibe el mouse.
 
 - [ ] **Step 1: Escribir las pruebas**
 
@@ -4688,10 +4693,93 @@ describe('filtros del Excel', () => {
 })
 ```
 
+`tests/components/history-excel-button.test.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Toaster } from 'sonner'
+import { describe, expect, it } from 'vitest'
+import { HistoryExcelButton } from '@/features/proforma/history/components/history-excel-button'
+
+describe('HistoryExcelButton', () => {
+  it('sin nada que descargar se ve desactivado y explica por qué', async () => {
+    const reason = 'No hay proformas para descargar con estos filtros.'
+    render(
+      <>
+        <HistoryExcelButton
+          filters={{ search: 'nadie', date: null, from: null, to: null }}
+          unavailable={reason}
+        />
+        <Toaster />
+      </>,
+    )
+    const button = screen.getByRole('button', { name: 'Descargar Excel' })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    // Al pasar el mouse (title) y para los lectores de pantalla.
+    expect(button).toHaveAccessibleDescription(reason)
+    // Al pulsarlo, también en el teléfono.
+    await userEvent.setup().click(button)
+    expect(await screen.findByText(reason)).toBeVisible()
+  })
+})
+```
+
+`tests/components/export-menu.test.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Toaster } from 'sonner'
+import { describe, expect, it } from 'vitest'
+import { ExportMenu } from '@/features/catalog/products/components/export-menu'
+
+const filters = {
+  search: 'nada',
+  category: null,
+  dateBy: 'created',
+  date: null,
+  from: null,
+  to: null,
+  sort: 'name',
+} as const
+
+describe('ExportMenu', () => {
+  it('sin productos que descargar se ve desactivado y explica por qué', async () => {
+    const reason = 'No hay productos para descargar con estos filtros.'
+    render(
+      <>
+        <ExportMenu filters={filters} disabled />
+        <Toaster />
+      </>,
+    )
+    const button = screen.getByRole('button', { name: 'Descargar Excel' })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).toHaveAccessibleDescription(reason)
+    await userEvent.setup().click(button)
+    expect(await screen.findByText(reason)).toBeVisible()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+})
+```
+
+`tests/e2e/catalog-excel.spec.ts`, al final de «sin productos que descargar, el botón queda desactivado»:
+
+```ts
+  const excel = page.getByRole('button', { name: 'Descargar Excel' })
+  await expect(excel).toHaveAccessibleDescription(
+    'No hay productos para descargar con estos filtros.',
+  )
+  await excel.click()
+  await expect(page.getByText('No hay productos para descargar con estos filtros.')).toBeVisible()
+```
+
+(`toBeDisabled()` de esa prueba sigue valiendo: Playwright cuenta `aria-disabled`.)
+
 - [ ] **Step 2: Ejecutar las pruebas y ver que fallan**
 
-Run: `pnpm exec vitest run --project unit tests/unit/proforma-history-excel.test.ts`
-Expected: FAIL al importar: `history/excel` y `history/export-request` no existen y `theme.ts` no exporta `REPORT_TABLE_ROW`.
+Run: `pnpm exec vitest run --project unit tests/unit/proforma-history-excel.test.ts && pnpm exec vitest run --project components tests/components/history-excel-button.test.tsx tests/components/export-menu.test.tsx`
+Expected: FAIL. `history/excel`, `history/export-request` y `history-excel-button` no existen, `theme.ts` no exporta `REPORT_TABLE_ROW`, y el «Excel» de Productos está `disabled` (sin descripción ni aviso al pulsarlo).
 
 - [ ] **Step 3: Compartir la cabecera de los reportes**
 
@@ -5071,16 +5159,21 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { settle } from '@/lib/action-result'
 import { base64ToFile, downloadFile, XLSX_MIME } from '@/lib/files'
+import { cn } from '@/lib/utils'
 import { exportProformas } from '../actions'
 import type { HistoryExportFilters } from '../export-request'
 
-// «Descargar Excel» (spec de productos libres §4.2 y §6): lo filtrado, como en Productos.
+// «Descargar Excel» (spec de productos libres §4.2 y §6): lo filtrado, como en Productos. Sin nada
+// que descargar se ve desactivado, pero no con `disabled`: un botón desactivado no recibe el mouse
+// ni el foco, y el motivo no se vería. Así lo explica al pasar el mouse, al pulsarlo y a los
+// lectores de pantalla.
 export function HistoryExcelButton({
   filters,
-  disabled,
+  unavailable,
 }: {
   filters: HistoryExportFilters
-  disabled: boolean
+  // Por qué no hay nada que descargar; null si se puede.
+  unavailable: string | null
 }) {
   const [pending, setPending] = useState(false)
 
@@ -5108,7 +5201,14 @@ export function HistoryExcelButton({
   }
 
   return (
-    <Button variant="outline" disabled={disabled || pending} onClick={() => void download()}>
+    <Button
+      variant="outline"
+      disabled={pending}
+      aria-disabled={unavailable ? true : undefined}
+      title={unavailable ?? undefined}
+      className={cn(unavailable && 'cursor-not-allowed opacity-50')}
+      onClick={() => (unavailable ? toast(unavailable) : void download())}
+    >
       {pending ? (
         <LoaderCircle className="animate-spin" aria-hidden />
       ) : (
@@ -5125,19 +5225,72 @@ export function HistoryExcelButton({
 ```tsx
           <HistoryExcelButton
             filters={{ search: filters.search, date: filters.date, from: filters.from, to: filters.to }}
-            disabled={!data || data.total === 0}
+            unavailable={
+              data?.all === 0
+                ? 'Todavía no hay proformas para descargar.'
+                : data?.total === 0
+                  ? 'No hay proformas para descargar con estos filtros.'
+                  : null
+            }
           />
+```
+
+(Mientras carga la lista, el botón funciona: el servidor responde lo mismo si no hay nada.)
+
+`src/features/catalog/products/components/export-menu.tsx`: el mismo trato. Después de `const name = …`:
+
+```tsx
+  const content = (
+    <>
+      {pending ? (
+        <LoaderCircle className="animate-spin" aria-hidden />
+      ) : (
+        <FileSpreadsheet aria-hidden />
+      )}
+      <span className="max-sm:hidden">{pending ? 'Preparando…' : 'Excel'}</span>
+      <ChevronDown aria-hidden />
+    </>
+  )
+
+  // Sin productos que descargar se ve desactivado y explica por qué (al pasar el mouse, al pulsarlo
+  // y a los lectores de pantalla), sin abrir el menú. Con `disabled`, el texto no se veía.
+  if (disabled) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label={name}
+        aria-disabled
+        title={NOTHING_TO_DOWNLOAD}
+        className="cursor-not-allowed opacity-50"
+        onClick={() => toast(NOTHING_TO_DOWNLOAD)}
+      >
+        {content}
+      </Button>
+    )
+  }
+```
+
+con `const NOTHING_TO_DOWNLOAD = 'No hay productos para descargar con estos filtros.'` junto a `OPTIONS`. El menú de siempre queda con este disparador (el `Portal` y el `Content` no cambian):
+
+```tsx
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild disabled={pending}>
+        <Button variant="outline" size="sm" aria-label={name} title={name}>
+          {content}
+        </Button>
+      </DropdownMenu.Trigger>
 ```
 
 - [ ] **Step 5: Ejecutar las pruebas, los tipos y el lint**
 
-Run: `pnpm exec vitest run --project unit tests/unit/proforma-history-excel.test.ts tests/unit/catalog-excel-report.test.ts tests/unit/catalog-export-request.test.ts && pnpm typecheck && pnpm lint`
-Expected: PASS en las tres: el reporte de productos sale igual que antes del refactor.
+Run: `pnpm exec vitest run --project unit tests/unit/proforma-history-excel.test.ts tests/unit/catalog-excel-report.test.ts tests/unit/catalog-export-request.test.ts && pnpm exec vitest run --project components tests/components/history-excel-button.test.tsx tests/components/export-menu.test.tsx && pnpm typecheck && pnpm lint && pnpm exec playwright test tests/e2e/catalog-excel.spec.ts`
+Expected: PASS en todo: el reporte de productos sale igual que antes del refactor, y los dos botones explican por qué no hay nada que descargar.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/request-url.ts src/features/catalog/excel/theme.ts src/features/catalog/excel/report.ts src/features/catalog/products/excel-actions.ts src/features/proforma/history/export-request.ts src/features/proforma/history/excel.ts src/features/proforma/history/queries.ts src/features/proforma/history/actions.ts src/features/proforma/history/components/history-excel-button.tsx src/features/proforma/history/components/proformas-screen.tsx tests/unit/proforma-history-excel.test.ts
+git add src/lib/request-url.ts src/features/catalog/excel/theme.ts src/features/catalog/excel/report.ts src/features/catalog/products/excel-actions.ts src/features/proforma/history/export-request.ts src/features/proforma/history/excel.ts src/features/proforma/history/queries.ts src/features/proforma/history/actions.ts src/features/proforma/history/components/history-excel-button.tsx src/features/proforma/history/components/proformas-screen.tsx src/features/catalog/products/components/export-menu.tsx tests/unit/proforma-history-excel.test.ts tests/components/history-excel-button.test.tsx tests/components/export-menu.test.tsx tests/e2e/catalog-excel.spec.ts
 git commit -m "feat: download the filtered proforma history as Excel"
 ```
 
@@ -6241,6 +6394,9 @@ test('la proforma generada aparece en el historial y «Corregir» la actualiza',
   await login(page)
   await page.getByRole('link', { name: 'Proformas' }).click()
   await expect(page.getByText('Todavía no hay proformas guardadas')).toBeVisible()
+  // Sin proformas, «Descargar Excel» explica por qué no descarga nada.
+  await page.getByRole('button', { name: 'Descargar Excel' }).click()
+  await expect(page.getByText('Todavía no hay proformas para descargar.')).toBeVisible()
   await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
   const panel = dialog(page)
   await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
