@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { CompanyForm } from '@/features/company/components/company-form'
 import type { CompanyInput, CompanyProfile } from '@/features/company/schemas'
+import { DEFAULT_WHATSAPP_MESSAGE } from '@/features/proforma/document/format'
 import type { RucLookupResult } from '@/features/proforma/ruc'
 import type { ActionResult } from '@/lib/action-result'
 import { completeCompany, emptyCompany } from '../support/company'
@@ -179,5 +180,59 @@ describe('CompanyForm', () => {
     expect(preview).toHaveTextContent('Yape / Plin: 987 654 321')
     expect(preview).toHaveTextContent('1. Validez de la oferta: 7 días.')
     expect(preview).toHaveTextContent('2. [Condición de pago]')
+  })
+})
+
+describe('mensaje de WhatsApp', () => {
+  it('muestra el mensaje original y cómo lo recibe el cliente, con datos de ejemplo', async () => {
+    const { user } = renderForm({ ...completeCompany, trade_name: 'Ventronix' })
+    await user.click(tab(/Mensaje/))
+    expect(screen.getByLabelText('Texto del mensaje')).toHaveValue(DEFAULT_WHATSAPP_MESSAGE)
+    expect(
+      screen.getByText(
+        'Hola, Inversiones Nuevo Sol S.A.C. Le envío la proforma N° 0049 por S/ 6,760.00, válida hasta el 13/10/2026. Quedamos atentos. — Ventronix',
+      ),
+    ).toBeVisible()
+    expect(screen.getByText(`${DEFAULT_WHATSAPP_MESSAGE.length} / 500`)).toBeVisible()
+  })
+
+  it('inserta un dato donde está el cursor y guarda el mensaje', async () => {
+    const { onSubmit, user } = renderForm(completeCompany)
+    await user.click(tab(/Mensaje/))
+    const text = screen.getByLabelText('Texto del mensaje')
+    await user.clear(text)
+    await user.type(text, 'Adjunto su proforma por ')
+    const fields = within(screen.getByRole('group', { name: 'Insertar dato' }))
+    await user.click(fields.getByRole('button', { name: 'Total' }))
+    expect(text).toHaveValue('Adjunto su proforma por {total}')
+    expect(screen.getByText('Adjunto su proforma por S/ 6,760.00')).toBeVisible()
+    await user.click(save())
+    await vi.waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ whatsapp_message: 'Adjunto su proforma por {total}' }),
+      ),
+    )
+  })
+
+  it('avisa si algo entre llaves no es un dato', async () => {
+    const { user } = renderForm(completeCompany)
+    await user.click(tab(/Mensaje/))
+    const text = screen.getByLabelText('Texto del mensaje')
+    await user.clear(text)
+    await user.click(text)
+    await user.paste('Hola {cliente}, su precio es {precio}')
+    expect(
+      screen.getByText(
+        '{precio} no es un dato y se enviará tal cual. Usa los botones para insertar los datos.',
+      ),
+    ).toBeVisible()
+  })
+
+  it('«Volver al mensaje original» lo recupera', async () => {
+    const { user } = renderForm({ ...completeCompany, whatsapp_message: 'Hola {cliente}' })
+    await user.click(tab(/Mensaje/))
+    expect(screen.getByLabelText('Texto del mensaje')).toHaveValue('Hola {cliente}')
+    await user.click(screen.getByRole('button', { name: 'Volver al mensaje original' }))
+    expect(screen.getByLabelText('Texto del mensaje')).toHaveValue(DEFAULT_WHATSAPP_MESSAGE)
   })
 })

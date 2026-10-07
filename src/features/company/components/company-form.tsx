@@ -8,6 +8,7 @@ import {
   ChevronUp,
   Landmark,
   LoaderCircle,
+  MessageCircle,
   Phone,
   Plus,
   Save,
@@ -24,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { DEFAULT_WHATSAPP_MESSAGE } from '@/features/proforma/document/format'
 import type { RucLookupResult } from '@/features/proforma/ruc'
 import type { ActionResult } from '@/lib/action-result'
 import { digitsOnly, isValidRuc } from '@/lib/peru'
@@ -38,6 +40,7 @@ import {
   type CompanyProfile,
 } from '../schemas'
 import { CompanyPreview } from './company-preview'
+import { MessageEditor } from './message-editor'
 
 // Una sección a la vez, en pestañas: todo cabe en pantalla sin desplazarse. Cada pestaña sabe qué
 // campos tiene, para marcar sus errores y llevar a ella al guardar.
@@ -51,6 +54,7 @@ const SECTIONS = [
     fields: ['payment_terms', 'return_policy', 'default_validity_days'],
   },
   { value: 'pagos', label: 'Pagos', icon: Landmark, fields: ['bank_accounts', 'wallets'] },
+  { value: 'mensaje', label: 'Mensaje', icon: MessageCircle, fields: ['whatsapp_message'] },
 ] as const satisfies readonly {
   value: string
   label: string
@@ -69,6 +73,7 @@ const SCALAR_FIELDS = [
   'payment_terms',
   'return_policy',
   'default_validity_days',
+  'whatsapp_message',
 ] as const
 
 const KIND_OPTIONS = [
@@ -97,6 +102,8 @@ function toFormValues(profile: CompanyProfile): CompanyFormValues {
       holder: account.holder ?? '',
     })),
     wallets: profile.wallets,
+    // Sin mensaje guardado se ve el original: así se sabe qué se envía (plan, decisión 10).
+    whatsapp_message: profile.whatsapp_message ?? DEFAULT_WHATSAPP_MESSAGE,
   }
 }
 
@@ -276,6 +283,7 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
       (live.phones ?? []).some((phone) => PHONE_PATTERN.test(phone.number?.trim() ?? '')),
     condiciones: false,
     pagos: false,
+    mensaje: false,
   }
   const rucHint =
     rucLookup === 'loading' ? (
@@ -308,7 +316,7 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
         >
           <Tabs.List
             aria-label="Secciones de los datos de la empresa"
-            className="grid grid-cols-4 border-b sm:flex sm:px-2"
+            className="grid grid-cols-5 border-b sm:flex sm:px-2"
           >
             {SECTIONS.map((section) => {
               const Icon = section.icon
@@ -673,6 +681,18 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
                 </Button>
               ) : null}
             </div>
+          </Tabs.Content>
+
+          <Tabs.Content value="mensaje" className={panel}>
+            <MessageEditor
+              field={register('whatsapp_message')}
+              value={live.whatsapp_message ?? ''}
+              error={errors.whatsapp_message?.message}
+              sender={live.trade_name?.trim() || live.legal_name?.trim() || 'Ventronix'}
+              onChange={(text) =>
+                setValue('whatsapp_message', text, { shouldDirty: true, shouldValidate: true })
+              }
+            />
           </Tabs.Content>
 
           {/* Guardar va con el formulario: al pie de la tarjeta y, si la pestaña es larga, pegado al

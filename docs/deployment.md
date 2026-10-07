@@ -87,6 +87,7 @@ Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplic
 
 - `202610020001_product_list_filters.sql`: fecha y orden de la lista, Excel e indicadores.
 - `202610030001_product_import.sql`: la carga masiva. Añade las funciones `product_import_plan`, `preview_product_import` e `import_products`, solo para cuentas con sesión.
+- `202610060001_whatsapp_message.sql`: el mensaje de WhatsApp editable en Empresa. Añade una columna. **Aplícala antes de publicar el código:** la app la lee al cargar Empresa y cada proforma, y sin ella esas pantallas fallan.
 
 Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba despliegue» y el producto `PRUEBA-001`, y bórralos al terminar.
 
@@ -97,6 +98,7 @@ Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba de
 - [ ] El filtro de fecha (registro o modificación) y el orden cambian la lista y se conservan al recargar.
 - [ ] El botón «Excel» descarga el reporte completo y la lista de precios con lo filtrado.
 - [ ] **Carga masiva:** en `/products/import`, descarga la plantilla, complétala con `PRUEBA-001` en la categoría «Prueba despliegue» y súbela. La vista previa lo muestra como «Nuevo». Impórtalo, descarga el comprobante y comprueba que «Ver productos» lo muestra. Bórralo al terminar.
+- [ ] **Mensaje de WhatsApp:** en Empresa › Mensaje, cambia el texto, guarda y recarga: sigue ahí. «Volver al mensaje original» lo recupera.
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.

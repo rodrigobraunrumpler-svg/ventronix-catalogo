@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { connect, resetCompanyProfile } from '../integration/db'
+import { connect, fillCompanyProfile, resetCompanyProfile } from '../integration/db'
 import { login } from './session'
 
 test.beforeEach(async () => {
@@ -56,4 +56,37 @@ test('completa los datos de la empresa con cuentas, teléfonos y Yape o Plin', a
   await expect(
     page.getByRole('complementary', { name: 'Así saldrá en tus proformas' }),
   ).toContainText('Plin: 987 654 321')
+})
+
+test('cambia el mensaje de WhatsApp y lo conserva', async ({ page }) => {
+  const db = await connect()
+  try {
+    await fillCompanyProfile(db)
+  } finally {
+    await db.end()
+  }
+  await login(page)
+  await page.getByRole('link', { name: 'Empresa' }).click()
+  // Las cinco pestañas caben, también en el teléfono.
+  const tabs = page.getByRole('tablist', { name: 'Secciones de los datos de la empresa' })
+  expect(await tabs.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
+  await page.getByRole('tab', { name: /Mensaje/ }).click()
+  const text = page.getByLabel('Texto del mensaje')
+  await text.fill('Buen día, {cliente}. Adjunto la proforma ')
+  await page
+    .getByRole('group', { name: 'Insertar dato' })
+    .getByRole('button', { name: 'N° de proforma' })
+    .click()
+  await expect(text).toHaveValue('Buen día, {cliente}. Adjunto la proforma {numero}')
+  await expect(
+    page.getByText('Buen día, Inversiones Nuevo Sol S.A.C. Adjunto la proforma N° 0049'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(page.getByText('Cambios guardados')).toBeVisible()
+
+  await page.reload()
+  await page.getByRole('tab', { name: /Mensaje/ }).click()
+  await expect(page.getByLabel('Texto del mensaje')).toHaveValue(
+    'Buen día, {cliente}. Adjunto la proforma {numero}',
+  )
 })
