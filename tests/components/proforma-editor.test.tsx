@@ -61,6 +61,14 @@ const found = (legalName: string, status = 'ACTIVO', condition = 'HABIDO'): RucL
 })
 
 describe('ProformaEditor', () => {
+  it('sin lista a la que volver no ofrece «Seguir eligiendo productos»', () => {
+    seedProforma({ lines: [line()] })
+    renderEditor({ onContinue: undefined })
+    expect(
+      screen.queryByRole('button', { name: 'Seguir eligiendo productos' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('calcula el resumen con el IGV incluido (ejemplo E1)', () => {
     seedProforma({ lines: e1Lines, discountPercent: '5', shipping: '20' })
     renderEditor()

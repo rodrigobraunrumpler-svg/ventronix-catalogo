@@ -28,7 +28,7 @@ export function ProformaLines({
   searchProducts,
 }: {
   prices: Map<string, string> | undefined
-  onContinue: () => void
+  onContinue?: () => void
   searchProducts: SearchProducts
 }) {
   const { draft } = useProforma()
@@ -46,9 +46,11 @@ export function ProformaLines({
             {draft.lines.length}
           </span>
         </h3>
-        <button type="button" className={cn(inlineAction, 'text-[13px]')} onClick={onContinue}>
-          Seguir eligiendo productos
-        </button>
+        {onContinue ? (
+          <button type="button" className={cn(inlineAction, 'text-[13px]')} onClick={onContinue}>
+            Seguir eligiendo productos
+          </button>
+        ) : null}
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
         <div className="min-w-0 flex-[1_1_280px]">

@@ -21,7 +21,8 @@ export type ProformaEditorProps = {
   company: CompanyStatus
   prices: Map<string, string> | undefined
   lookupRuc: (ruc: string) => Promise<RucLookupResult>
-  onContinue: () => void
+  // Solo desde Productos: en Proformas no hay lista a la que volver (plan, decisión 5).
+  onContinue?: () => void
   onGenerate: () => void
   generatePdf: (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
   // Buscar en el catálogo para añadir sin salir de la proforma.

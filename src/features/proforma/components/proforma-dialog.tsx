@@ -23,7 +23,15 @@ import { useProforma } from '../store'
 import { ProformaPanel } from './proforma-panel'
 
 // Ventana centrada (pantalla completa en móvil); Esc la cierra (spec §4.3).
-export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ProformaDialog({
+  open,
+  onClose,
+  onContinue,
+}: {
+  open: boolean
+  onClose: () => void
+  onContinue?: () => void
+}) {
   const { draft } = useProforma()
   const company = useCompanyProfile()
   const prices = useCurrentPrices(
@@ -93,7 +101,7 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
             )
           }
           sendByWhatsApp={sendByWhatsApp}
-          onContinue={onClose}
+          onContinue={onContinue}
           onFinish={onClose}
         />
       </DialogContent>

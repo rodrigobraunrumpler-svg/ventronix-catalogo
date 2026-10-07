@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, Package, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Building2, FileText, Package, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type CSSProperties, type ReactNode } from 'react'
@@ -10,9 +10,10 @@ import { SignOutButton } from '@/features/auth/components/sign-out-button'
 import { SIDEBAR_COOKIE } from '@/lib/sidebar'
 import { cn } from '@/lib/utils'
 
-// Productos (con la proforma) y los datos de la empresa que salen en ella.
+// Productos (con la proforma), las proformas guardadas y los datos de la empresa que salen en ellas.
 const navItems = [
   { href: '/products', label: 'Productos', icon: Package },
+  { href: '/proformas', label: 'Proformas', icon: FileText },
   { href: '/company', label: 'Empresa', icon: Building2 },
 ]
 
@@ -38,7 +39,8 @@ function NavLinks({
         title={iconOnly ? label : undefined}
         className={cn(
           'flex items-center gap-3 rounded-[10px] px-3 font-semibold transition-colors',
-          compact ? 'h-9 text-sm' : 'h-10.5',
+          // En el teléfono, el icono sobre el nombre: los tres caben aunque la pantalla sea angosta.
+          compact ? 'h-12 flex-col justify-center gap-0.5 px-1 text-xs' : 'h-10.5',
           iconOnly && 'justify-center px-0',
           active
             ? 'bg-sidebar-accent text-sidebar-accent-foreground'
@@ -129,7 +131,7 @@ export function AppShell({
         </header>
         <nav
           aria-label="Navegación principal"
-          className="flex gap-1 border-b bg-card px-4 py-2 lg:hidden"
+          className="grid grid-cols-3 gap-1 border-b bg-card px-4 py-2 lg:hidden"
         >
           <NavLinks pathname={pathname} compact />
         </nav>

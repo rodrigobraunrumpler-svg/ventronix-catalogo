@@ -126,7 +126,11 @@ export function CatalogScreen() {
           onClose={() => setToDelete(null)}
         />
         <ProformaBar onComplete={() => setProformaOpen(true)} />
-        <ProformaDialog open={proformaOpen} onClose={() => setProformaOpen(false)} />
+        <ProformaDialog
+          open={proformaOpen}
+          onClose={() => setProformaOpen(false)}
+          onContinue={() => setProformaOpen(false)}
+        />
       </div>
     </ProformaProvider>
   )
