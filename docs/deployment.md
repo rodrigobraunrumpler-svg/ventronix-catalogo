@@ -141,16 +141,20 @@ Con Supabase Pro, las copias diarias se restauran desde la sección Backups del 
 
 ## 5. Publicar cambios
 
-1. Trabaja en una rama y abre un pull request. Vercel crea un preview, que no tiene datos (ver la sección 2). GitHub Actions ([`ci.yml`](../.github/workflows/ci.yml)) comprueba en cada pull request y en cada push a `main` el formato, el lint, los tipos, las pruebas y el build, y ejecuta la integración y las e2e contra un Supabase local. No despliega ni usa claves de la nube.
-2. Si el cambio incluye una migración, sigue este orden:
+1. Trabaja en la rama `dev`; para un cambio grande, en una rama `feat/…` que sale de `dev` y vuelve a ella con un pull request. GitHub Actions ([`ci.yml`](../.github/workflows/ci.yml)) comprueba en cada push a `main` o `dev` y en cada pull request el formato, el lint, los tipos, las pruebas y el build, y ejecuta la integración y las e2e contra un Supabase local. No despliega ni usa claves de la nube.
+2. Abre un pull request de `dev` a `main`. CodeRabbit lo revisa en español con las reglas de [`.coderabbit.yaml`](../.coderabbit.yaml) y vuelve a revisar cada push nuevo; resuelve sus comentarios antes de fusionar. Vercel crea un preview, que no tiene datos (ver la sección 2).
+3. Si el cambio incluye una migración, sigue este orden:
    1. Haz una copia de seguridad.
    2. Revisa `db push --dry-run`.
    3. Aplica `db push` **antes** de fusionar.
 
    Durante unos minutos la base nueva convivirá con el código anterior. Por eso cada migración debe ser compatible con la versión publicada: primero se añade y después se quita.
 
-3. Fusiona en `main` y Vercel publica en producción.
-4. Si la versión nueva falla, vuelve a la anterior desde Deployments en Vercel (Instant Rollback). Esto revierte el código, pero no la base.
+4. Fusiona con «Create a merge commit» y Vercel publica en producción. No uses «Squash» ni «Rebase»: `dev` sigue viva y quedaría desalineada de `main`.
+5. Si la versión nueva falla, vuelve a la anterior desde Deployments en Vercel (Instant Rollback). Esto revierte el código, pero no la base.
+6. Un arreglo urgente con `dev` a medio camino: crea una rama `hotfix/…` desde `main`, abre su pull request a `main` y, después de fusionarlo, trae `main` a `dev` (`git switch dev && git merge main`).
+
+Una sola vez, en GitHub: en Settings → Rules, protege `main` para que exija pull request y que pasen los dos jobs de la CI, y bloquea el force push. En Settings → General → Pull Requests, deja activado solo «Allow merge commits».
 
 ## 6. Operación diaria
 

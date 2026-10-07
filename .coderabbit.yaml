@@ -1,0 +1,104 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Revisión automática de CodeRabbit en cada PR hacia dev o main. Solo lo que cambia respecto de los
+# valores por defecto, más el idioma y las reglas del proyecto.
+language: es
+tone_instructions: >-
+  Revisa en español, directo y breve. Prioriza bugs, seguridad y pérdida de datos. No comentes
+  formato ni estilo: eso ya lo revisan Prettier y ESLint en la CI.
+
+reviews:
+  profile: chill
+  in_progress_fortune: false
+  suggested_reviewers: false
+  auto_review:
+    enabled: true
+    drafts: false
+    # main es la rama por defecto y siempre se revisa; también los PR hacia dev.
+    base_branches:
+      - ^dev$
+  # Archivos generados o binarios, y los planes para agentes: revisarlos solo hace ruido.
+  path_filters:
+    - '!pnpm-lock.yaml'
+    - '!src/lib/supabase/database.types.ts'
+    - '!next-env.d.ts'
+    - '!docs/superpowers/**'
+    - '!**/*.ttf'
+  path_instructions:
+    - path: 'src/**/actions.ts'
+      instructions: >-
+        Server Action: la entrada se valida con su schema de Zod en el servidor, devuelve
+        ActionResult y nunca expone secretos ni datos fuera de la cuenta dueña.
+    - path: 'supabase/migrations/**'
+      instructions: >-
+        Una migración ya aplicada no se edita: se crea otra. Toda tabla nueva lleva RLS y
+        políticas para la cuenta dueña (auth.jwt() -> 'app_metadata' ->> 'catalog_access').
+        Señala cambios que bloqueen tablas o borren datos.
+    - path: 'src/features/proforma/**'
+      instructions: >-
+        Los montos van en céntimos con BigInt, sin coma flotante. No inventes campos ni diseño
+        de la proforma: sigue PROJECT_CONTEXT.md.
+    - path: 'tests/**'
+      instructions: >-
+        Las pruebas comprueban comportamiento visible, no detalles de implementación. Las de
+        integración y E2E solo usan el Supabase local, nunca la nube.
+    - path: '.github/workflows/**'
+      instructions: >-
+        La CI no usa secretos de la nube: corre contra el Supabase local, que debe incluir
+        Storage para las fotos.
+  pre_merge_checks:
+    # El proyecto documenta con comentarios en español, no con docstrings.
+    docstrings:
+      mode: 'off'
+    title:
+      mode: warning
+      requirements: >-
+        Conventional Commits en inglés: feat, fix, docs, test, refactor, ci o chore, seguido de
+        dos puntos y una frase corta en minúsculas.
+    issue_assessment:
+      mode: 'off'
+    custom_checks:
+      - name: Sin secretos en el navegador
+        mode: error
+        instructions: >-
+          Falla si el PR deja un secreto al alcance del navegador: una variable NEXT_PUBLIC_
+          con una clave privada, SUPABASE_SECRET_KEY o el service role usados en código con
+          'use client', o un token o contraseña escritos en el código.
+      - name: Validación en el servidor
+        mode: warning
+        instructions: >-
+          Falla si una Server Action nueva o modificada usa datos de entrada sin validarlos
+          antes con un schema de Zod en el servidor.
+  finishing_touches:
+    docstrings:
+      enabled: false
+  tools:
+    # Ya corren en la CI con la configuración del proyecto, o chocan con ella.
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    oxc:
+      enabled: false
+    # Ruido: el texto está en español y el estilo lo fija Prettier.
+    languagetool:
+      enabled: false
+    markdownlint:
+      enabled: false
+    yamllint:
+      enabled: false
+    stylelint:
+      enabled: false
+    # Estilo de SQL; la seguridad de las migraciones la revisa squawk.
+    sqlfluff:
+      enabled: false
+    # Repite las reglas de semgrep.
+    opengrep:
+      enabled: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # Las reglas del proyecto; CLAUDE.md las importa con @, que CodeRabbit no sigue.
+    filePatterns:
+      - PROJECT_CONTEXT.md
+      - AGENTS.md
