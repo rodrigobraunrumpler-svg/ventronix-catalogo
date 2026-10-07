@@ -13,6 +13,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # El PR de dev a main queda abierto varios commits: sin esto, se pausa tras 5 revisados.
+    auto_pause_after_reviewed_commits: 0
     # main es la rama por defecto y siempre se revisa; también los PR hacia dev.
     base_branches:
       - ^dev$
