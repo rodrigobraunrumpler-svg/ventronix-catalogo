@@ -54,8 +54,8 @@ Cuatro entregas, cada una publicable por separado:
 | «Corregir» una proforma generada | Conserva el número (como hoy) y actualiza la misma fila del historial. |
 | Proformas anteriores a esta fase | No están en el historial: no se guardaban. |
 | Páginas del historial | 20 proformas por página, contadas en la base. La página, la búsqueda y las fechas van en la URL. |
-| Fotos | Opcionales. Se eligen con un selector de imagen y el navegador las reduce a 600 px por el lado mayor, en JPEG (unos 40–60 KB), antes de subirlas a Supabase Storage. No se guarda el original. |
-| Fotos en el PDF | Columna «Foto» de unos 1,5 cm. Solo crecen las filas con foto. Interruptor «Incluir fotos en el PDF», activado si algún producto tiene foto. Debajo de la tabla: «Imágenes referenciales.» |
+| Fotos | Opcionales. Se eligen con un selector de imagen (JPG, PNG o WebP) y el navegador las reduce a 600 px por el lado mayor, en JPEG (unos 40–60 KB), con una miniatura de 200 px (unos 12 KB) para el PDF y las listas, antes de subirlas a Supabase Storage. No se guarda el original. |
+| Fotos en el PDF | Columna «Foto» de unos 1,5 cm, con la miniatura. Solo crecen las filas con foto. Interruptor «Incluir fotos en el PDF», activado si algún producto tiene foto. Debajo de la tabla: «Imágenes referenciales.» Hasta unos 2,5 MB de fotos por PDF (unas 200): si hubiera más, las demás se omiten y el PDF se genera igual. |
 | Cambiar la foto de un producto | Se sube un archivo nuevo. Las proformas anteriores conservan la que tenían. |
 | Mensaje de WhatsApp | Uno para toda la empresa, hasta 500 caracteres, con `{cliente}`, `{numero}`, `{total}`, `{vence}` y `{empresa}`. Vacío vuelve al mensaje actual. |
 
@@ -74,14 +74,16 @@ Maqueta: «Proformas · historial en PC» y «… en el teléfono».
   - subtítulo «Todas las proformas generadas. Búscalas por cliente o fecha y reenvíalas cuando el cliente las pierda.»;
   - botones «Descargar Excel» (secundario) y «Nueva proforma» (principal).
 - **Filtros:**
-  - búsqueda por nombre del cliente, RUC o DNI, sin tildes ni mayúsculas;
+  - búsqueda por nombre del cliente, RUC, DNI, celular o N° de proforma, sin tildes ni mayúsculas; con un número, esa proforma va primero;
   - filtro de fecha como el de Productos (hoy, 7 y 30 días, este mes, mes anterior y un rango propio), en días de Lima;
   - «Limpiar filtros».
 - **Resumen del periodo:** cuántas proformas y la suma de sus totales.
 - **Tabla:**
   - columnas N° · Fecha · Cliente · RUC/DNI · Productos · Total · Vence · Acciones;
   - ordenada por número, de la más reciente a la más antigua;
-  - acciones: «Ver PDF», «Descargar PDF» y «Reenviar».
+  - acciones: «Ver PDF», «Descargar PDF» y «Reenviar»;
+  - «Vence» dice «Vencida» cuando la fecha ya pasó (en días de Lima);
+  - el nombre del cliente muestra todas sus proformas, de cualquier fecha.
 - **Páginas:** «Proformas 1–20 de 48», con Anterior, los números de página y Siguiente.
 - **Todo se resuelve en el servidor:** la base filtra, cuenta y suma, y devuelve solo las 20 proformas de la página.
   - La búsqueda espera a que se termine de escribir.
@@ -97,7 +99,7 @@ Maqueta: «Proformas · historial en PC» y «… en el teléfono».
 Maqueta: «Nueva proforma con producto libre».
 
 - **Dónde se abre:**
-  - desde «Proformas › Nueva proforma», con la proforma vacía;
+  - desde «Proformas › Nueva proforma», con la proforma vacía. Si hay una sin generar, pregunta antes: «Seguir con la actual» o «Empezar una nueva». La barra de la proforma también se ve en Proformas;
   - desde la barra de Productos, como hoy.
 - **La ventana** es la misma de hoy.
   - Junto al buscador del catálogo va el botón **«Añadir producto libre»**. Abre un formulario con:
@@ -107,6 +109,7 @@ Maqueta: «Nueva proforma con producto libre».
     - Precio con IGV;
     - Foto (opcional).
   - El formulario lleva la nota «Para productos que no están en el catálogo. No se guardan en él.».
+  - Tras añadir uno, avisa «Añadiste «…»» y queda vacío para el siguiente; «Cancelar» pasa a «Cerrar».
   - Cada línea muestra su foto, o «Sin foto». Las libres llevan la etiqueta «Producto libre».
   - Las líneas libres no avisan de «precio cambiado» ni de «Ya no está en el catálogo».
 - **Cliente** (confirmado): al escribir un RUC (11 dígitos) o un DNI (8) que ya tiene proformas, se toma su proforma más reciente, con una consulta por el índice del documento.
@@ -117,7 +120,8 @@ Maqueta: «Nueva proforma con producto libre».
   - No hay una lista aparte de clientes: los datos salen del historial.
 - **Resumen:**
   - el interruptor **«Incluir fotos en el PDF»** (§4.5);
-  - «Generar proforma», con «Recibe su número correlativo y queda guardada en el historial de Proformas.».
+  - «Generar proforma», con «Recibe su número correlativo y queda guardada en el historial de Proformas.»;
+  - ya generada: «Quedó guardada en el historial», con el enlace a Proformas si se generó desde Productos.
 
 ### 4.4 Reenviar
 
@@ -127,6 +131,7 @@ Maqueta: «Reenviar una proforma».
 - **Celular del cliente:** el de la proforma, editable solo para este envío.
 - **Mensaje:** el de Empresa, con los datos de esa proforma.
 - **Nota:** «Se envía el mismo documento que se generó: mismos productos, precios, fotos y datos de la empresa de ese día.»
+- **Si ya venció:** «Venció el 09/10/2026. Si los precios cambiaron, genera una proforma nueva antes de enviarla.»
 - **Acciones:**
   - «Enviar por WhatsApp»: se envía solo con el WhatsApp de la empresa vinculado; si no, abre el chat con el mensaje listo, como hoy;
   - «Descargar PDF»;
@@ -152,6 +157,7 @@ Maqueta: «Empresa · mensaje de WhatsApp».
   - el contador «112 / 500»;
   - «Volver al mensaje original».
 - **Vista previa** «Así lo recibe el cliente»: un globo de WhatsApp con el PDF adjunto y el mensaje con datos de ejemplo.
+- **Datos tolerantes:** `{Número}`, `{ CLIENTE }` y `{numero}` son el mismo dato. Lo que va entre llaves y no es un dato se avisa: «{precio} no es un dato y se enviará tal cual.».
 - **Dónde se usa:** al enviar por WhatsApp (automático o abriendo el chat) y al reenviar desde el historial.
 
 ### 4.7 Producto con foto
@@ -161,7 +167,8 @@ Maqueta: «Producto con foto».
 - En el formulario del producto, un campo **«Foto (opcional)»** con:
   - la vista previa;
   - «Elegir foto», o «Cambiar foto» y «Quitar foto» si ya tiene;
-  - la ayuda «JPG o PNG. Antes de guardarla se reduce a 600 px (unos 50 KB).».
+  - la ayuda «JPG, PNG o WebP. Antes de guardarla se reduce a 600 px (unos 50 KB).»;
+  - la foto elegida se ve al instante, mientras se sube.
 - La ficha del producto muestra la foto. La lista no cambia.
 
 ## 5. Datos
@@ -171,7 +178,7 @@ Migraciones nuevas, todas solo añaden cosas:
 - **`company_profile.whatsapp_message`** (`text`, nulo = mensaje original, hasta 500 caracteres).
 - **`products.image_path`** (`text`, nulo = sin foto).
 - **Storage:** bucket privado `images`.
-  - Rutas: `products/<uuid>.jpg` y `lines/<uuid>.jpg`.
+  - Rutas: `products/<uuid>.jpg` y `lines/<uuid>.jpg`, cada una con su miniatura `<uuid>.thumb.jpg`.
   - Políticas: solo la cuenta dueña lee y sube. No se borran archivos: una proforma guardada puede usarlos.
 - **`proformas`:**
   - `id`, `number` (único);
@@ -209,8 +216,8 @@ Migraciones nuevas, todas solo añaden cosas:
 ## 7. Rendimiento y escala
 
 - **Historial:** se pide de 20 en 20 y la base cuenta el total. Con decenas de miles de proformas, los índices por fecha y documento mantienen la consulta en milisegundos.
-- **Fotos:** 1 000 productos con foto ocupan unos 50 MB. Los productos libres, a 10 fotos al día, unos 150–200 MB al año. El plan gratuito trae 1 GB y el Pro, 100 GB.
-- **PDF con fotos:** el servidor descarga las fotos del bucket al armarlo. Con 30 productos con foto son unos 1,5 MB de lectura.
+- **Fotos:** 1 000 productos con foto ocupan unos 62 MB (foto y miniatura). Los productos libres, a 10 fotos al día, unos 190–250 MB al año. El plan gratuito trae 1 GB y el Pro, 100 GB.
+- **PDF con fotos:** el servidor descarga las miniaturas del bucket al armarlo. Con 30 productos con foto son unos 360 KB, y el PDF pesa unas cinco veces menos que con las fotos de 600 px. Así queda muy por debajo del límite de 4,5 MB de una respuesta en Vercel.
 - **Excel:** el mismo tope y el mismo motor que el de Productos.
 
 ## 8. Seguridad
@@ -268,3 +275,27 @@ Cada entrega del §2 se publica por separado.
 - **Confirmado:** completar los datos del cliente desde el historial al escribir su RUC o DNI (§4.3).
 - **Confirmado:** 20 proformas por página, con los filtros y las páginas resueltos en el servidor (§4.2).
 - **Confirmado:** «Corregir» (el botón que ya existe tras «Generar») conserva el número y actualiza la misma proforma del historial: un número, una proforma, siempre su última versión, sin guardar versiones anteriores.
+
+## 13. Mejoras de rendimiento, robustez y uso (06-10-2026)
+
+Añadidas a pedido del usuario, sobre lo acordado:
+
+- **Rendimiento:**
+  - miniatura de 200 px para el PDF y las listas;
+  - el PDF de cada proforma se reutiliza un minuto en el navegador («Ver», «Descargar» y «Reenviar» no lo generan otra vez);
+  - la foto elegida se ve al instante;
+  - la lista se atenúa mientras se actualiza, sin vaciarse.
+- **Robustez:**
+  - «Nueva proforma» pregunta antes de borrar una proforma sin generar;
+  - tope de fotos por PDF;
+  - una copia guardada que no se puede leer lo dice con claridad;
+  - una prueba fija la copia tal como se guarda hoy, para que un cambio futuro no deje sin leer las proformas guardadas;
+  - pruebas de que Proformas llena el contenedor sin desbordarse.
+- **Uso:**
+  - búsqueda por N° de proforma y por celular;
+  - «Vencida» en la lista y aviso en «Reenviar»;
+  - el nombre del cliente muestra todas sus proformas;
+  - datos del mensaje tolerantes y aviso de los desconocidos;
+  - confirmación de cada producto libre añadido;
+  - «Quedó guardada en el historial» al generar;
+  - al cambiar de página desde abajo, la lista vuelve a su inicio.

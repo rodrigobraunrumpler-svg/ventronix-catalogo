@@ -9,7 +9,7 @@
 - **A. Mensaje editable.** Una columna en `company_profile` y una pestaña «Mensaje» en Empresa. El texto lo arma una sola función, `whatsappMessage(plantilla, datos)`, que usan el envío, el chat y el reenvío.
 - **B. Productos libres y «Nueva proforma».** Cada línea del borrador tiene su propio `id`: las del catálogo usan el id del producto; las libres, `libre-<uuid>`, sin producto ni precio de catálogo. La pantalla `/proformas` abre la misma ventana de hoy.
 - **C. Historial.** Tabla `proformas` (una fila por número, para siempre). El servidor la guarda o actualiza cada vez que entrega un PDF que no es borrador; la copia (`document`) es la entrada del documento más los datos de la empresa de ese día, y con ella se vuelve a generar el PDF. La base filtra, cuenta, suma y pagina (`search_proformas`, `export_proformas`). La URL guarda búsqueda, fechas y página.
-- **D. Fotos.** Bucket privado `images` con políticas para la cuenta dueña. El navegador reduce la foto a 600 px en JPEG y la sube con la sesión. El servidor solo acepta rutas `products/<uuid>.jpg` y `lines/<uuid>.jpg`, descarga las fotos al armar el PDF y las dibuja en la columna «FOTO».
+- **D. Fotos.** Bucket privado `images` con políticas para la cuenta dueña. El navegador reduce la foto a 600 px en JPEG, más una miniatura de 200 px, y las sube con la sesión. El servidor solo acepta referencias `products/<uuid>.jpg` y `lines/<uuid>.jpg`, descarga las miniaturas al armar el PDF y las dibuja en la columna «FOTO».
 
 **Tech Stack:** Next.js 16 (App Router, Server Actions), Supabase (Postgres, Storage, RLS), Zod 4, React Hook Form, TanStack Query 5, nuqs 2, @react-pdf/renderer 4.9, ExcelJS 4.4.0, date-fns con `@date-fns/tz`, Vitest + Testing Library, Playwright.
 
@@ -18,21 +18,21 @@
 ## Global Constraints
 
 - **Textos:** los de la spec (§4) y la maqueta, en español; dicen qué pasó y qué hacer, sin disculpas.
-- **Mensaje de WhatsApp:** uno para la empresa, hasta **500** caracteres, con `{cliente}`, `{numero}`, `{total}`, `{vence}` y `{empresa}`. Vacío = el mensaje de hoy: «Hola, {cliente}. Le envío la proforma {numero} por {total}, válida hasta el {vence}. Quedamos atentos. — {empresa}».
+- **Mensaje de WhatsApp:** uno para la empresa, hasta **500** caracteres, con `{cliente}`, `{numero}`, `{total}`, `{vence}` y `{empresa}` (sin importar mayúsculas, tildes ni espacios: `{Número}` vale). Vacío = el mensaje de hoy: «Hola, {cliente}. Le envío la proforma {numero} por {total}, válida hasta el {vence}. Quedamos atentos. — {empresa}».
 - **Producto libre:** descripción obligatoria (hasta 120), código opcional (hasta 64; en el PDF, «—»), cantidad de 1 a 9 999, precio mayor que cero con hasta dos decimales y foto opcional. **Nunca se guarda en el catálogo.**
 - **Historial:**
   - se guarda para siempre y no se borra;
   - 20 por página, contadas en la base;
-  - búsqueda por nombre (sin tildes ni mayúsculas), RUC o DNI;
+  - búsqueda por nombre (sin tildes ni mayúsculas), RUC, DNI, celular o N° de proforma (con un número, esa va primero);
   - fechas en días de Lima;
   - búsqueda, fechas y página en la URL;
   - «Corregir» conserva el número y actualiza la misma fila.
 - **Copia guardada:** la entrada del documento (`draft: false`, con número y fecha fijados) y los datos de la empresa de ese día. El PDF del historial se vuelve a generar desde la copia; el mensaje es el de Empresa de hoy, con los datos de la copia.
 - **Fotos:**
-  - JPEG de 600 px por el lado mayor, calidad 0,82;
+  - se eligen en JPG, PNG o WebP y se guardan en JPEG de 600 px por el lado mayor, con una miniatura de 200 px, calidad 0,82;
   - bucket privado `images`, sin borrar archivos;
-  - rutas `products/<uuid>.jpg` y `lines/<uuid>.jpg`: el bucket y el servidor solo aceptan esas.
-- **PDF con fotos:** columna «FOTO» solo con el interruptor activo y alguna línea con foto; debajo de la tabla, «Imágenes referenciales.». Sin fotos, el PDF queda exactamente como hoy.
+  - rutas `products/<uuid>.jpg` y `lines/<uuid>.jpg` (más `<uuid>.thumb.jpg`): el bucket solo acepta esas y el servidor solo guarda referencias a la de 600 px.
+- **PDF con fotos:** columna «FOTO» con las miniaturas, solo con el interruptor activo y alguna línea con foto; debajo de la tabla, «Imágenes referenciales.»; hasta 2,5 MB de fotos por PDF. Sin fotos, el PDF queda exactamente como hoy.
 - **Excel:** tope de 10 000 filas, como Productos (`EXPORT_MAX_ROWS`).
 - **Base de datos:**
   - migraciones nuevas que solo añaden;
@@ -61,12 +61,12 @@
 
 1. **Cada línea tiene su `id`.** En las del catálogo es el id del producto (así `findLine(draft, product.id)` sigue igual); en las libres, `libre-<uuid>`. `productId` y `catalogPrice` son `null` en las libres. Los borradores guardados antes se leen: la línea sin `id` toma el de su producto.
 2. **«Descripción» del producto libre es su nombre:** un campo de una línea, de hasta 120 caracteres, como en la maqueta. En el PDF sale en negrita, como el nombre de un producto.
-3. **El formulario «Añadir producto libre» queda abierto y vacío tras añadir,** con el foco en Descripción: una proforma puede llevar 30 productos libres seguidos. «Cancelar» lo cierra.
-4. **«Nueva proforma» en Proformas:**
-   - si la proforma en curso ya se generó (tiene número), está en el historial: empieza una vacía;
-   - si tiene productos sin generar, la retoma, para no perder lo escrito.
+3. **El formulario «Añadir producto libre» queda abierto y vacío tras añadir,** con el foco en Descripción: una proforma puede llevar 30 productos libres seguidos. Cada uno se confirma con «Añadiste «…»» y, desde el primero, «Cancelar» pasa a «Cerrar».
+4. **«Nueva proforma» en Proformas empieza una vacía:**
+   - si la proforma en curso ya se generó (tiene número), está en el historial y se reemplaza sin preguntar;
+   - si tiene productos sin generar, pregunta antes: «Seguir con la actual» o «Empezar una nueva». Nada se borra sin que se elija.
 
-   La ventana es la de hoy, «Completar proforma» (spec §4.3: «La ventana es la misma de hoy»).
+   La barra de la proforma (la de Productos) también se ve en Proformas, y la ventana es la de hoy, «Completar proforma» (spec §4.3).
 5. **«Seguir eligiendo productos» solo aparece desde Productos:** en Proformas no hay lista a la que volver.
 6. **Se guarda en el servidor cada vez que sale un PDF que no es borrador** (al generar y al enviar), con un *upsert* por número.
    - «Corregir» y volver a generar actualiza la misma fila.
@@ -79,13 +79,22 @@
    - un RUC se consulta también en SUNAT, en paralelo, solo para mantener el aviso de baja o no habido;
    - sus datos rellenan el formulario únicamente si no hay historial.
 10. **El editor del mensaje muestra el texto original cuando no hay uno guardado:** se ve qué se envía y se edita desde ahí. «Volver al mensaje original» lo vuelve a poner.
-11. **Las miniaturas usan URL firmadas de una hora,** pedidas con la sesión, con `next/image` y `unoptimized` (la guía de Next lo indica para imágenes con autenticación).
-12. **Una foto que no se puede leer al armar el PDF se deja fuera:** la fila sale sin foto y el PDF se genera igual. Solo se dibujan archivos que empiezan como JPEG.
+11. **Las fotos se muestran con URL firmadas de una hora,** pedidas con la sesión, una por foto (`usePhotoUrl`): añadir una línea no vuelve a pedir ni a descargar las demás. Con `next/image` y `unoptimized`, como indica la guía de Next para imágenes con autenticación.
+12. **Una foto que no se puede leer al armar el PDF se deja fuera:** la fila sale sin foto y el PDF se genera igual. Solo se dibujan archivos que empiezan como JPEG, y como mucho 2,5 MB de fotos por PDF (unas 200 miniaturas): una respuesta de Vercel no pasa de 4,5 MB.
 13. **La foto se sube al elegirla,** antes de «Guardar» o «Añadir». Si se cancela, el archivo queda huérfano; es aceptable porque no se borran archivos (spec §5).
 14. **`filter_products` se vuelve a crear para devolver `image_path`:** al añadir un producto de la lista a la proforma se copia su foto. El JSON de `search_products` gana un campo; el código publicado lo ignora.
-15. **El bucket se crea con `id`, `name` y `public`, sin límites de tamaño ni de tipo.** Esas columnas las añade el servicio de Storage y pueden faltar al recrear la base local. El tipo y el tamaño los garantiza el navegador (JPEG reducido), y la política del bucket exige el nombre `<uuid>.jpg` en una de las dos carpetas.
+15. **El bucket se crea con `id`, `name` y `public`, sin límites de tamaño ni de tipo.** Esas columnas las añade el servicio de Storage y pueden faltar al recrear la base local. El tipo y el tamaño los garantiza el navegador (JPEG reducido), y la política del bucket exige el nombre `<uuid>.jpg` o `<uuid>.thumb.jpg` en una de las dos carpetas.
 16. **«Productos» en el historial es la cantidad de líneas** de la proforma.
 17. **`Pagination` y `EmptyState` pasan a `src/components/`;** la cabecera de los reportes Excel, a `excel/theme.ts`. Las usan Productos y Proformas.
+18. **Cada foto se sube también en 200 px** (`<uuid>.thumb.jpg`), del mismo archivo leído una vez. El PDF y las líneas de la proforma usan la miniatura y la ficha del producto, la de 600 px: el PDF pesa unas cinco veces menos y se genera, envía y descarga antes.
+19. **Datos del mensaje tolerantes:** `{Número}`, `{ CLIENTE }` y `{numero}` son el mismo dato. Lo que va entre llaves y no es un dato se deja tal cual, y el editor lo avisa.
+20. **Búsqueda también por N° de proforma y por celular** (sin espacios). Con un número, esa proforma va primero; después, de la más reciente a la más antigua.
+21. **«Vencida»:** la lista lo marca cuando la validez ya pasó y «Reenviar» lo advierte. Se calcula con el día de hoy en Lima; no es un estado guardado (los estados siguen fuera de alcance).
+22. **El PDF de cada proforma se reutiliza un minuto en el navegador:** «Ver PDF», «Descargar PDF» y «Reenviar» comparten la consulta `historyKeys.document(id)`. Un doble clic no genera dos PDF.
+23. **El nombre del cliente muestra todas sus proformas:** busca su RUC o DNI (o su nombre, si no tiene) y quita el filtro de fecha.
+24. **Ya generada: «Quedó guardada en el historial»**, con el enlace a Proformas si se generó desde Productos.
+25. **La foto elegida se ve al instante,** con una copia local, mientras se reduce y se sube. Si el navegador no puede leerla, lo dice («No pudimos leer esta foto…»), distinto de un fallo de conexión.
+26. **Una prueba congela la copia tal como se guarda hoy:** las proformas se guardan para siempre, así que un campo nuevo de la entrada del documento o de la empresa necesita un valor por defecto. Si no lo tiene, la prueba falla.
 
 ## Review Focus
 
@@ -98,7 +107,7 @@
    Pruebas en la tarea 8.
 3. **Búsqueda y fechas del historial:** `%`, `_` y `\` como texto literal, tildes y mayúsculas, un documento a medias, y una proforma de las 23:30 de Lima (que en UTC ya es el día siguiente). Pruebas en la tarea 7.
 4. **Rutas de fotos manipuladas:** fuera de `products/` o `lines/`, `../`, `.png`, un nombre que no es un uuid, otra cuenta o sin sesión. Las rechazan el bucket y los schemas. Pruebas en las tareas 15, 16 y 18.
-5. **Producto libre sin código y con nombre largo en una proforma de muchas filas (diseño compacto):** sale «—» y la tabla no se desborda. Pruebas en las tareas 3 y 18.
+5. **Proformas largas:** un producto libre sin código y con nombre largo entre muchas filas con foto (diseño compacto) sale con «—» y la tabla no se desborda; más fotos que el tope dejan fuera las sobrantes sin romper el PDF. Pruebas en las tareas 3 y 18.
 
 ## Mapa de archivos
 
@@ -116,6 +125,8 @@
 | `src/features/proforma/components/proforma-lines.tsx` | Claves por línea, «Producto libre», miniaturas | 3, 4, 19 |
 | `src/app/(private)/proformas/page.tsx` | Ruta Proformas | 5 |
 | `src/features/proforma/history/components/proformas-screen.tsx` | Pantalla Proformas | 5, 10, 11, 12 |
+| `src/features/proforma/history/components/new-proforma-prompt.tsx` | Pregunta de «Nueva proforma» con una sin generar | 5 |
+| `src/features/proforma/components/proforma-ready.tsx` | Mensaje de Empresa, «Quedó guardada en el historial», chat bloqueado | 1, 8, 12 |
 | `src/components/app-shell.tsx` | «Proformas» en el menú | 5 |
 | `next.config.ts` | Fuentes y logotipo del PDF en `/proformas` | 5 |
 | `src/components/pagination.tsx`, `empty-state.tsx` | Compartidos por Productos y Proformas | 6 |
@@ -166,12 +177,13 @@
     - `DEFAULT_WHATSAPP_MESSAGE: string`;
     - `WHATSAPP_MESSAGE_LIMIT = 500`;
     - `MESSAGE_FIELDS: readonly { token: string; label: string }[]`;
-    - `whatsappMessage(template: string | null, data: { clientName; numberLabel; total; validUntil; sender }): string`;
+    - `whatsappMessage(template: string | null, data: { clientName; numberLabel; total; validUntil; sender }): string`: reconoce los datos sin importar mayúsculas, tildes ni espacios (`{Número}`, `{ CLIENTE }`);
+    - `unknownMessageFields(template: string): string[]`: lo que va entre llaves y no es un dato, sin repetir;
   - `renderProformaDocument(...)` → `ActionResult<{ model: DocumentModel; pdf: Buffer; company: CompanyProfile }>`.
 
 - [ ] **Step 1: Escribir las pruebas**
 
-`tests/unit/document-format.test.ts`: añade `DEFAULT_WHATSAPP_MESSAGE` y `MESSAGE_FIELDS` a la importación de `@/features/proforma/document/format` y reemplaza el bloque `describe('WhatsApp', …)` por:
+`tests/unit/document-format.test.ts`: añade `DEFAULT_WHATSAPP_MESSAGE`, `MESSAGE_FIELDS` y `unknownMessageFields` a la importación de `@/features/proforma/document/format` y reemplaza el bloque `describe('WhatsApp', …)` por:
 
 ```ts
 describe('mensaje de WhatsApp', () => {
@@ -199,6 +211,20 @@ describe('mensaje de WhatsApp', () => {
     ).toBe(
       'Buen día, Cliente de ejemplo S.A.C. Adjunto la N° 0001 por S/ 8,114.00 (07/10/2026). {precio} — Ventronix',
     )
+  })
+
+  it('reconoce los datos aunque se escriban con mayúsculas, tildes o espacios', () => {
+    expect(whatsappMessage('Hola {Cliente}, su {Número} por { TOTAL }.', data)).toBe(
+      'Hola Cliente de ejemplo S.A.C., su N° 0001 por S/ 8,114.00.',
+    )
+  })
+
+  it('dice qué va entre llaves y no es un dato, sin repetirlo', () => {
+    expect(unknownMessageFields('Hola {cliente}: {precio}, {Fecha} y {precio}')).toEqual([
+      '{precio}',
+      '{Fecha}',
+    ])
+    expect(unknownMessageFields(DEFAULT_WHATSAPP_MESSAGE)).toEqual([])
   })
 
   it('el mensaje original usa todos los datos', () => {
@@ -363,19 +389,38 @@ type WhatsappMessageInput = {
   sender: string
 }
 
-// Lo que no es un dato conocido queda tal cual. Un dato seguido de punto no lo duplica: «S.A.C.».
+// Un dato entre llaves, quizá seguido de punto. Mayúsculas, tildes y espacios no importan:
+// «{Número}» y «{ numero }» son {numero} (plan, decisión 19).
+const FIELD_PATTERN = /\{([^{}\n]{1,20})\}(\.?)/g
+const fieldKey = (text: string) =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+
+// Lo que no es un dato queda tal cual. Un dato seguido de punto no lo duplica: «S.A.C.».
 export function whatsappMessage(template: string | null, data: WhatsappMessageInput) {
-  const values: Record<string, string> = {
-    cliente: data.clientName.trim(),
-    numero: data.numberLabel,
-    total: data.total,
-    vence: data.validUntil,
-    empresa: data.sender,
-  }
+  const values = new Map([
+    ['cliente', data.clientName.trim()],
+    ['numero', data.numberLabel],
+    ['total', data.total],
+    ['vence', data.validUntil],
+    ['empresa', data.sender],
+  ])
   return (template?.trim() || DEFAULT_WHATSAPP_MESSAGE).replace(
-    /\{(cliente|numero|total|vence|empresa)\}(\.?)/g,
-    (_, key: string, dot: string) => (dot ? `${values[key].replace(/\.+$/, '')}.` : values[key]),
+    FIELD_PATTERN,
+    (whole: string, text: string, dot: string) => {
+      const value = values.get(fieldKey(text))
+      if (value === undefined) return whole
+      return dot ? `${value.replace(/\.+$/, '')}.` : value
+    },
   )
+}
+
+// Lo que va entre llaves y no es un dato: se enviaría tal cual, y el editor de Empresa lo avisa.
+export function unknownMessageFields(template: string) {
+  const known = new Set(MESSAGE_FIELDS.map((field) => field.token.slice(1, -1)))
+  const unknown = [...template.matchAll(FIELD_PATTERN)]
+    .map(([, text]) => text)
+    .filter((text) => !known.has(fieldKey(text)))
+  return [...new Set(unknown)].map((text) => `{${text}}`)
 }
 ```
 
@@ -450,6 +495,20 @@ describe('mensaje de WhatsApp', () => {
     )
   })
 
+  it('avisa si algo entre llaves no es un dato', async () => {
+    const { user } = renderForm(completeCompany)
+    await user.click(tab(/Mensaje/))
+    const text = screen.getByLabelText('Texto del mensaje')
+    await user.clear(text)
+    await user.click(text)
+    await user.paste('Hola {cliente}, su precio es {precio}')
+    expect(
+      screen.getByText(
+        '{precio} no es un dato y se enviará tal cual. Usa los botones para insertar los datos.',
+      ),
+    ).toBeVisible()
+  })
+
   it('«Volver al mensaje original» lo recupera', async () => {
     const { user } = renderForm({ ...completeCompany, whatsapp_message: 'Hola {cliente}' })
     await user.click(tab(/Mensaje/))
@@ -472,6 +531,9 @@ test('cambia el mensaje de WhatsApp y lo conserva', async ({ page }) => {
   }
   await login(page)
   await page.getByRole('link', { name: 'Empresa' }).click()
+  // Las cinco pestañas caben, también en el teléfono.
+  const tabs = page.getByRole('tablist', { name: 'Secciones de los datos de la empresa' })
+  expect(await tabs.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
   await page.getByRole('tab', { name: /Mensaje/ }).click()
   const text = page.getByLabel('Texto del mensaje')
   await text.fill('Buen día, {cliente}. Adjunto la proforma ')
@@ -514,9 +576,12 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   DEFAULT_WHATSAPP_MESSAGE,
   MESSAGE_FIELDS,
+  unknownMessageFields,
   WHATSAPP_MESSAGE_LIMIT,
   whatsappMessage,
 } from '@/features/proforma/document/format'
+
+const listFormat = new Intl.ListFormat('es', { type: 'conjunction' })
 
 // Datos de ejemplo de la vista previa (maqueta «Empresa · mensaje de WhatsApp»).
 const EXAMPLE = {
@@ -539,6 +604,8 @@ type MessageEditorProps = {
 // el cliente.
 export function MessageEditor({ field, value, error, sender, onChange }: MessageEditorProps) {
   const textarea = useRef<HTMLTextAreaElement | null>(null)
+  // Lo que va entre llaves y no es un dato se enviaría tal cual (plan, decisión 19).
+  const unknown = unknownMessageFields(value)
 
   // El dato entra donde está el cursor (o en lugar de lo seleccionado) y el cursor queda detrás.
   function insert(token: string) {
@@ -612,6 +679,13 @@ export function MessageEditor({ field, value, error, sender, onChange }: Message
             </span>
           </p>
         )}
+        {unknown.length > 0 ? (
+          <p role="status" className="text-xs font-medium text-amber-800">
+            {listFormat.format(unknown)}{' '}
+            {unknown.length === 1 ? 'no es un dato y se enviará' : 'no son datos y se enviarán'} tal
+            cual. Usa los botones para insertar los datos.
+          </p>
+        ) : null}
         <button
           type="button"
           className="justify-self-start text-[13px] font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3"
@@ -689,7 +763,7 @@ export function MessageEditor({ field, value, error, sender, onChange }: Message
 `docs/deployment.md`, en la lista «Las más recientes son:», añade al final:
 
 ```md
-- `202610060001_whatsapp_message.sql`: el mensaje de WhatsApp editable en Empresa. Añade una columna.
+- `202610060001_whatsapp_message.sql`: el mensaje de WhatsApp editable en Empresa. Añade una columna. **Aplícala antes de publicar el código:** la app la lee al cargar Empresa y cada proforma, y sin ella esas pantallas fallan.
 ```
 
 y, en la lista de comprobaciones, antes de «Cerrar sesión…»:
@@ -1169,10 +1243,10 @@ git commit -m "feat: give each proforma line its own id and allow free lines"
 - Test: `tests/components/proforma-editor.test.tsx`
 
 **Interfaces:**
-- Consumes: `addFreeLine`, `FreeLineInput`, `quantityMessage` (tarea 3); `priceError` (`readiness.ts`).
+- Consumes: `addFreeLine`, `FreeLineInput` (tarea 3); `priceError` (`readiness.ts`).
 - Produces:
   - `freeLineSchema` (entrada `{ name, code, quantity: string, unitPrice }`; salida con `quantity: number`) y `FreeLineValues = z.input<typeof freeLineSchema>`, en `draft.ts`;
-  - `FreeLineForm({ onClose })`;
+  - `FreeLineForm({ onClose })`, que confirma cada producto añadido («Añadiste «…»») y, desde el primero, ofrece «Cerrar» en vez de «Cancelar»;
   - en `ProformaLines`, el botón «Añadir producto libre» (`aria-expanded`) y la etiqueta «Producto libre» de cada línea libre.
 
 - [ ] **Step 1: Escribir las pruebas**
@@ -1201,6 +1275,8 @@ git commit -m "feat: give each proforma line its own id and allow free lines"
       expect(screen.getByLabelText('Precio unitario de Instalación en sitio')).toHaveValue('350')
       expect(form.getByLabelText('Descripción')).toHaveValue('')
       expect(form.getByLabelText('Descripción')).toHaveFocus()
+      expect(form.getByRole('status')).toHaveTextContent('Añadiste «Instalación en sitio».')
+      expect(form.getByRole('button', { name: 'Cerrar' })).toBeVisible()
       expect(generate()).toBeEnabled()
     })
 
@@ -1283,13 +1359,13 @@ export type FreeLineValues = z.input<typeof freeLineSchema>
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useId, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { addFreeLine, freeLineSchema, quantityMessage, type FreeLineValues } from '../draft'
+import { addFreeLine, freeLineSchema, type FreeLineValues } from '../draft'
 import { useProforma } from '../store'
 import { TAX_CONFIG } from '../tax'
 
@@ -1335,7 +1411,8 @@ function Field({
 // formulario queda vacío y abierto para el siguiente (plan, decisión 3).
 export function FreeLineForm({ onClose }: { onClose: () => void }) {
   const id = useId()
-  const { update, announce } = useProforma()
+  const { update } = useProforma()
+  const [added, setAdded] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -1345,9 +1422,9 @@ export function FreeLineForm({ onClose }: { onClose: () => void }) {
   } = useForm({ resolver: zodResolver(freeLineSchema), defaultValues: EMPTY })
 
   const add = handleSubmit((values) => {
-    const lineId = `libre-${crypto.randomUUID()}`
-    const next = update((draft) => addFreeLine(draft, values, lineId))
-    announce(quantityMessage(next, { id: lineId, name: values.name }))
+    update((draft) => addFreeLine(draft, values))
+    // Confirma cada uno: la línea nueva puede quedar fuera de la vista, debajo del formulario.
+    setAdded(values.name)
     reset(EMPTY)
     setFocus('name')
   })
@@ -1424,12 +1501,17 @@ export function FreeLineForm({ onClose }: { onClose: () => void }) {
           />
         </Field>
       </div>
+      {added ? (
+        <p role="status" className="text-[13px] font-medium text-ring">
+          Añadiste «{added}». Escribe el siguiente o cierra el formulario.
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={isSubmitting}>
           Añadir a la proforma
         </Button>
         <Button type="button" variant="ghost" onClick={onClose}>
-          Cancelar
+          {added ? 'Cerrar' : 'Cancelar'}
         </Button>
       </div>
     </form>
@@ -1515,6 +1597,8 @@ git commit -m "feat: add free products to a proforma without the catalog"
 - Create:
   - `src/app/(private)/proformas/page.tsx`
   - `src/features/proforma/history/components/proformas-screen.tsx`
+  - `src/features/proforma/history/components/new-proforma-prompt.tsx`
+  - `tests/components/new-proforma-prompt.test.tsx`
   - `tests/e2e/proformas.spec.ts`
 - Modify:
   - `src/components/app-shell.tsx`
@@ -1523,16 +1607,59 @@ git commit -m "feat: add free products to a proforma without the catalog"
   - `src/features/proforma/components/proforma-editor.tsx`
   - `src/features/proforma/components/proforma-lines.tsx`
   - `src/features/catalog/components/catalog-screen.tsx`
-- Test: `tests/components/proforma-editor.test.tsx`, `tests/e2e/proformas.spec.ts`
+- Test: `tests/components/proforma-editor.test.tsx`, `tests/components/new-proforma-prompt.test.tsx`, `tests/e2e/proformas.spec.ts`
 
 **Interfaces:**
-- Consumes: `FreeLineForm` y las líneas libres (tareas 3 y 4).
+- Consumes: `FreeLineForm` y las líneas libres (tareas 3 y 4); `ProformaBar` (la de Productos).
 - Produces:
   - la ruta `/proformas` (`maxDuration = 60`) y «Proformas» en el menú, entre Productos y Empresa;
-  - `ProformasScreen()`: cabecera y «Nueva proforma»;
+  - `ProformasScreen()`: cabecera, «Nueva proforma» y la barra de la proforma en curso;
+  - `NewProformaPrompt({ open, summary, onKeep, onStartNew, onClose })`: la pregunta antes de borrar una proforma sin generar (plan, decisión 4);
   - `ProformaDialog({ open, onClose, onContinue? })` y `ProformaEditorProps.onContinue?`: sin `onContinue` no se muestra «Seguir eligiendo productos».
 
 - [ ] **Step 1: Escribir las pruebas**
+
+`tests/components/new-proforma-prompt.test.tsx`:
+
+```tsx
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import { NewProformaPrompt } from '@/features/proforma/history/components/new-proforma-prompt'
+
+function renderPrompt() {
+  const handlers = { onKeep: vi.fn(), onStartNew: vi.fn(), onClose: vi.fn() }
+  render(<NewProformaPrompt open summary="3 productos · S/ 1,234.00" {...handlers} />)
+  const dialog = within(screen.getByRole('alertdialog', { name: '¿Empezar una proforma nueva?' }))
+  return { ...handlers, dialog, user: userEvent.setup() }
+}
+
+describe('NewProformaPrompt', () => {
+  it('explica qué se perdería y deja el foco en la opción segura', () => {
+    const { dialog } = renderPrompt()
+    expect(
+      dialog.getByText(
+        'Tienes una proforma sin generar (3 productos · S/ 1,234.00). Si empiezas otra, esa se borra.',
+      ),
+    ).toBeVisible()
+    expect(dialog.getByRole('button', { name: 'Seguir con la actual' })).toHaveFocus()
+  })
+
+  it('«Seguir con la actual» la conserva', async () => {
+    const { dialog, onKeep, onStartNew, user } = renderPrompt()
+    await user.click(dialog.getByRole('button', { name: 'Seguir con la actual' }))
+    expect(onKeep).toHaveBeenCalledTimes(1)
+    expect(onStartNew).not.toHaveBeenCalled()
+  })
+
+  it('«Empezar una nueva» avisa a quien la abrió', async () => {
+    const { dialog, onKeep, onStartNew, user } = renderPrompt()
+    await user.click(dialog.getByRole('button', { name: 'Empezar una nueva' }))
+    expect(onStartNew).toHaveBeenCalledTimes(1)
+    expect(onKeep).not.toHaveBeenCalled()
+  })
+})
+```
 
 `tests/components/proforma-editor.test.tsx`, dentro de `describe('ProformaEditor', …)`:
 
@@ -1620,12 +1747,37 @@ test('arma y genera una proforma solo con productos libres, desde Proformas', as
   expect(text).toContain('HDMI-3')
   expect(text).toContain('—')
 })
+
+test('«Nueva proforma» pregunta antes de borrar una proforma sin generar', async ({ page }) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  const start = page.getByRole('button', { name: 'Nueva proforma' }).first()
+  await start.click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
+  await page.keyboard.press('Escape')
+  // La proforma en curso se ve en su barra, como en Productos.
+  await expect(page.getByRole('region', { name: 'Proforma' })).toContainText('1 producto')
+
+  await start.click()
+  const prompt = page.getByRole('alertdialog', { name: '¿Empezar una proforma nueva?' })
+  await expect(prompt).toContainText('1 producto · S/ 350.00')
+  await prompt.getByRole('button', { name: 'Seguir con la actual' }).click()
+  await expect(panel.getByLabel('Cantidad de Instalación en sitio')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  await start.click()
+  await prompt.getByRole('button', { name: 'Empezar una nueva' }).click()
+  await expect(panel.getByText(/La proforma está vacía/)).toBeVisible()
+})
 ```
 
-- [ ] **Step 2: Ejecutar la prueba de componentes y ver que falla**
+- [ ] **Step 2: Ejecutar las pruebas de componentes y ver que fallan**
 
-Run: `pnpm exec vitest run --project components tests/components/proforma-editor.test.tsx -t "Seguir eligiendo"`
-Expected: FAIL: el botón se muestra siempre.
+Run: `pnpm exec vitest run --project components tests/components/proforma-editor.test.tsx tests/components/new-proforma-prompt.test.tsx`
+Expected: FAIL: «Seguir eligiendo productos» se muestra siempre y `new-proforma-prompt` no existe.
 
 - [ ] **Step 3: Hacer opcional «Seguir eligiendo productos»**
 
@@ -1660,6 +1812,59 @@ Expected: FAIL: el botón se muestra siempre.
 
 - [ ] **Step 4: Crear la pantalla, la ruta y el menú**
 
+`src/features/proforma/history/components/new-proforma-prompt.tsx`:
+
+```tsx
+'use client'
+
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+
+// «Nueva proforma» con una sin generar (spec de productos libres §4.3): se elige, nada se borra solo.
+// El foco empieza en «Seguir con la actual», la opción que no pierde nada.
+export function NewProformaPrompt({
+  open,
+  summary,
+  onKeep,
+  onStartNew,
+  onClose,
+}: {
+  open: boolean
+  // «3 productos · S/ 1,234.00»
+  summary: string
+  onKeep: () => void
+  onStartNew: () => void
+  onClose: () => void
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Empezar una proforma nueva?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tienes una proforma sin generar ({summary}). Si empiezas otra, esa se borra.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onKeep}>Seguir con la actual</AlertDialogCancel>
+          <Button variant="destructive" onClick={onStartNew}>
+            Empezar una nueva
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+```
+
 `src/features/proforma/history/components/proformas-screen.tsx`:
 
 ```tsx
@@ -1668,9 +1873,13 @@ Expected: FAIL: el botón se muestra siempre.
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { ProformaBar } from '../../components/proforma-bar'
 import { ProformaDialog } from '../../components/proforma-dialog'
 import { EMPTY_DRAFT } from '../../draft'
+import { formatCents } from '../../money'
 import { ProformaProvider, useProforma } from '../../store'
+import { totalsFromText } from '../../totals'
+import { NewProformaPrompt } from './new-proforma-prompt'
 
 // Pantalla Proformas (spec de productos libres §4.2 y §4.3): armar una proforma sin pasar por el
 // catálogo. El historial llega en la tarea 10.
@@ -1684,13 +1893,21 @@ export function ProformasScreen() {
 
 function ProformasContent() {
   const [open, setOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
   const { draft, update } = useProforma()
+  const products = draft.lines.length
+  const totals = totalsFromText(draft)
 
-  // Una proforma ya generada está guardada: se empieza otra vacía. Una sin generar se retoma, para
-  // no perder lo escrito (plan, decisión 4).
-  function startNew() {
-    if (draft.number !== null) update(() => EMPTY_DRAFT)
+  function openEmpty() {
+    update(() => EMPTY_DRAFT)
     setOpen(true)
+  }
+
+  // «Nueva proforma» empieza una vacía. Una ya generada está guardada y se reemplaza; una sin
+  // generar no se borra sin preguntar (plan, decisión 4).
+  function startNew() {
+    if (draft.number === null && products > 0) setAsking(true)
+    else openEmpty()
   }
 
   return (
@@ -1707,7 +1924,18 @@ function ProformasContent() {
           Nueva proforma
         </Button>
       </div>
+      <ProformaBar onComplete={() => setOpen(true)} />
       <ProformaDialog open={open} onClose={() => setOpen(false)} />
+      <NewProformaPrompt
+        open={asking}
+        summary={`${products} ${products === 1 ? 'producto' : 'productos'} · S/ ${totals ? formatCents(totals.total) : '—'}`}
+        onKeep={() => setOpen(true)}
+        onStartNew={() => {
+          setAsking(false)
+          openEmpty()
+        }}
+        onClose={() => setAsking(false)}
+      />
     </div>
   )
 }
@@ -1757,12 +1985,12 @@ y en `outputFileTracingIncludes`: `'/products': PROFORMA_FILES,` y `'/proformas'
 - [ ] **Step 5: Ejecutar las pruebas, los tipos, el lint y las e2e**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint && pnpm exec playwright test tests/e2e/proformas.spec.ts tests/e2e/proforma.spec.ts`
-Expected: PASS en todo, en PC y en móvil. En la e2e nueva, el PDF lleva «Instalación en sitio», «HDMI-3» y «—».
+Expected: PASS en todo, en PC y en móvil. En la e2e nueva, el PDF lleva «Instalación en sitio», «HDMI-3» y «—», y «Nueva proforma» pregunta antes de borrar la que no se generó.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add "src/app/(private)/proformas/page.tsx" src/features/proforma/history/components/proformas-screen.tsx src/components/app-shell.tsx next.config.ts src/features/proforma/components/proforma-dialog.tsx src/features/proforma/components/proforma-editor.tsx src/features/proforma/components/proforma-lines.tsx src/features/catalog/components/catalog-screen.tsx tests/components/proforma-editor.test.tsx tests/e2e/proformas.spec.ts
+git add "src/app/(private)/proformas/page.tsx" src/features/proforma/history/components/proformas-screen.tsx src/features/proforma/history/components/new-proforma-prompt.tsx tests/components/new-proforma-prompt.test.tsx src/components/app-shell.tsx next.config.ts src/features/proforma/components/proforma-dialog.tsx src/features/proforma/components/proforma-editor.tsx src/features/proforma/components/proforma-lines.tsx src/features/catalog/components/catalog-screen.tsx tests/components/proforma-editor.test.tsx tests/e2e/proformas.spec.ts
 git commit -m "feat: start a new proforma from the Proformas screen"
 ```
 
@@ -2093,7 +2321,7 @@ git commit -m "refactor: share pagination, empty states and the date range filte
     - `item_count` (1 a 300), `total numeric(12,2)`;
     - `document jsonb`, `created_at`, `updated_at`;
     - RLS de la cuenta dueña: leer, crear y actualizar; sin borrar;
-  - `filter_proformas(search text, date_from date, date_to date)`: filas sin `document`, con `sort_position` (de la más reciente a la más antigua);
+  - `filter_proformas(search text, date_from date, date_to date)`: filas sin `document`, con `sort_position` (si se busca un número, esa proforma primero; después, de la más reciente a la más antigua). Busca en el nombre, el RUC o DNI, el celular y el N°;
   - `search_proformas(search, date_from, date_to, page, page_size = 20)` → `json { total, sum, all, this_month, items[] }`; `sum` y cada `total` en texto;
   - `export_proformas(search, date_from, date_to, max_rows)` → `json` (array con las mismas columnas que `items`);
   - `resetProformas(client)` en `tests/integration/db.ts`.
@@ -2223,6 +2451,20 @@ describe('search_proformas', () => {
     }
   })
 
+  it('busca también por N° de proforma (esa va primero) y por celular, con o sin espacios', async () => {
+    await insert({ number: 42, client_name: 'Cliente cuarenta y dos', client_document: '' })
+    await insert({
+      number: 50,
+      client_name: 'Otro cliente',
+      client_document: '20000000142',
+      client_phone: '911 222 333',
+    })
+    expect(numbers(await search({ search: '42' }))).toEqual([42, 50])
+    expect(numbers(await search({ search: '0042' }))).toEqual([42])
+    expect(numbers(await search({ search: '911222' }))).toEqual([50])
+    expect(numbers(await search({ search: '911 222' }))).toEqual([50])
+  })
+
   it('filtra por días de Lima', async () => {
     await insert({ number: 1, issued_at: '2026-10-06T04:30:00Z' }) // 23:30 del 5 de octubre en Lima
     await insert({ number: 2, issued_at: '2026-10-06T05:30:00Z' }) // 00:30 del 6 en Lima
@@ -2341,9 +2583,10 @@ create policy "owner updates proformas" on public.proformas
   using ((select auth.jwt() -> 'app_metadata' ->> 'catalog_access') = 'owner')
   with check ((select auth.jwt() -> 'app_metadata' ->> 'catalog_access') = 'owner');
 
--- Búsqueda (nombre sin tildes ni mayúsculas, RUC o DNI) y días de Lima, como filter_products: la
--- lista y el Excel leen de aquí, así que nunca dan resultados distintos. Los caracteres especiales
--- de LIKE se buscan como texto. Sin la copia (`document`): ni la lista ni el Excel la necesitan.
+-- Búsqueda (nombre sin tildes ni mayúsculas, RUC, DNI, celular o N° de proforma) y días de Lima,
+-- como filter_products: la lista y el Excel leen de aquí, así que nunca dan resultados distintos.
+-- Los caracteres especiales de LIKE se buscan como texto. Con un número, esa proforma va primero.
+-- Sin la copia (`document`): ni la lista ni el Excel la necesitan.
 create function public.filter_proformas(
   search text default '',
   date_from date default null,
@@ -2372,17 +2615,24 @@ as $$
         extensions.unaccent('extensions.unaccent', coalesce(search, '')),
         '\', '\\'), '%', '\%'), '_', '\_') || '%' as pattern,
       date_from::timestamp at time zone 'America/Lima' as from_instant,
-      (date_to + 1)::timestamp at time zone 'America/Lima' as to_instant
+      (date_to + 1)::timestamp at time zone 'America/Lima' as to_instant,
+      -- «0042» y «42» son la proforma 42.
+      ltrim(btrim(coalesce(search, '')), '0') as number_search
   )
   select
     p.id, p.number, p.issued_at, p.valid_until, p.client_name, p.client_document,
     p.client_phone, p.item_count, p.total,
-    row_number() over (order by p.number desc) as sort_position
+    row_number() over (
+      order by (p.number::text = params.number_search) desc, p.number desc
+    ) as sort_position
   from public.proformas p
   cross join params
   where (
       extensions.unaccent('extensions.unaccent', p.client_name) ilike params.pattern
       or p.client_document like params.pattern
+      -- El celular sin espacios («987 654» encuentra 987 654 321) y el número con sus ceros.
+      or replace(p.client_phone, ' ', '') like replace(params.pattern, ' ', '')
+      or lpad(p.number::text, 4, '0') like params.pattern
     )
     and (params.from_instant is null or p.issued_at >= params.from_instant)
     and (params.to_instant is null or p.issued_at < params.to_instant)
@@ -2495,7 +2745,7 @@ Expected: «Applying migration 202610060002_proforma_history.sql…» sin errore
 - [ ] **Step 5: Ejecutar las pruebas y ver que pasan**
 
 Run: `pnpm exec vitest run --project integration tests/integration/proforma-history-sql.test.ts && pnpm typecheck`
-Expected: PASS en las 8 pruebas; sin errores de tipos.
+Expected: PASS en las 9 pruebas; sin errores de tipos.
 
 - [ ] **Step 6: Commit**
 
@@ -2513,12 +2763,17 @@ git commit -m "feat: store proformas with server-side search, totals and pages"
   - `src/features/proforma/history/snapshot.ts`
   - `src/features/proforma/history/repository.ts`
   - `tests/integration/proforma-history.test.ts`
+  - `tests/unit/proforma-snapshot.test.ts`
 - Modify:
   - `src/features/company/queries.ts`
   - `src/features/proforma/document/service.ts`
   - `src/features/proforma/components/proforma-editor.tsx`
+  - `src/features/proforma/components/proforma-ready.tsx`
+  - `src/features/proforma/components/proforma-panel.tsx`
+  - `src/features/proforma/components/proforma-dialog.tsx`
+  - `src/features/catalog/components/catalog-screen.tsx`
   - `tests/e2e/proforma.spec.ts`, `tests/e2e/proformas.spec.ts`
-- Test: `tests/integration/proforma-history.test.ts`, `tests/components/proforma-editor.test.tsx`
+- Test: `tests/integration/proforma-history.test.ts`, `tests/unit/proforma-snapshot.test.ts`, `tests/components/proforma-editor.test.tsx`, `tests/components/proforma-ready.test.tsx`
 
 **Interfaces:**
 - Consumes: la tabla `proformas` y `resetProformas` (tarea 7); `renderProformaDocument` con `company` (tarea 1).
@@ -2526,7 +2781,8 @@ git commit -m "feat: store proformas with server-side search, totals and pages"
   - `storedCompanySchema` (la forma de `CompanyProfile`) y `toCompanyProfile(row: unknown)` en `company/queries.ts`;
   - `snapshotSchema = z.object({ input: documentInputSchema, company: storedCompanySchema })` y `ProformaSnapshot`;
   - `saveProforma(supabase, input, company, issuedAt): Promise<ActionResult<null>>`, un *upsert* por `number`;
-  - `renderProformaDocument` guarda toda proforma que no es borrador antes de entregarla.
+  - `renderProformaDocument` guarda toda proforma que no es borrador antes de entregarla;
+  - `historyLink?: boolean` en `ProformaDialog`, `ProformaPanelProps` y `ProformaReadyProps`: ya generada, «Quedó guardada en el historial», con el enlace a Proformas si es `true` (desde Productos).
 
 - [ ] **Step 1: Escribir las pruebas**
 
@@ -2688,10 +2944,107 @@ describe('historial al generar', () => {
   })
 ```
 
+`tests/unit/proforma-snapshot.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { buildDocumentModel } from '@/features/proforma/document/model'
+import { snapshotSchema } from '@/features/proforma/history/snapshot'
+
+// Así guarda la base cada proforma desde esta versión. No la actualices al cambiar el código: si deja
+// de leerse, las proformas guardadas ya no se podrán ver ni reenviar. Un campo nuevo de la entrada
+// del documento o de la empresa necesita un valor por defecto (plan, decisión 26).
+const STORED_V1 = {
+  input: {
+    draft: false,
+    number: 42,
+    issuedAt: '2026-10-02T15:00:00.000Z',
+    lines: [
+      {
+        code: 'LAP-001',
+        name: 'Laptop de 14 pulgadas',
+        description: null,
+        unitPrice: '2590.00',
+        quantity: 2,
+      },
+      { code: '', name: 'Instalación en sitio', description: null, unitPrice: '350', quantity: 1 },
+    ],
+    client: {
+      name: 'Inversiones Nuevo Sol S.A.C.',
+      document: '20601234567',
+      phone: '987 654 321',
+      address: 'Av. Sol 456',
+      deliveryTime: '',
+    },
+    validityDays: '',
+    discountPercent: '',
+    shipping: '',
+  },
+  company: {
+    legal_name: 'Empresa de Pruebas S.A.C.',
+    trade_name: 'Ventronix',
+    ruc: '20000000001',
+    address: 'Av. Prueba 123, Huamanga',
+    phones: ['066 312345'],
+    email: null,
+    payment_terms: null,
+    return_policy: null,
+    default_validity_days: 7,
+    bank_accounts: [],
+    wallets: [],
+    whatsapp_message: null,
+    updated_at: '2026-10-01T00:00:00+00:00',
+  },
+}
+
+describe('copia guardada en el historial', () => {
+  it('la que se guarda hoy se sigue leyendo y arma el mismo documento', () => {
+    const { input, company } = snapshotSchema.parse(STORED_V1)
+    const model = buildDocumentModel(input, company, new Date(input.issuedAt ?? 0))
+    expect(model).toMatchObject({
+      numberLabel: 'N° 0042',
+      date: '02/10/2026',
+      validUntil: '09/10/2026',
+      total: 'S/ 5,530.00',
+      author: 'Ventronix',
+    })
+    expect(model.rows.map((row) => row.code)).toEqual(['LAP-001', '—'])
+  })
+})
+```
+
+`tests/components/proforma-ready.test.tsx`, dentro de `describe('ProformaReady', …)`:
+
+```tsx
+  it('lista, dice que quedó guardada y, desde Productos, enlaza al historial', async () => {
+    seed()
+    render(
+      <ProformaProvider>
+        <ProformaReady
+          company={{ status: 'ready', profile: completeCompany }}
+          generatePdf={vi.fn<Generate>(async () => ({ ok: true, data: pdf }))}
+          onCorrect={vi.fn()}
+          onNew={vi.fn()}
+          historyLink
+        />
+      </ProformaProvider>,
+    )
+    expect(await screen.findByText(/Quedó guardada en el historial/)).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Proformas' })).toHaveAttribute('href', '/proformas')
+  })
+
+  it('desde Proformas lo dice sin enlace', async () => {
+    seed()
+    renderReady()
+    expect(await screen.findByText('Quedó guardada en el historial.')).toBeVisible()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+```
+
 - [ ] **Step 2: Ejecutar las pruebas y ver que fallan**
 
-Run: `pnpm exec vitest run --project integration tests/integration/proforma-history.test.ts && pnpm exec vitest run --project components tests/components/proforma-editor.test.tsx -t "historial"`
-Expected: FAIL: no se guarda ninguna fila (`saved()` vuelve vacío) y la ayuda dice «Recibe su número correlativo al generarla.».
+Run: `pnpm exec vitest run --project integration tests/integration/proforma-history.test.ts && pnpm exec vitest run --project unit tests/unit/proforma-snapshot.test.ts && pnpm exec vitest run --project components tests/components/proforma-editor.test.tsx tests/components/proforma-ready.test.tsx -t "historial"`
+Expected: FAIL: no se guarda ninguna fila (`saved()` vuelve vacío), `history/snapshot` no existe, la ayuda dice «Recibe su número correlativo al generarla.» y la vista «lista» no dice que quedó guardada.
 
 - [ ] **Step 3: Validar lo guardado de la empresa con un solo schema**
 
@@ -2737,6 +3090,8 @@ import { documentInputSchema } from '../document/input'
 
 // La copia que guarda cada proforma del historial (spec de productos libres §3): lo que se envió al
 // generarla y los datos de la empresa de ese día. Con ella se vuelve a armar el mismo PDF.
+// Se guarda para siempre: un campo nuevo de DocumentInput o de la empresa necesita un valor por
+// defecto, o las copias anteriores dejan de leerse (tests/unit/proforma-snapshot.test.ts).
 export const snapshotSchema = z.object({
   input: documentInputSchema,
   company: storedCompanySchema,
@@ -2838,17 +3193,49 @@ export async function renderProformaDocument(
 
 `src/features/proforma/components/proforma-editor.tsx`: la ayuda bajo «Generar proforma» pasa a «Recibe su número correlativo y queda guardada en el historial de Proformas.».
 
+`src/features/proforma/components/proforma-ready.tsx`: importa `Link` de `next/link`, añade a `ProformaReadyProps`:
+
+```ts
+  // Desde Productos, el aviso de que quedó guardada enlaza al historial (spec §4.3).
+  historyLink?: boolean
+```
+
+recíbela y, después del bloque de «Preparando el PDF…» y su error:
+
+```tsx
+      {status.kind === 'ready' ? (
+        <p className="text-xs text-muted-foreground">
+          Quedó guardada en el historial
+          {historyLink ? (
+            <>
+              {' '}
+              de{' '}
+              <Link href="/proformas" className={inlineAction}>
+                Proformas
+              </Link>
+            </>
+          ) : null}
+          .
+        </p>
+      ) : null}
+```
+
+`src/features/proforma/components/proforma-panel.tsx`: `ProformaPanelProps` añade `historyLink?: ProformaReadyProps['historyLink']`; `ProformaPanel` la saca de sus props (junto a `sendByWhatsApp`) y la pasa a `ProformaReady`.
+
+`src/features/proforma/components/proforma-dialog.tsx`: la firma añade `historyLink?: boolean` y la pasa a `ProformaPanel`. `src/features/catalog/components/catalog-screen.tsx`: `<ProformaDialog … historyLink />`.
+
 `tests/e2e/proforma.spec.ts` y `tests/e2e/proformas.spec.ts`: añade `resetProformas` a la importación de `../integration/db` y llámalo en `seed()`, justo después de `resetCatalog(db)`: la numeración vuelve a empezar en 1 y el historial también.
 
 - [ ] **Step 5: Ejecutar las pruebas, los tipos, el lint y las e2e de la proforma**
 
 Run: `pnpm exec vitest run --project integration tests/integration/proforma-history.test.ts tests/integration/proforma-document.test.ts tests/integration/whatsapp-service.test.ts && pnpm test && pnpm typecheck && pnpm lint && pnpm exec playwright test tests/e2e/proforma.spec.ts tests/e2e/proformas.spec.ts`
+(`pnpm test` incluye `tests/unit/proforma-snapshot.test.ts` y `tests/components/proforma-ready.test.tsx`.)
 Expected: PASS en todo. Las pruebas del documento y de WhatsApp siguen pasando, ahora guardando cada proforma que generan.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/features/company/queries.ts src/features/proforma/history/snapshot.ts src/features/proforma/history/repository.ts src/features/proforma/document/service.ts src/features/proforma/components/proforma-editor.tsx tests/integration/proforma-history.test.ts tests/components/proforma-editor.test.tsx tests/e2e/proforma.spec.ts tests/e2e/proformas.spec.ts
+git add src/features/company/queries.ts src/features/proforma/history/snapshot.ts src/features/proforma/history/repository.ts src/features/proforma/document/service.ts src/features/proforma/components/proforma-editor.tsx src/features/proforma/components/proforma-ready.tsx src/features/proforma/components/proforma-panel.tsx src/features/proforma/components/proforma-dialog.tsx src/features/catalog/components/catalog-screen.tsx tests/integration/proforma-history.test.ts tests/unit/proforma-snapshot.test.ts tests/components/proforma-editor.test.tsx tests/components/proforma-ready.test.tsx tests/e2e/proforma.spec.ts tests/e2e/proformas.spec.ts
 git commit -m "feat: keep every generated proforma in the history, by number"
 ```
 
@@ -2866,7 +3253,7 @@ git commit -m "feat: keep every generated proforma in the history, by number"
 - Produces:
   - `StoredDocument = GeneratedDocument & { message: string }` (en `snapshot.ts`);
   - `deliverByWhatsApp(provider, { phone, fileName, document, caption })` → `ActionResult<{ phone: string }>`;
-  - `storedProformaDocument(supabase, id)` → `ActionResult<StoredDocument>`;
+  - `storedProformaDocument(supabase, id)` → `ActionResult<StoredDocument>`; una copia que no se puede leer da «No pudimos leer la copia guardada de esta proforma.»;
   - `resendStoredProforma(supabase, { id, phone }, provider)` → `ActionResult<{ phone: string }>`;
   - Server Actions `getProformaDocument(id)` y `resendProforma({ id, phone })`.
 
@@ -2944,6 +3331,18 @@ describe('desde el historial', () => {
     expect(
       await storedProformaDocument(supabase, '00000000-0000-4000-8000-000000000000'),
     ).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+  })
+
+  it('una copia que no se puede leer lo dice con claridad', async () => {
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.proformas
+         (number, issued_at, valid_until, client_name, item_count, total, document)
+       values (99, now(), current_date, 'Cliente', 1, 10, '{"input": {}}') returning id`,
+    )
+    expect(await storedProformaDocument(supabase, rows[0].id)).toMatchObject({
+      ok: false,
+      error: { message: 'No pudimos leer la copia guardada de esta proforma.' },
+    })
   })
 })
 ```
@@ -3049,7 +3448,7 @@ import { NOT_CONFIGURED } from '@/features/whatsapp/service'
 import type { ActionResult } from '@/lib/action-result'
 import type { Database } from '@/lib/supabase/database.types'
 import { whatsappMessage } from '../document/format'
-import { buildDocumentModel } from '../document/model'
+import { buildDocumentModel, type DocumentModel } from '../document/model'
 import { renderProformaPdf } from '../document/pdf'
 import { deliverByWhatsApp } from '../document/send'
 import { snapshotSchema, type StoredDocument } from './snapshot'
@@ -3061,15 +3460,23 @@ const GONE = 'No encontramos esa proforma. Actualiza la lista.'
 // El PDF del historial se vuelve a armar desde la copia (spec de productos libres §3): mismos
 // productos, precios y datos de la empresa de ese día. El mensaje es el de Empresa de hoy, con los
 // datos de esa proforma (plan, decisión 8).
-async function renderStored(supabase: Client, id: string) {
+async function renderStored(
+  supabase: Client,
+  id: string,
+): Promise<ActionResult<{ model: DocumentModel; pdf: Buffer; message: string }>> {
   const { data, error } = await supabase
     .from('proformas')
     .select('document')
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
-  if (!data) return null
-  const { input, company } = snapshotSchema.parse(data.document)
+  if (!data) return failure('NOT_FOUND', GONE)
+  const snapshot = snapshotSchema.safeParse(data.document)
+  if (!snapshot.success) {
+    console.error('[proforma] copia ilegible:', id, snapshot.error.message)
+    return failure('UNEXPECTED', 'No pudimos leer la copia guardada de esta proforma.')
+  }
+  const { input, company } = snapshot.data
   const model = buildDocumentModel(input, company, new Date(input.issuedAt ?? 0))
   const [pdf, current] = await Promise.all([renderProformaPdf(model), getCompanyProfile(supabase)])
   const message = whatsappMessage(current?.whatsapp_message ?? null, {
@@ -3079,7 +3486,7 @@ async function renderStored(supabase: Client, id: string) {
     validUntil: model.validUntil,
     sender: model.author,
   })
-  return { model, pdf, message }
+  return { ok: true, data: { model, pdf, message } }
 }
 
 export async function storedProformaDocument(
@@ -3087,15 +3494,9 @@ export async function storedProformaDocument(
   id: string,
 ): Promise<ActionResult<StoredDocument>> {
   const stored = await renderStored(supabase, id)
-  if (!stored) return failure('NOT_FOUND', GONE)
-  return {
-    ok: true,
-    data: {
-      fileName: stored.model.fileName,
-      base64: stored.pdf.toString('base64'),
-      message: stored.message,
-    },
-  }
+  if (!stored.ok) return stored
+  const { model, pdf, message } = stored.data
+  return { ok: true, data: { fileName: model.fileName, base64: pdf.toString('base64'), message } }
 }
 
 // «Reenviar» (spec §4.4): al celular de la proforma o al que se escriba solo para este envío.
@@ -3106,12 +3507,12 @@ export async function resendStoredProforma(
 ): Promise<ActionResult<{ phone: string }>> {
   if (!provider) return failure('VALIDATION', NOT_CONFIGURED)
   const stored = await renderStored(supabase, request.id)
-  if (!stored) return failure('NOT_FOUND', GONE)
+  if (!stored.ok) return stored
   return deliverByWhatsApp(provider, {
     phone: request.phone,
-    fileName: stored.model.fileName,
-    document: stored.pdf,
-    caption: stored.message,
+    fileName: stored.data.model.fileName,
+    document: stored.data.pdf,
+    caption: stored.data.message,
   })
 }
 ```
@@ -3195,10 +3596,11 @@ git commit -m "feat: rebuild, download and resend a saved proforma from its copy
     - `listProformas(supabase, query, signal?)`;
   - `historyParsers` (search, page, date, from, to);
   - en `hooks.ts`:
-    - `historyKeys.all = ['proformas']`;
+    - `historyKeys.all = ['proformas']`, `historyKeys.list(query)` y `historyKeys.document(id)`;
+    - `DOCUMENT_STALE_MS = 60_000` y `fetchStoredDocument(id)` → `Promise<StoredDocument>` (lanza el error del servidor);
     - `useHistoryFilters()`, `useProformaHistory()`;
-    - `useStoredDocument()` → `{ pending, view(row), download(row) }`;
-  - `HistoryFilters()` y `HistoryResults({ page, data, onPage, onClear, onNew, onView, onDownload, pendingId })`;
+    - `useStoredDocument()` → `{ pending, view(row), download(row) }`, con el PDF compartido un minuto (plan, decisión 22);
+  - `HistoryFilters()` y `HistoryResults({ page, data, today, updating?, onPage, onClear, onNew, onView, onDownload, onClient, pendingId })`: marca «Vencida» y el nombre del cliente muestra todas sus proformas;
   - `useDebouncedValue` se exporta desde `catalog/products/hooks.ts`.
 
 - [ ] **Step 1: Escribir las pruebas**
@@ -3249,15 +3651,25 @@ const page = (overrides: Partial<HistoryPage> = {}): HistoryPage => ({
   ...overrides,
 })
 
-function renderResults(data = page()) {
+function renderResults(data = page(), today = '2026-10-06', updating = false) {
   const handlers = {
     onPage: vi.fn(),
     onClear: vi.fn(),
     onNew: vi.fn(),
     onView: vi.fn(),
     onDownload: vi.fn(),
+    onClient: vi.fn(),
   }
-  render(<HistoryResults page={2} data={data} pendingId={null} {...handlers} />)
+  render(
+    <HistoryResults
+      page={2}
+      data={data}
+      today={today}
+      updating={updating}
+      pendingId={null}
+      {...handlers}
+    />,
+  )
   return { ...handlers, user: userEvent.setup() }
 }
 
@@ -3293,6 +3705,32 @@ describe('HistoryResults', () => {
     expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ number: 41 }))
   })
 
+  it('marca «Vencida» la que ya pasó su validez, en días de Lima', () => {
+    renderResults(page(), '2026-10-10')
+    const [first] = within(screen.getByRole('table')).getAllByRole('row').slice(1)
+    expect(first).toHaveTextContent('Vencida')
+  })
+
+  it('el último día de validez todavía no está vencida', () => {
+    renderResults(page(), '2026-10-09')
+    expect(screen.queryByText('Vencida')).not.toBeInTheDocument()
+  })
+
+  it('el nombre del cliente muestra todas sus proformas', async () => {
+    const { onClient, user } = renderResults()
+    const table = within(screen.getByRole('table'))
+    await user.click(
+      table.getByRole('button', { name: 'Ver las proformas de Inversiones Nuevo Sol S.A.C.' }),
+    )
+    expect(onClient).toHaveBeenCalledWith(expect.objectContaining({ number: 42 }))
+  })
+
+  it('mientras llega otra página o búsqueda, la actual se atenúa sin vaciarse', () => {
+    renderResults(page(), '2026-10-06', true)
+    expect(screen.getByRole('table').parentElement).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('table')).toHaveTextContent('0042')
+  })
+
   it('sin proformas invita a crear la primera', async () => {
     const { onNew, user } = renderResults(page({ items: [], total: 0, all: 0, sum: '0' }))
     expect(screen.getByText('Todavía no hay proformas guardadas')).toBeVisible()
@@ -3318,7 +3756,10 @@ describe('HistoryFilters', () => {
     )
     const last = () => onUrlUpdate.mock.lastCall![0].searchParams
     const user = userEvent.setup()
-    await user.type(screen.getByLabelText('Buscar por cliente, RUC o DNI'), 'perez')
+    await user.type(
+      screen.getByLabelText('Buscar por cliente, RUC, DNI, celular o N° de proforma'),
+      'perez',
+    )
     expect(last().get('search')).toBe('perez')
     expect(last().has('page')).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Filtrar por fecha' }))
@@ -3441,7 +3882,7 @@ export const historyParsers = {
 ```ts
 'use client'
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryStates } from 'nuqs'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -3454,10 +3895,22 @@ import { getProformaDocument } from './actions'
 import { listProformas, type HistoryQuery, type ProformaRow } from './queries'
 import { historyParsers } from './search-params'
 
-// Bajo «proformas»: generar una proforma refresca la lista y las cifras (spec §6).
+// Bajo «proformas»: generar una proforma refresca la lista, las cifras y los PDF (spec §6).
 export const historyKeys = {
   all: ['proformas'] as const,
   list: (query: HistoryQuery) => ['proformas', 'list', query] as const,
+  document: (id: string) => ['proformas', 'document', id] as const,
+}
+
+// El PDF de una proforma guardada vale un minuto: «Ver PDF», «Descargar PDF» y «Reenviar» lo
+// comparten y un doble clic no lo genera dos veces (plan, decisión 22).
+export const DOCUMENT_STALE_MS = 60_000
+
+// Lanza el error del servidor: TanStack Query lo guarda como el error de la consulta.
+export async function fetchStoredDocument(id: string) {
+  const result = await settle(getProformaDocument(id))
+  if (!result.ok) throw new Error(result.error.message)
+  return result.data
 }
 
 // Búsqueda, fechas y página viven en la URL; cada filtro añade una entrada al historial del
@@ -3490,17 +3943,25 @@ export function useProformaHistory() {
 // «Ver PDF» y «Descargar PDF» desde la copia (spec §6). La pestaña se abre al pulsar, antes de
 // esperar al servidor, para que el navegador no la bloquee.
 export function useStoredDocument() {
+  const queryClient = useQueryClient()
   const [pending, setPending] = useState<string | null>(null)
 
   async function fetchFile(row: ProformaRow) {
     setPending(row.id)
-    const result = await settle(getProformaDocument(row.id))
-    setPending(null)
-    if (!result.ok) {
-      toast.error(result.error.message)
+    try {
+      const stored = await queryClient.fetchQuery({
+        queryKey: historyKeys.document(row.id),
+        queryFn: () => fetchStoredDocument(row.id),
+        staleTime: DOCUMENT_STALE_MS,
+        retry: false,
+      })
+      return base64ToFile(stored.base64, stored.fileName)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No pudimos preparar el PDF.')
       return null
+    } finally {
+      setPending(null)
     }
-    return base64ToFile(result.data.base64, result.data.fileName)
   }
 
   return {
@@ -3550,8 +4011,8 @@ import { DateFilterControl } from '@/features/catalog/products/components/date-f
 import { limaDay } from '@/features/catalog/list-options'
 import { useHistoryFilters } from '../hooks'
 
-// Búsqueda por cliente, RUC o DNI y filtro de fecha (spec de productos libres §4.2). Cambiar un
-// filtro vuelve a la página 1.
+// Búsqueda por cliente, RUC, DNI, celular o N° y filtro de fecha (spec de productos libres §4.2).
+// Cambiar un filtro vuelve a la página 1.
 export function HistoryFilters() {
   const [filters, setFilters] = useHistoryFilters()
   // Como en Productos: «hoy» se fija al montar (solo limita los calendarios).
@@ -3566,7 +4027,7 @@ export function HistoryFilters() {
           aria-hidden
         />
         <label htmlFor="proforma-search" className="sr-only">
-          Buscar por cliente, RUC o DNI
+          Buscar por cliente, RUC, DNI, celular o N° de proforma
         </label>
         <Input
           id="proforma-search"
@@ -3577,7 +4038,7 @@ export function HistoryFilters() {
           }
           maxLength={120}
           autoComplete="off"
-          placeholder="Buscar por cliente, RUC o DNI…"
+          placeholder="Cliente, RUC, DNI, celular o N°…"
           className="bg-background/60 pl-10"
         />
       </div>
@@ -3621,6 +4082,8 @@ import { HISTORY_PAGE_SIZE, type HistoryPage, type ProformaRow } from '../querie
 export type RowActions = {
   onView: (row: ProformaRow) => void
   onDownload: (row: ProformaRow) => void
+  // Todas las proformas de ese cliente (plan, decisión 23).
+  onClient: (row: ProformaRow) => void
   // La fila cuyo PDF se está preparando.
   pendingId: string | null
 }
@@ -3628,6 +4091,10 @@ export type RowActions = {
 type HistoryResultsProps = RowActions & {
   page: number
   data: HistoryPage
+  // Hoy en Lima (AAAA-MM-DD), para marcar las vencidas.
+  today: string
+  // Llega otra página o búsqueda: la actual se atenúa sin vaciarse.
+  updating?: boolean
   onPage: (page: number) => void
   onClear: () => void
   onNew: () => void
@@ -3639,6 +4106,8 @@ const shortNumber = (number: number) => String(number).padStart(4, '0')
 export function HistoryResults({
   page,
   data,
+  today,
+  updating = false,
   onPage,
   onClear,
   onNew,
@@ -3659,7 +4128,7 @@ export function HistoryResults({
       <EmptyState
         icon={<Search className="size-6" aria-hidden />}
         title="Ninguna proforma coincide con la búsqueda"
-        text="Prueba con otro cliente, documento o rango de fechas."
+        text="Prueba con otro cliente, documento, número o rango de fechas."
         action={
           <Button variant="outline" onClick={onClear}>
             Limpiar filtros
@@ -3681,8 +4150,13 @@ export function HistoryResults({
           S/ {formatPrice(data.sum)}
         </span>
       </p>
-      <HistoryTable items={data.items} {...actions} />
-      <HistoryCards items={data.items} {...actions} />
+      <div
+        aria-busy={updating}
+        className={cn('transition-opacity motion-reduce:transition-none', updating && 'opacity-60')}
+      >
+        <HistoryTable items={data.items} today={today} {...actions} />
+        <HistoryCards items={data.items} today={today} {...actions} />
+      </div>
       <Pagination
         page={page}
         totalPages={totalPages}
@@ -3706,6 +4180,42 @@ export function HistoryLoading() {
         </div>
       ))}
     </div>
+  )
+}
+
+// «Vencida» cuando la validez ya pasó; el último día todavía vale (plan, decisión 21).
+function ValidUntil({ row, today }: { row: ProformaRow; today: string }) {
+  const expired = row.valid_until < today
+  return (
+    <span className={cn('tabular-nums', expired && 'text-amber-800')}>
+      {formatDay(row.valid_until)}
+      {expired ? <span className="block text-[11px] font-semibold">Vencida</span> : null}
+    </span>
+  )
+}
+
+function ClientButton({
+  row,
+  onClient,
+  className,
+}: {
+  row: ProformaRow
+  onClient: RowActions['onClient']
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Ver las proformas de ${row.client_name}`}
+      title="Ver todas sus proformas"
+      className={cn(
+        'max-w-full cursor-pointer truncate text-left font-semibold decoration-primary decoration-2 underline-offset-3 hover:underline',
+        className,
+      )}
+      onClick={() => onClient(row)}
+    >
+      {row.client_name}
+    </button>
   )
 }
 
@@ -3739,7 +4249,11 @@ function RowButtons({ row, onView, onDownload, pendingId }: RowActions & { row: 
 }
 
 // PC: ordenada por número, de la más reciente a la más antigua (spec §4.2).
-function HistoryTable({ items, ...actions }: RowActions & { items: ProformaRow[] }) {
+function HistoryTable({
+  items,
+  today,
+  ...actions
+}: RowActions & { items: ProformaRow[]; today: string }) {
   const th =
     'h-11 border-b bg-background/60 px-3 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase'
   return (
@@ -3778,15 +4292,17 @@ function HistoryTable({ items, ...actions }: RowActions & { items: ProformaRow[]
           <tr key={row.id} className="border-b last:border-b-0 hover:bg-background/40">
             <td className="py-3 pl-5 font-mono text-[13px] font-bold">{shortNumber(row.number)}</td>
             <td className="px-3 py-3 tabular-nums">{formatDate(row.issued_at)}</td>
-            <td className="truncate px-3 py-3 font-semibold" title={row.client_name}>
-              {row.client_name}
+            <td className="px-3 py-3">
+              <ClientButton row={row} onClient={actions.onClient} className="block" />
             </td>
             <td className="px-3 py-3 tabular-nums">{row.client_document || '—'}</td>
             <td className="px-3 py-3 text-right tabular-nums">{row.item_count}</td>
             <td className="px-3 py-3 text-right font-bold whitespace-nowrap tabular-nums">
               S/ {formatPrice(row.total)}
             </td>
-            <td className="px-3 py-3 tabular-nums">{formatDay(row.valid_until)}</td>
+            <td className="px-3 py-3">
+              <ValidUntil row={row} today={today} />
+            </td>
             <td className="py-3 pr-5 pl-2 text-right">
               <RowButtons row={row} {...actions} />
             </td>
@@ -3798,7 +4314,13 @@ function HistoryTable({ items, ...actions }: RowActions & { items: ProformaRow[]
 }
 
 // Móvil: tarjetas con número, fecha, cliente, documento y total (spec §4.2).
-function HistoryCards({ items, onDownload, pendingId }: RowActions & { items: ProformaRow[] }) {
+function HistoryCards({
+  items,
+  today,
+  onDownload,
+  onClient,
+  pendingId,
+}: RowActions & { items: ProformaRow[]; today: string }) {
   return (
     <ul className="md:hidden">
       {items.map((row) => (
@@ -3807,8 +4329,11 @@ function HistoryCards({ items, onDownload, pendingId }: RowActions & { items: Pr
             <div className="grid min-w-0">
               <span className="font-mono text-xs font-bold text-muted-foreground">
                 {formatProformaNumber(row.number)} · {formatDate(row.issued_at)}
+                {row.valid_until < today ? (
+                  <span className="ml-1.5 font-sans text-amber-800">· Vencida</span>
+                ) : null}
               </span>
-              <span className="truncate font-semibold">{row.client_name}</span>
+              <ClientButton row={row} onClient={onClient} />
               {row.client_document ? (
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {row.client_document}
@@ -3840,22 +4365,27 @@ function HistoryCards({ items, onDownload, pendingId }: RowActions & { items: Pr
 
 - [ ] **Step 5: Mostrar el historial en la pantalla**
 
-`src/features/proforma/history/components/proformas-screen.tsx`, completo:
+`src/features/proforma/history/components/proformas-screen.tsx`, completo (conserva la barra y la pregunta de la tarea 5):
 
 ```tsx
 'use client'
 
 import { CircleAlert, Plus, RefreshCw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
+import { limaDay } from '@/features/catalog/list-options'
+import { ProformaBar } from '../../components/proforma-bar'
 import { ProformaDialog } from '../../components/proforma-dialog'
 import { EMPTY_DRAFT } from '../../draft'
+import { formatCents } from '../../money'
 import { ProformaProvider, useProforma } from '../../store'
+import { totalsFromText } from '../../totals'
 import { useHistoryFilters, useProformaHistory, useStoredDocument } from '../hooks'
 import { HISTORY_PAGE_SIZE } from '../queries'
 import { HistoryFilters } from './history-filters'
 import { HistoryLoading, HistoryResults } from './history-results'
+import { NewProformaPrompt } from './new-proforma-prompt'
 
 // Proformas (spec de productos libres §4.2): el historial para buscar, descargar y reenviar, y
 // «Nueva proforma» sin pasar por el catálogo.
@@ -3869,12 +4399,18 @@ export function ProformasScreen() {
 
 function ProformasContent() {
   const [open, setOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
   const { draft, update } = useProforma()
   const { filters, query } = useProformaHistory()
   const [, setFilters] = useHistoryFilters()
   const documents = useStoredDocument()
+  // Como «hoy» en la proforma: se fija al montar. Marca las vencidas.
+  const [today] = useState(() => limaDay(new Date()))
+  const listRef = useRef<HTMLElement>(null)
   const data = query.data
   const totalPages = data ? Math.max(1, Math.ceil(data.total / HISTORY_PAGE_SIZE)) : 1
+  const products = draft.lines.length
+  const totals = totalsFromText(draft)
 
   // Si la página pedida ya no existe (por ejemplo, la URL de un enlace viejo), se muestra la última.
   useEffect(() => {
@@ -3883,11 +4419,23 @@ function ProformasContent() {
     }
   }, [data, filters.page, totalPages, setFilters])
 
-  // Una proforma ya generada está guardada: se empieza otra vacía. Una sin generar se retoma, para
-  // no perder lo escrito (plan, decisión 4).
-  function startNew() {
-    if (draft.number !== null) update(() => EMPTY_DRAFT)
+  function openEmpty() {
+    update(() => EMPTY_DRAFT)
     setOpen(true)
+  }
+
+  // «Nueva proforma» empieza una vacía. Una ya generada está guardada y se reemplaza; una sin
+  // generar no se borra sin preguntar (plan, decisión 4).
+  function startNew() {
+    if (draft.number === null && products > 0) setAsking(true)
+    else openEmpty()
+  }
+
+  // Con los botones de abajo, la página nueva se lee desde el principio, como en Productos.
+  function goToPage(page: number) {
+    void setFilters({ page: page === 1 ? null : page })
+    const list = listRef.current
+    if (list && list.getBoundingClientRect().top < 0) list.scrollIntoView({ block: 'start' })
   }
 
   return (
@@ -3920,9 +4468,10 @@ function ProformasContent() {
       </div>
 
       <section
+        ref={listRef}
         aria-label="Historial de proformas"
         aria-busy={query.isPending}
-        className="min-w-0 overflow-clip rounded-[14px] border bg-card shadow-xs"
+        className="min-w-0 scroll-mt-16 overflow-clip rounded-[14px] border bg-card shadow-xs lg:scroll-mt-0"
       >
         <HistoryFilters />
         {query.isPending ? (
@@ -3944,11 +4493,22 @@ function ProformasContent() {
           <HistoryResults
             page={Math.min(filters.page, totalPages)}
             data={data}
-            onPage={(page) => void setFilters({ page: page === 1 ? null : page })}
+            today={today}
+            updating={query.isPlaceholderData}
+            onPage={goToPage}
             onClear={() =>
               void setFilters({ search: null, date: null, from: null, to: null, page: null })
             }
             onNew={startNew}
+            onClient={(row) =>
+              void setFilters({
+                search: row.client_document || row.client_name,
+                date: null,
+                from: null,
+                to: null,
+                page: null,
+              })
+            }
             onView={(row) => void documents.view(row)}
             onDownload={(row) => void documents.download(row)}
             pendingId={documents.pending}
@@ -3956,7 +4516,18 @@ function ProformasContent() {
         )}
       </section>
 
+      <ProformaBar onComplete={() => setOpen(true)} />
       <ProformaDialog open={open} onClose={() => setOpen(false)} />
+      <NewProformaPrompt
+        open={asking}
+        summary={`${products} ${products === 1 ? 'producto' : 'productos'} · S/ ${totals ? formatCents(totals.total) : '—'}`}
+        onKeep={() => setOpen(true)}
+        onStartNew={() => {
+          setAsking(false)
+          openEmpty()
+        }}
+        onClose={() => setAsking(false)}
+      />
     </div>
   )
 }
@@ -4589,7 +5160,7 @@ git commit -m "feat: download the filtered proforma history as Excel"
 - Consumes: `getProformaDocument`, `resendProforma`, `StoredDocument` (tarea 9); `ProformaRow` (tarea 10).
 - Produces:
   - `toastChatBlocked(phone, message)`;
-  - `ResendDialog({ row, onClose, loadDocument, resend? })`;
+  - `ResendDialog({ row, today, onClose, loadDocument, resend? })`: `loadDocument(id)` → `Promise<StoredDocument>` (lanza el error) y comparte la consulta `historyKeys.document(id)` con «Ver PDF» y «Descargar PDF»; si la proforma venció, lo advierte;
   - `RowActions.onResend(row)` en `HistoryResults`.
 
 - [ ] **Step 1: Escribir las pruebas**
@@ -4630,12 +5201,16 @@ const stored: StoredDocument = {
 }
 
 function renderDialog(props: Partial<ResendDialogProps> = {}) {
-  const loadDocument = vi.fn(
-    async (): Promise<ActionResult<StoredDocument>> => ({ ok: true, data: stored }),
-  )
+  const loadDocument = vi.fn(async (): Promise<StoredDocument> => stored)
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ResendDialog row={row} onClose={vi.fn()} loadDocument={loadDocument} {...props} />
+      <ResendDialog
+        row={row}
+        today="2026-10-06"
+        onClose={vi.fn()}
+        loadDocument={loadDocument}
+        {...props}
+      />
       <Toaster />
     </QueryClientProvider>,
   )
@@ -4707,16 +5282,22 @@ describe('ResendDialog', () => {
 
   it('si no se puede preparar el PDF, lo dice y deja reintentar', async () => {
     const loadDocument = vi
-      .fn<(id: string) => Promise<ActionResult<StoredDocument>>>()
-      .mockResolvedValueOnce({
-        ok: false,
-        error: { code: 'NOT_FOUND', message: 'No encontramos esa proforma. Actualiza la lista.' },
-      })
-      .mockResolvedValueOnce({ ok: true, data: stored })
+      .fn<(id: string) => Promise<StoredDocument>>()
+      .mockRejectedValueOnce(new Error('No encontramos esa proforma. Actualiza la lista.'))
+      .mockResolvedValueOnce(stored)
     const { user } = renderDialog({ loadDocument })
     expect(await screen.findByText(/No encontramos esa proforma/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Reintentar' }))
     expect(await screen.findByText(stored.message)).toBeVisible()
+  })
+
+  it('si ya venció, lo advierte antes de reenviarla', () => {
+    renderDialog({ today: '2026-10-10' })
+    expect(
+      screen.getByText(
+        'Venció el 09/10/2026. Si los precios cambiaron, genera una proforma nueva antes de enviarla.',
+      ),
+    ).toBeVisible()
   })
 })
 ```
@@ -4788,8 +5369,8 @@ e importa `toastChatBlocked` desde `./chat-blocked`; quita `whatsappLink` de la 
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { CheckCheck, Download, Info, MessageCircle } from 'lucide-react'
-import { useState } from 'react'
+import { CheckCheck, Download, Info, MessageCircle, TriangleAlert } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -4800,6 +5381,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatDay } from '@/features/catalog/list-options'
 import { formatPrice } from '@/features/catalog/money'
 import { formatMobile } from '@/features/company/format'
 import type { ActionResult } from '@/lib/action-result'
@@ -4810,6 +5392,7 @@ import { useReturnFocus } from '@/lib/use-return-focus'
 import { toastChatBlocked } from '../../components/chat-blocked'
 import { base64ToFile, downloadFile, shareOnWhatsApp } from '../../document/files'
 import { formatProformaNumber } from '../../number'
+import { DOCUMENT_STALE_MS, historyKeys } from '../hooks'
 import type { ProformaRow } from '../queries'
 import type { StoredDocument } from '../snapshot'
 
@@ -4824,8 +5407,11 @@ const inlineAction =
 
 export type ResendDialogProps = {
   row: ProformaRow | null
+  // Hoy en Lima (AAAA-MM-DD), para advertir si ya venció.
+  today: string
   onClose: () => void
-  loadDocument: (id: string) => Promise<ActionResult<StoredDocument>>
+  // El PDF y el mensaje de la copia; lanza el error del servidor (fetchStoredDocument).
+  loadDocument: (id: string) => Promise<StoredDocument>
   // Con el WhatsApp de la empresa vinculado se envía solo; si no, se abre el chat (spec §4.4).
   resend?: (input: { id: string; phone: string }) => Promise<ActionResult<{ phone: string }>>
 }
@@ -4852,6 +5438,7 @@ export function ResendDialog({ row, onClose, ...props }: ResendDialogProps) {
 
 function ResendContent({
   row,
+  today,
   onClose,
   loadDocument,
   resend,
@@ -4863,19 +5450,21 @@ function ResendContent({
   })
   const [delivery, setDelivery] = useState<Delivery>({ kind: 'idle' })
   // El PDF y el mensaje se preparan al abrir: descargar y abrir el chat son inmediatos y el
-  // navegador no bloquea la pestaña.
-  const document = useQuery({
-    queryKey: ['proformas', 'document', row.id],
-    queryFn: async () => {
-      const result = await loadDocument(row.id)
-      if (!result.ok) throw new Error(result.error.message)
-      return { ...result.data, file: base64ToFile(result.data.base64, result.data.fileName) }
-    },
-    staleTime: 0,
-    gcTime: 0,
+  // navegador no bloquea la pestaña. Es la misma consulta de «Ver PDF» (plan, decisión 22).
+  const pdf = useQuery({
+    queryKey: historyKeys.document(row.id),
+    queryFn: () => loadDocument(row.id),
+    staleTime: DOCUMENT_STALE_MS,
     retry: false,
   })
-  const ready = document.data
+  const ready = useMemo(
+    () =>
+      pdf.data && {
+        message: pdf.data.message,
+        file: base64ToFile(pdf.data.base64, pdf.data.fileName),
+      },
+    [pdf.data],
+  )
   const phoneOk = isValidMobile(digitsOnly(phone))
 
   async function openChat() {
@@ -4941,10 +5530,10 @@ function ResendContent({
 
         <div className="grid gap-1.5">
           <span className="text-sm font-medium text-foreground">Mensaje</span>
-          {document.isError ? (
+          {pdf.isError ? (
             <p role="alert" className="text-xs text-destructive">
-              No pudimos preparar el PDF. {document.error.message}{' '}
-              <button type="button" className={inlineAction} onClick={() => void document.refetch()}>
+              No pudimos preparar el PDF. {pdf.error.message}{' '}
+              <button type="button" className={inlineAction} onClick={() => void pdf.refetch()}>
                 Reintentar
               </button>
             </p>
@@ -4960,6 +5549,14 @@ function ResendContent({
           Se envía el mismo documento que se generó: mismos productos, precios, fotos y datos de la
           empresa de ese día.
         </p>
+
+        {row.valid_until < today ? (
+          <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+            Venció el {formatDay(row.valid_until)}. Si los precios cambiaron, genera una proforma
+            nueva antes de enviarla.
+          </p>
+        ) : null}
 
         {delivery.kind === 'sending' ? (
           <p role="status" className="text-xs text-muted-foreground">
@@ -5036,12 +5633,12 @@ function ResendContent({
 ```
 
 `src/features/proforma/history/components/proformas-screen.tsx`:
-- añade las importaciones:
+- añade las importaciones, y `fetchStoredDocument` a la de `../hooks`:
 
 ```tsx
 import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
 import { settle } from '@/lib/action-result'
-import { getProformaDocument, resendProforma } from '../actions'
+import { resendProforma } from '../actions'
 import type { ProformaRow } from '../queries'
 import { ResendDialog } from './resend-dialog'
 ```
@@ -5071,8 +5668,9 @@ import { ResendDialog } from './resend-dialog'
 ```tsx
       <ResendDialog
         row={resending}
+        today={today}
         onClose={() => setResending(null)}
-        loadDocument={(id) => settle(getProformaDocument(id))}
+        loadDocument={fetchStoredDocument}
         resend={resend}
       />
 ```
@@ -5174,6 +5772,17 @@ describe('findClient', () => {
       await user.click(screen.getByRole('button', { name: /Más datos/ }))
       expect(screen.getByLabelText('Dirección')).toHaveValue('Av. Sol 456')
       expect(screen.getByLabelText('Tiempo de entrega')).toHaveValue('Inmediato')
+    })
+
+    it('si ya estaba todo escrito, solo dice cuántas proformas tiene', async () => {
+      seedProforma({
+        lines: [line()],
+        client: { ...EMPTY_DRAFT.client, name: 'Mi cliente', phone: '911222333', address: 'Calle 1' },
+      })
+      const { user } = renderEditor({ findClient: vi.fn(async () => known) })
+      await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+      expect(await screen.findByText('Cliente con 6 proformas.')).toBeVisible()
+      expect(screen.getByLabelText('Razón social o nombre')).toHaveValue('Mi cliente')
     })
 
     it('con un DNI conocido también completa, sin consultar SUNAT', async () => {
@@ -5290,15 +5899,18 @@ recíbela en `ProformaEditor` y pásala: `<ProformaClient lookupRuc={lookupRuc} 
 type Lookup = {
   document: string
   history: ClientMatch | null | 'loading'
+  // Si el historial completó algún campo: el aviso no dice «datos completados» si no lo hizo.
+  filled: boolean
   sunat: RucLookupResult | 'loading' | null // null: un DNI, que no se consulta en SUNAT
 } | null
 
 // Del historial solo se completa lo vacío; el tiempo de entrega no se copia (spec §4.3).
-const fillEmpty = (client: Client, match: ClientMatch): Partial<Client> => ({
-  name: client.name.trim() ? client.name : match.name,
-  phone: client.phone.trim() ? client.phone : match.phone,
-  address: client.address.trim() ? client.address : match.address,
-})
+const fillEmpty = (client: Client, match: ClientMatch): Partial<Client> =>
+  Object.fromEntries(
+    (['name', 'phone', 'address'] as const)
+      .filter((key) => !client[key].trim() && match[key])
+      .map((key) => [key, match[key]]),
+  )
 ```
 
 - la prop nueva: `findClient: (document: string) => Promise<ClientMatch | null>` (en la firma y en el tipo de las props);
@@ -5310,17 +5922,21 @@ const fillEmpty = (client: Client, match: ClientMatch): Partial<Client> => ({
   // respuestas no pisan nada.
   async function runLookup(document: string) {
     const isRuc = documentKind(document) === 'ruc'
-    setLookup({ document, history: 'loading', sunat: isRuc ? 'loading' : null })
+    setLookup({ document, history: 'loading', filled: false, sunat: isRuc ? 'loading' : null })
     const sunatRequest = isRuc ? lookupRuc(document) : null
     const history = await findClient(document)
-    setLookup((current) => (current?.document === document ? { ...current, history } : current))
+    let filled = false
     if (history) {
-      update((current) =>
-        current.client.document === document
-          ? patchClient(current, fillEmpty(current.client, history))
-          : current,
-      )
+      update((current) => {
+        if (current.client.document !== document) return current
+        const patch = fillEmpty(current.client, history)
+        filled = Object.keys(patch).length > 0
+        return patchClient(current, patch)
+      })
     }
+    setLookup((current) =>
+      current?.document === document ? { ...current, history, filled } : current,
+    )
     if (!sunatRequest) return
     const result = await sunatRequest
     setLookup((current) => (current?.document === document ? { ...current, sunat: result } : current))
@@ -5365,7 +5981,8 @@ function LookupStatus({ lookup, onRetry }: { lookup: Lookup; onRetry: () => void
       {known ? (
         <p role="status" className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-ring">
           <History className="size-3.5" aria-hidden />
-          Cliente con {known.count} {known.count === 1 ? 'proforma' : 'proformas'}: datos completados
+          Cliente con {known.count} {known.count === 1 ? 'proforma' : 'proformas'}
+          {lookup.filled ? ': datos completados' : '.'}
         </p>
       ) : null}
       {lookup.sunat ? (
@@ -5524,6 +6141,7 @@ async function seedHistory() {
 }
 
 const history = (page: Page) => page.getByRole('region', { name: 'Historial de proformas' })
+const SEARCH = 'Buscar por cliente, RUC, DNI, celular o N° de proforma'
 
 test('encuentra, pagina, filtra, descarga y reenvía las proformas guardadas', async ({ page }) => {
   await seed()
@@ -5543,7 +6161,7 @@ test('encuentra, pagina, filtra, descarga y reenvía las proformas guardadas', a
   await expect(page).toHaveURL(/page=2/)
   await expect(history(page).getByText('Proformas 21–25 de 25')).toBeVisible()
 
-  await history(page).getByLabel('Buscar por cliente, RUC o DNI').fill('jose perez')
+  await history(page).getByLabel(SEARCH).fill('jose perez')
   await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
   await expect(page).toHaveURL(/search=jose/)
   await page.reload()
@@ -5553,6 +6171,14 @@ test('encuentra, pagina, filtra, descarga y reenvía las proformas guardadas', a
   const excel = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Descargar Excel' }).click()
   expect((await excel).suggestedFilename()).toMatch(/^proformas-jose-perez-\d{4}-\d{2}-\d{2}\.xlsx$/)
+
+  // El N° también se busca, y el nombre del cliente muestra todas sus proformas.
+  await history(page).getByLabel(SEARCH).fill('0007')
+  await expect(page).toHaveURL(/search=0007/)
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
+  await history(page).getByRole('button', { name: 'Ver las proformas de José Pérez' }).click()
+  await expect(page).toHaveURL(/search=12345678/)
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
 
   await history(page).getByRole('button', { name: 'Reenviar la proforma N° 0007' }).click()
   const resend = page.getByRole('dialog', { name: 'Reenviar proforma N° 0007' })
@@ -5583,6 +6209,31 @@ test('con el WhatsApp vinculado, «Reenviar» la envía sola', async ({ page }) 
   await resend.getByLabel('Celular del cliente').fill('900 000 000')
   await resend.getByRole('button', { name: 'Enviar por WhatsApp' }).click()
   await expect(resend.getByText('Enviada por WhatsApp al 900 000 000.')).toBeVisible()
+})
+
+// Preferencia del usuario: las pantallas llenan el contenedor, nada se desborda y la acción
+// principal se ve sin bajar.
+test('Proformas llena el contenedor sin desbordarse y «Nueva proforma» está a la vista', async ({
+  page,
+}) => {
+  await seed()
+  await seedHistory()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await expect(history(page).getByText('Proformas 1–20 de 25')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Nueva proforma' }).first()).toBeInViewport()
+  const overflow = await page.evaluate(() => {
+    const section = document.querySelector('[aria-label="Historial de proformas"]')!
+    return {
+      page: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      section: Math.max(0, section.scrollWidth - section.clientWidth),
+    }
+  })
+  expect(overflow).toEqual({ page: 0, section: 0 })
+  const main = await page.locator('#main').boundingBox()
+  const list = await history(page).boundingBox()
+  // Solo el margen interior de la página: sin un ancho máximo que deje espacio vacío.
+  expect(list!.width).toBeGreaterThan(main!.width - 100)
 })
 
 test('la proforma generada aparece en el historial y «Corregir» la actualiza', async ({ page }) => {
@@ -5653,7 +6304,7 @@ git commit -m "test: cover the proforma history end to end"
 
 **Interfaces:**
 - Produces:
-  - bucket privado `images`; la cuenta dueña lee y sube solo en `products/<uuid>.jpg` y `lines/<uuid>.jpg`; nadie borra ni reemplaza;
+  - bucket privado `images`; la cuenta dueña lee y sube solo en `products/` y `lines/`, con nombre `<uuid>.jpg` o `<uuid>.thumb.jpg` (la miniatura); nadie borra ni reemplaza;
   - `products.image_path text null` (solo `products/<uuid>.jpg`);
   - `filter_products` devuelve `image_path`; los JSON de `search_products` y `export_products` lo incluyen.
 
@@ -5714,9 +6365,12 @@ async function upload(client: SupabaseClient, path: string) {
 }
 
 describe('bucket de fotos', () => {
-  it('la cuenta dueña sube y lee fotos en products/ y lines/', async () => {
-    for (const folder of ['products', 'lines']) {
-      const path = `${folder}/${randomUUID()}.jpg`
+  it('la cuenta dueña sube y lee fotos y miniaturas en products/ y lines/', async () => {
+    for (const path of [
+      `products/${randomUUID()}.jpg`,
+      `lines/${randomUUID()}.jpg`,
+      `products/${randomUUID()}.thumb.jpg`,
+    ]) {
       expect((await upload(supabase, path)).error).toBeNull()
       const { data, error } = await supabase.storage.from(BUCKET).download(path)
       expect(error).toBeNull()
@@ -5724,7 +6378,7 @@ describe('bucket de fotos', () => {
     }
   })
 
-  it('rechaza otras carpetas y nombres que no son <uuid>.jpg', async () => {
+  it('rechaza otras carpetas y nombres que no son <uuid>.jpg ni <uuid>.thumb.jpg', async () => {
     const id = randomUUID()
     for (const path of [
       `otros/${id}.jpg`,
@@ -5732,6 +6386,8 @@ describe('bucket de fotos', () => {
       `products/../${id}.jpg`,
       'products/foto.jpg',
       `products/${id}.jpg/x.jpg`,
+      `products/${id}.small.jpg`,
+      `lines/${id}.thumb.png`,
     ]) {
       expect((await upload(supabase, path)).error, path).not.toBeNull()
     }
@@ -5793,8 +6449,8 @@ Expected: FAIL: «Bucket not found» al subir y `column "image_path" of relation
 ```sql
 -- Fotos opcionales de los productos y de los productos libres (spec de proformas libres, historial
 -- y fotos §3, §5 y §8). Bucket privado: solo la cuenta dueña lee y sube, solo en sus dos carpetas y
--- con nombre <uuid>.jpg, las mismas rutas que acepta el servidor. Sin políticas para borrar ni para
--- reemplazar: una proforma guardada puede usar la foto.
+-- con nombre <uuid>.jpg (600 px) o <uuid>.thumb.jpg (la miniatura de 200 px). Sin políticas para
+-- borrar ni para reemplazar: una proforma guardada puede usar la foto.
 -- Solo id, name y public: los límites de tamaño y de tipo son columnas del servicio de Storage, que
 -- pueden faltar al recrear la base local. El navegador ya sube JPEG reducidos (plan, decisión 15).
 insert into storage.buckets (id, name, public)
@@ -5813,7 +6469,7 @@ create policy "owner uploads images" on storage.objects
   with check (
     bucket_id = 'images'
     and (select auth.jwt() -> 'app_metadata' ->> 'catalog_access') = 'owner'
-    and name ~ '^(products|lines)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$'
+    and name ~ '^(products|lines)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\.thumb)?\.jpg$'
   );
 
 -- Nula: sin foto. Cambiarla es subir otro archivo; las proformas anteriores conservan la suya.
@@ -6011,9 +6667,17 @@ git commit -m "feat: add a private photo bucket and an optional product photo"
 
 **Interfaces:**
 - Produces:
-  - en `src/lib/photos.ts` (cliente y servidor): `PHOTO_BUCKET = 'images'`, `PHOTO_MAX_SIDE = 600`, `PHOTO_QUALITY = 0.82`, `PhotoFolder`, `photoPathSchema(folder?)` y `fitWithin(width, height, max?)`;
-  - en `src/lib/use-photos.ts` (navegador): `uploadPhoto(folder, file): Promise<string>` (devuelve la ruta) y `usePhotoUrls(paths)` → `Map<ruta, url firmada>`;
-  - `PhotoField({ value, url, alt, upload, onChange, compact? })`.
+  - en `src/lib/photos.ts` (cliente y servidor):
+    - `PHOTO_BUCKET = 'images'`, `PHOTO_MAX_SIDE = 600`, `PHOTO_THUMB_SIDE = 200`, `PHOTO_QUALITY = 0.82`;
+    - `PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']` y `PhotoFolder`;
+    - `photoPathSchema(folder?)`: solo `<carpeta>/<uuid>.jpg`, la foto de 600 px a la que apuntan el producto y la línea;
+    - `thumbPath(path)`: `products/<uuid>.jpg` → `products/<uuid>.thumb.jpg`;
+    - `fitWithin(width, height, max?)`;
+  - en `src/lib/use-photos.ts` (navegador):
+    - `UnreadablePhotoError`: el navegador no pudo leer la foto;
+    - `uploadPhoto(folder, file): Promise<string>`: sube la de 600 px y su miniatura, y devuelve la ruta de la de 600 px;
+    - `usePhotoUrl(path: string | null): string | undefined`: URL firmada de una hora, una consulta por foto;
+  - `PhotoField({ value, url, alt, upload, onChange, compact? })`: muestra la foto elegida al instante (copia local) mientras se sube.
 
 - [ ] **Step 1: Escribir las pruebas**
 
@@ -6021,20 +6685,21 @@ git commit -m "feat: add a private photo bucket and an optional product photo"
 
 ```ts
 import { describe, expect, it } from 'vitest'
-import { fitWithin, photoPathSchema } from '@/lib/photos'
+import { fitWithin, photoPathSchema, PHOTO_THUMB_SIDE, thumbPath } from '@/lib/photos'
 
 describe('fitWithin', () => {
   it.each([
-    [4000, 3000, { width: 600, height: 450 }],
-    [1080, 1920, { width: 338, height: 600 }],
-    [300, 200, { width: 300, height: 200 }],
-    [6000, 10, { width: 600, height: 1 }],
-  ])('%i × %i', (width, height, expected) => {
-    expect(fitWithin(width, height)).toEqual(expected)
+    [4000, 3000, 600, { width: 600, height: 450 }],
+    [1080, 1920, 600, { width: 338, height: 600 }],
+    [300, 200, 600, { width: 300, height: 200 }],
+    [6000, 10, 600, { width: 600, height: 1 }],
+    [4000, 3000, PHOTO_THUMB_SIDE, { width: 200, height: 150 }],
+  ])('%i × %i en %i px', (width, height, max, expected) => {
+    expect(fitWithin(width, height, max)).toEqual(expected)
   })
 })
 
-describe('photoPathSchema', () => {
+describe('rutas de fotos', () => {
   const id = '8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c'
 
   it('acepta <carpeta>/<uuid>.jpg y, si se pide, solo una carpeta', () => {
@@ -6051,8 +6716,13 @@ describe('photoPathSchema', () => {
     `products/${id}.jpg.exe`,
     `/products/${id}.jpg`,
     `products/${id.toUpperCase()}.jpg`,
+    `products/${id}.thumb.jpg`,
   ])('rechaza %s', (path) => {
     expect(photoPathSchema().safeParse(path).success).toBe(false)
+  })
+
+  it('la miniatura vive junto a la foto', () => {
+    expect(thumbPath(`products/${id}.jpg`)).toBe(`products/${id}.thumb.jpg`)
   })
 })
 ```
@@ -6062,13 +6732,20 @@ describe('photoPathSchema', () => {
 ```tsx
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PhotoField } from '@/components/photo-field'
+import { UnreadablePhotoError } from '@/lib/use-photos'
 
 const path = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
 
+beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => 'blob:local')
+  URL.revokeObjectURL = vi.fn()
+})
+afterEach(() => vi.restoreAllMocks())
+
 describe('PhotoField', () => {
-  it('sube la foto elegida y después deja cambiarla o quitarla', async () => {
+  it('muestra la foto elegida al instante, la sube y deja quitarla', async () => {
     const upload = vi.fn(async () => path)
     const onChange = vi.fn()
     const { rerender } = render(
@@ -6077,41 +6754,55 @@ describe('PhotoField', () => {
     const user = userEvent.setup()
     expect(screen.getByRole('button', { name: 'Elegir foto' })).toBeVisible()
     expect(
-      screen.getByText('JPG o PNG. Antes de guardarla se reduce a 600 px (unos 50 KB).'),
+      screen.getByText('JPG, PNG o WebP. Antes de guardarla se reduce a 600 px (unos 50 KB).'),
     ).toBeVisible()
-    const file = new File(['foto'], 'laptop.png', { type: 'image/png' })
+    const file = new File(['foto'], 'laptop.webp', { type: 'image/webp' })
     await user.upload(screen.getByLabelText('Foto'), file)
     expect(upload).toHaveBeenCalledWith(file)
     expect(onChange).toHaveBeenCalledWith(path)
 
     rerender(
-      <PhotoField
-        value={path}
-        url="https://storage.test/foto.jpg"
-        alt="Foto de Laptop"
-        upload={upload}
-        onChange={onChange}
-      />,
+      <PhotoField value={path} url={undefined} alt="Foto de Laptop" upload={upload} onChange={onChange} />,
     )
-    expect(screen.getByRole('img', { name: 'Foto de Laptop' })).toHaveAttribute(
-      'src',
-      'https://storage.test/foto.jpg',
-    )
+    // La copia local, sin esperar la URL firmada.
+    expect(screen.getByRole('img', { name: 'Foto de Laptop' })).toHaveAttribute('src', 'blob:local')
     expect(screen.getByRole('button', { name: 'Cambiar foto' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
     expect(onChange).toHaveBeenLastCalledWith(null)
   })
 
-  it('rechaza lo que no es JPG ni PNG y avisa si no se pudo subir', async () => {
-    const upload = vi.fn(async (): Promise<string> => {
-      throw new Error('sin red')
-    })
+  it('una foto ya guardada se ve con su URL firmada', () => {
+    render(
+      <PhotoField
+        value={path}
+        url="https://storage.test/foto.thumb.jpg"
+        alt="Foto de Laptop"
+        upload={vi.fn()}
+        onChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('img', { name: 'Foto de Laptop' })).toHaveAttribute(
+      'src',
+      'https://storage.test/foto.thumb.jpg',
+    )
+  })
+
+  it('distingue un archivo que no es foto, una foto ilegible y un fallo de conexión', async () => {
+    const upload = vi
+      .fn<(file: File) => Promise<string>>()
+      .mockRejectedValueOnce(new UnreadablePhotoError())
+      .mockRejectedValueOnce(new Error('sin red'))
     render(<PhotoField value={null} url={undefined} alt="Foto" upload={upload} onChange={vi.fn()} />)
     const user = userEvent.setup({ applyAccept: false })
-    await user.upload(screen.getByLabelText('Foto'), new File(['x'], 'nota.txt', { type: 'text/plain' }))
-    expect(screen.getByText('Elige una foto JPG o PNG.')).toBeVisible()
+    const input = screen.getByLabelText('Foto')
+    await user.upload(input, new File(['x'], 'nota.txt', { type: 'text/plain' }))
+    expect(screen.getByText('Elige una foto JPG, PNG o WebP.')).toBeVisible()
     expect(upload).not.toHaveBeenCalled()
-    await user.upload(screen.getByLabelText('Foto'), new File(['x'], 'foto.jpg', { type: 'image/jpeg' }))
+    await user.upload(input, new File(['x'], 'rota.jpg', { type: 'image/jpeg' }))
+    expect(
+      await screen.findByText('No pudimos leer esta foto. Prueba con otra en JPG, PNG o WebP.'),
+    ).toBeVisible()
+    await user.upload(input, new File(['x'], 'foto.png', { type: 'image/png' }))
     expect(
       await screen.findByText('No pudimos subir la foto. Revisa tu conexión e inténtalo de nuevo.'),
     ).toBeVisible()
@@ -6122,31 +6813,39 @@ describe('PhotoField', () => {
 - [ ] **Step 2: Ejecutar las pruebas y ver que fallan**
 
 Run: `pnpm exec vitest run --project unit tests/unit/photos.test.ts && pnpm exec vitest run --project components tests/components/photo-field.test.tsx`
-Expected: FAIL al importar: `@/lib/photos` y `@/components/photo-field` no existen.
+Expected: FAIL al importar: `@/lib/photos`, `@/lib/use-photos` y `@/components/photo-field` no existen.
 
-- [ ] **Step 3: Escribir las reglas, la subida y el campo**
+- [ ] **Step 3: Escribir las reglas de las fotos**
 
 `src/lib/photos.ts`:
 
 ```ts
 import { z } from 'zod'
 
-// Fotos de los productos y de los productos libres (spec de productos libres §3, §5 y §8): JPEG de
-// 600 px por el lado mayor, en el bucket privado `images`. Sirve en el navegador y en el servidor.
+// Fotos de los productos y de los productos libres (spec de productos libres §3, §5 y §8). Sirve en
+// el navegador y en el servidor.
 export const PHOTO_BUCKET = 'images'
 export const PHOTO_MAX_SIDE = 600
+// Miniatura del PDF y de las listas: nítida en su columna de 1,5 cm y unas cinco veces más liviana
+// (plan, decisión 18).
+export const PHOTO_THUMB_SIDE = 200
 export const PHOTO_QUALITY = 0.82
+// Lo que se puede elegir: el navegador las lee y las vuelve a guardar en JPEG.
+export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 export type PhotoFolder = 'products' | 'lines'
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 
-// Las únicas rutas que acepta el servidor: las mismas que permite el bucket.
+// La foto de 600 px a la que apuntan el producto y la línea: el bucket acepta además su miniatura.
 export const photoPathSchema = (folder?: PhotoFolder) =>
   z
     .string()
     .regex(new RegExp(`^(${folder ?? 'products|lines'})/${UUID}\\.jpg$`), 'La foto no es válida.')
 
-// Lado mayor a 600 px, sin agrandar las pequeñas ni dejar un lado en cero.
+// La miniatura vive junto a la foto: products/<uuid>.jpg → products/<uuid>.thumb.jpg.
+export const thumbPath = (path: string) => path.replace(/\.jpg$/, '.thumb.jpg')
+
+// Lado mayor a `max`, sin agrandar las pequeñas ni dejar un lado en cero.
 export function fitWithin(width: number, height: number, max = PHOTO_MAX_SIDE) {
   const scale = Math.min(1, max / Math.max(width, height))
   return {
@@ -6156,6 +6855,8 @@ export function fitWithin(width: number, height: number, max = PHOTO_MAX_SIDE) {
 }
 ```
 
+- [ ] **Step 4: Escribir la subida y la URL firmada**
+
 `src/lib/use-photos.ts`:
 
 ```ts
@@ -6163,63 +6864,81 @@ export function fitWithin(width: number, height: number, max = PHOTO_MAX_SIDE) {
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { fitWithin, PHOTO_BUCKET, PHOTO_QUALITY, type PhotoFolder } from './photos'
+import {
+  fitWithin,
+  PHOTO_BUCKET,
+  PHOTO_MAX_SIDE,
+  PHOTO_QUALITY,
+  PHOTO_THUMB_SIDE,
+  thumbPath,
+  type PhotoFolder,
+} from './photos'
 
-// La foto elegida, reducida a 600 px y en JPEG (unos 40–60 KB): el original no se guarda. Fondo
-// blanco, para que un PNG transparente no quede negro.
-async function resizePhoto(file: File): Promise<Blob> {
-  const image = await createImageBitmap(file)
-  const { width, height } = fitWithin(image.width, image.height)
+// El navegador no pudo leer la foto: no es una imagen o no conoce su formato.
+export class UnreadablePhotoError extends Error {}
+
+// Un tamaño en JPEG, con fondo blanco: un PNG transparente no queda negro.
+function toJpeg(image: ImageBitmap, max: number) {
+  const { width, height } = fitWithin(image.width, image.height, max)
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('El navegador no puede preparar la foto.')
+  if (!context) throw new UnreadablePhotoError()
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, width, height)
   context.drawImage(image, 0, 0, width, height)
-  image.close()
-  return new Promise((resolve, reject) =>
+  return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('El navegador no generó el JPEG.'))),
+      (blob) => (blob ? resolve(blob) : reject(new UnreadablePhotoError())),
       'image/jpeg',
       PHOTO_QUALITY,
     ),
   )
 }
 
-// Sube la foto con la sesión de la cuenta (spec §8): ningún secreto en el navegador. Cada foto es un
-// archivo nuevo: las proformas anteriores conservan la suya. Devuelve su ruta.
+// La foto se lee una vez y se sube en dos tamaños con la sesión de la cuenta (spec §8): 600 px
+// para verla y 200 px para el PDF y las listas. El original no se guarda. Cada foto es un archivo
+// nuevo: las proformas anteriores conservan la suya. Devuelve la ruta de la de 600 px.
 export async function uploadPhoto(folder: PhotoFolder, file: File) {
+  const image = await createImageBitmap(file).catch(() => {
+    throw new UnreadablePhotoError()
+  })
+  const [full, thumb] = await Promise.all([
+    toJpeg(image, PHOTO_MAX_SIDE),
+    toJpeg(image, PHOTO_THUMB_SIDE),
+  ]).finally(() => image.close())
   const path = `${folder}/${crypto.randomUUID()}.jpg`
-  const { error } = await createClient()
-    .storage.from(PHOTO_BUCKET)
-    .upload(path, await resizePhoto(file), { contentType: 'image/jpeg' })
-  if (error) throw error
+  const storage = createClient().storage.from(PHOTO_BUCKET)
+  const options = { contentType: 'image/jpeg' }
+  const results = await Promise.all([
+    storage.upload(path, full, options),
+    storage.upload(thumbPath(path), thumb, options),
+  ])
+  const failed = results.find((result) => result.error)
+  if (failed?.error) throw failed.error
   return path
 }
 
-// Direcciones firmadas de una hora para ver fotos del bucket privado (plan, decisión 11).
-export function usePhotoUrls(paths: (string | null)[]) {
-  const unique = [...new Set(paths.filter((path): path is string => path !== null))].sort()
+// URL firmada de una hora para ver una foto del bucket privado. Una consulta por foto: añadir una
+// línea no vuelve a pedir ni a descargar las demás (plan, decisión 11).
+export function usePhotoUrl(path: string | null) {
   return useQuery({
-    queryKey: ['photos', unique],
+    queryKey: ['photos', path],
     queryFn: async () => {
       const { data, error } = await createClient()
         .storage.from(PHOTO_BUCKET)
-        .createSignedUrls(unique, 3600)
+        .createSignedUrl(path ?? '', 3600)
       if (error) throw error
-      return new Map(
-        data.flatMap((item) =>
-          item.path && item.signedUrl ? [[item.path, item.signedUrl] as const] : [],
-        ),
-      )
+      return data.signedUrl
     },
-    enabled: unique.length > 0,
+    enabled: path !== null,
     staleTime: 50 * 60 * 1000,
-  })
+  }).data
 }
 ```
+
+- [ ] **Step 5: Escribir el campo**
 
 `src/components/photo-field.tsx`:
 
@@ -6228,13 +6947,15 @@ export function usePhotoUrls(paths: (string | null)[]) {
 
 import { ImageIcon, LoaderCircle } from 'lucide-react'
 import Image from 'next/image'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { PHOTO_TYPES } from '@/lib/photos'
+import { UnreadablePhotoError } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
 
 type PhotoFieldProps = {
   value: string | null
-  // Dirección para ver la foto guardada (usePhotoUrls).
+  // URL firmada de la foto guardada (usePhotoUrl).
   url: string | undefined
   alt: string
   upload: (file: File) => Promise<string>
@@ -6244,25 +6965,44 @@ type PhotoFieldProps = {
 }
 
 // «Foto (opcional)» (spec de productos libres §4.7): vista previa, elegir, cambiar o quitar. Se sube
-// al elegirla (plan, decisión 13).
+// al elegirla (plan, decisión 13) y se ve al instante con una copia local (decisión 25).
 export function PhotoField({ value, url, alt, upload, onChange, compact = false }: PhotoFieldProps) {
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // La copia local de la foto elegida: path es null mientras se sube.
+  const [local, setLocal] = useState<{ url: string; path: string | null } | null>(null)
+  const localUrl = local?.url
+  useEffect(
+    () => () => {
+      if (localUrl) URL.revokeObjectURL(localUrl)
+    },
+    [localUrl],
+  )
+  const shown =
+    local && (local.path === null || local.path === value) ? local.url : value ? url : undefined
 
   async function pick(file: File | undefined) {
     if (!file) return
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      setError('Elige una foto JPG o PNG.')
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setError('Elige una foto JPG, PNG o WebP.')
       return
     }
     setError(null)
     setUploading(true)
+    setLocal({ url: URL.createObjectURL(file), path: null })
     try {
-      onChange(await upload(file))
-    } catch {
-      setError('No pudimos subir la foto. Revisa tu conexión e inténtalo de nuevo.')
+      const path = await upload(file)
+      setLocal((current) => current && { ...current, path })
+      onChange(path)
+    } catch (failure) {
+      setLocal(null)
+      setError(
+        failure instanceof UnreadablePhotoError
+          ? 'No pudimos leer esta foto. Prueba con otra en JPG, PNG o WebP.'
+          : 'No pudimos subir la foto. Revisa tu conexión e inténtalo de nuevo.',
+      )
     } finally {
       setUploading(false)
     }
@@ -6279,24 +7019,25 @@ export function PhotoField({ value, url, alt, upload, onChange, compact = false 
       <div className="flex flex-wrap items-center gap-4">
         <span
           className={cn(
-            'grid shrink-0 place-items-center overflow-hidden rounded-xl border bg-muted text-muted-foreground',
+            'relative grid shrink-0 place-items-center overflow-hidden rounded-xl border bg-muted text-muted-foreground',
             compact ? 'size-12' : 'size-28',
           )}
         >
-          {uploading ? (
-            <LoaderCircle className="size-6 animate-spin" aria-hidden />
-          ) : value && url ? (
+          {shown ? (
             <Image
-              src={url}
+              src={shown}
               alt={alt}
               width={compact ? 48 : 112}
               height={compact ? 48 : 112}
               unoptimized
-              className="size-full object-contain"
+              className={cn('size-full object-contain', uploading && 'opacity-50')}
             />
           ) : (
             <ImageIcon className={compact ? 'size-5' : 'size-8'} aria-hidden />
           )}
+          {uploading ? (
+            <LoaderCircle className="absolute size-6 animate-spin text-foreground" aria-hidden />
+          ) : null}
         </span>
         <div className="grid gap-2">
           <div className="flex flex-wrap gap-2">
@@ -6315,14 +7056,17 @@ export function PhotoField({ value, url, alt, upload, onChange, compact = false 
                 variant="ghost"
                 disabled={uploading}
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => onChange(null)}
+                onClick={() => {
+                  setLocal(null)
+                  onChange(null)
+                }}
               >
                 Quitar foto
               </Button>
             ) : null}
           </div>
           <p id={`${id}-help`} className="text-xs text-muted-foreground">
-            JPG o PNG. Antes de guardarla se reduce a 600 px (unos 50 KB).
+            JPG, PNG o WebP. Antes de guardarla se reduce a 600 px (unos 50 KB).
           </p>
           {error ? (
             <p role="alert" className="text-xs font-medium text-destructive">
@@ -6339,7 +7083,7 @@ export function PhotoField({ value, url, alt, upload, onChange, compact = false 
       <input
         ref={input}
         type="file"
-        accept="image/jpeg,image/png"
+        accept={PHOTO_TYPES.join(',')}
         tabIndex={-1}
         aria-labelledby={`${id}-label`}
         className="sr-only"
@@ -6354,16 +7098,16 @@ export function PhotoField({ value, url, alt, upload, onChange, compact = false 
 }
 ```
 
-- [ ] **Step 4: Ejecutar las pruebas, los tipos y el lint**
+- [ ] **Step 6: Ejecutar las pruebas, los tipos y el lint**
 
 Run: `pnpm exec vitest run --project unit tests/unit/photos.test.ts && pnpm exec vitest run --project components tests/components/photo-field.test.tsx && pnpm typecheck && pnpm lint`
 Expected: PASS; sin errores de tipos ni de lint.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/lib/photos.ts src/lib/use-photos.ts src/components/photo-field.tsx tests/unit/photos.test.ts tests/components/photo-field.test.tsx
-git commit -m "feat: shrink, upload and preview optional photos"
+git commit -m "feat: shrink, upload and preview optional photos with a PDF thumbnail"
 ```
 
 ---
@@ -6382,7 +7126,7 @@ git commit -m "feat: shrink, upload and preview optional photos"
 - Test: `tests/components/product-form.test.tsx`, `tests/unit/catalog-schemas.test.ts`, `tests/integration/photos-storage.test.ts`
 
 **Interfaces:**
-- Consumes: `photoPathSchema`, `uploadPhoto`, `usePhotoUrls`, `PhotoField` (tarea 16); `products.image_path` (tarea 15).
+- Consumes: `photoPathSchema`, `thumbPath`, `uploadPhoto`, `usePhotoUrl`, `PhotoField` (tarea 16); `products.image_path` (tarea 15).
 - Produces:
   - `ProductInput.image_path: string | null` (y por tanto `Product` y `ProductListItem`);
   - `productSchema.shape.image_path` (opcional, solo `products/<uuid>.jpg`);
@@ -6421,6 +7165,8 @@ git commit -m "feat: shrink, upload and preview optional photos"
 
 ```tsx
   it('sube la foto elegida y la envía con el producto', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:foto')
+    URL.revokeObjectURL = vi.fn()
     const path = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
     const uploadPhoto = vi.fn(async () => path)
     const { onSubmit, user } = renderForm({ uploadPhoto })
@@ -6491,7 +7237,7 @@ Añade `image_path: null` a los objetos de prueba que señale `pnpm typecheck` (
 - [ ] **Step 4: Añadir el campo al formulario y la foto a la ficha**
 
 `src/features/catalog/products/components/product-form.tsx`:
-- importa `PhotoField` desde `@/components/photo-field` y `usePhotoUrls` desde `@/lib/use-photos`;
+- importa `PhotoField` desde `@/components/photo-field`, `thumbPath` desde `@/lib/photos` y `usePhotoUrl` desde `@/lib/use-photos`;
 - `FIELDS` añade `'image_path'`;
 - `valuesSchema` añade `image_path: z.string().nullable().default(null),` (los borradores anteriores no la tienen);
 - `EMPTY` añade `image_path: null`; `toFormValues` añade `image_path: values.image_path ?? null`; `initial` añade `image_path: product?.image_path ?? null`;
@@ -6513,7 +7259,8 @@ const differs = (values: WatchedValues, from: FormValues) =>
 - después de `const live = useWatch({ control })`:
 
 ```ts
-  const photos = usePhotoUrls([live.image_path ?? null])
+  // La miniatura basta para la vista previa del formulario.
+  const photoUrl = usePhotoUrl(live.image_path ? thumbPath(live.image_path) : null)
 ```
 
 - primer campo del formulario, después de los avisos de borrador y de error del servidor:
@@ -6522,7 +7269,7 @@ const differs = (values: WatchedValues, from: FormValues) =>
         <div className="grid gap-1 sm:col-span-2">
           <PhotoField
             value={live.image_path ?? null}
-            url={live.image_path ? photos.data?.get(live.image_path) : undefined}
+            url={photoUrl}
             alt={`Foto de ${live.name?.trim() || 'tu producto'}`}
             upload={uploadPhoto}
             onChange={(path) => setValue('image_path', path, { shouldDirty: true })}
@@ -6535,10 +7282,10 @@ const differs = (values: WatchedValues, from: FormValues) =>
 
 `src/features/catalog/products/components/product-dialog.tsx`: importa `uploadPhoto` desde `@/lib/use-photos` y pasa `uploadPhoto={(file) => uploadPhoto('products', file)}` a `ProductForm`.
 
-`src/features/catalog/products/components/product-detail.tsx`: importa `Image` de `next/image` y `usePhotoUrls` de `@/lib/use-photos`; después de `const data = product ?? shown`:
+`src/features/catalog/products/components/product-detail.tsx`: importa `Image` de `next/image` y `usePhotoUrl` de `@/lib/use-photos`; después de `const data = product ?? shown` (la ficha usa la foto de 600 px):
 
 ```ts
-  const photo = usePhotoUrls([data?.image_path ?? null]).data?.get(data?.image_path ?? '')
+  const photo = usePhotoUrl(data?.image_path ?? null)
 ```
 
 y, como primer bloque dentro de `<div className="grid gap-5 overflow-y-auto px-6 py-5">`:
@@ -6598,7 +7345,7 @@ git commit -m "feat: add an optional photo to catalog products"
   - en el borrador: `ProformaLine.imagePath: string | null` y `ProformaDraft.includePhotos: boolean` (`true` por defecto); `addProduct` copia `image_path`; `FreeLineInput` y `freeLineSchema` llevan `imagePath` (solo `lines/<uuid>.jpg`);
   - en `DocumentInput`: `lines[].imagePath` (solo rutas del bucket; `null` por defecto) e `includePhotos` (`false` por defecto, para navegadores con la versión anterior);
   - en `DocumentModel`: `photos: boolean` y `rows[].photo: string | null`;
-  - `loadPhotos(supabase, paths)` → `Map<ruta, Buffer>`, solo con archivos JPEG que se pudieron leer;
+  - `PDF_PHOTO_BUDGET = 2_500_000` y `loadPhotos(supabase, paths, budget?)` → `Map<ruta, Buffer>`: la miniatura de cada foto (o la de 600 px si faltara), solo JPEG que se pudieron leer y hasta el tope de bytes;
   - `renderProformaPdf(model, images?)`.
 
 - [ ] **Step 1: Escribir las pruebas**
@@ -6690,15 +7437,22 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { DocumentInput } from '@/features/proforma/document/input'
 import { createProformaDocument } from '@/features/proforma/document/service'
 import { storedProformaDocument } from '@/features/proforma/history/service'
+import { loadPhotos } from '@/features/proforma/document/photos'
+import { thumbPath } from '@/lib/photos'
 import { adminClient, ensureUser, signedInClient } from '../support/local-supabase'
 import { pdfText } from '../support/pdf-text'
 import { connect, fillCompanyProfile, resetCompanyProfile, resetProformas } from './db'
 
 const password = 'fotos-pdf-123'
 const owner = { email: 'fotos-pdf@catalogo.test', appMetadata: { catalog_access: 'owner' } }
+const jpeg = readFileSync('public/brand/ventronix-logo-proforma.jpg')
+// Con su miniatura, como las sube la app.
 const photo = `lines/${randomUUID()}.jpg`
+// Sin miniatura: el PDF usa la de 600 px.
+const withoutThumb = `lines/${randomUUID()}.jpg`
 const notJpeg = `lines/${randomUUID()}.jpg`
 const missing = `lines/${randomUUID()}.jpg`
+const uploaded = [photo, thumbPath(photo), withoutThumb, notJpeg]
 
 let db: Client
 let supabase: SupabaseClient
@@ -6708,17 +7462,16 @@ beforeAll(async () => {
   await ensureUser({ password, ...owner })
   supabase = await signedInClient(owner.email, password)
   const storage = supabase.storage.from('images')
-  await storage.upload(photo, readFileSync('public/brand/ventronix-logo-proforma.jpg'), {
-    contentType: 'image/jpeg',
-  })
+  const options = { contentType: 'image/jpeg' }
+  for (const path of [photo, thumbPath(photo), withoutThumb]) {
+    await storage.upload(path, jpeg, options)
+  }
   // Un PNG con nombre .jpg: el bucket lo deja subir y el PDF no lo dibuja.
-  await storage.upload(notJpeg, readFileSync('public/brand/ventronix-mark.png'), {
-    contentType: 'image/jpeg',
-  })
+  await storage.upload(notJpeg, readFileSync('public/brand/ventronix-mark.png'), options)
 })
 
 afterAll(async () => {
-  await adminClient().storage.from('images').remove([photo, notJpeg])
+  await adminClient().storage.from('images').remove(uploaded)
   await resetProformas(db)
   await db.end()
 })
@@ -6771,6 +7524,16 @@ describe('fotos en el PDF', () => {
     const pdf = await generate(input({ includePhotos: false }))
     expect(images(pdf)).toBe(2)
     expect(pdfText(pdf)).not.toContain('Imágenes referenciales.')
+  })
+
+  it('sin miniatura usa la foto de 600 px', async () => {
+    const pdf = await generate(input({ lines: [line(1, withoutThumb)] }))
+    expect(images(pdf)).toBe(3)
+  })
+
+  it('las fotos que pasan del tope de bytes se dejan fuera', async () => {
+    expect((await loadPhotos(supabase, [photo, null], 1)).size).toBe(0)
+    expect((await loadPhotos(supabase, [photo, photo])).size).toBe(1)
   })
 
   it('una foto que falta o que no es JPEG se deja fuera y el PDF se genera igual', async () => {
@@ -6878,28 +7641,46 @@ Añade `imagePath: null` a las líneas e `includePhotos: false` a los `DocumentI
 ```ts
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { PHOTO_BUCKET } from '@/lib/photos'
+import { PHOTO_BUCKET, thumbPath } from '@/lib/photos'
 import type { Database } from '@/lib/supabase/database.types'
 
 // Un JPEG empieza con FF D8 FF: react-pdf no dibuja otra cosa con format 'jpg'.
 const isJpeg = (bytes: Buffer) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
 
-// Las fotos del PDF se descargan del bucket con la sesión de la cuenta (spec §7). Una que no se
-// puede leer se deja fuera: la fila sale sin foto y el PDF se genera igual (plan, decisión 12).
+// ponytail: tope fijo de bytes de fotos por PDF. Con miniaturas de unos 12 KB caben unas 200; las
+// demás se dejan fuera para que el PDF en base64 no pase los 4,5 MB de una respuesta de Vercel.
+// Si hiciera falta más, el PDF tendría que viajar por Storage en vez de en la respuesta.
+export const PDF_PHOTO_BUDGET = 2_500_000
+
+// Las fotos del PDF se descargan del bucket con la sesión de la cuenta (spec §7): la miniatura y,
+// si faltara, la de 600 px. Una que no se puede leer se deja fuera: la fila sale sin foto y el PDF
+// se genera igual (plan, decisión 12).
 export async function loadPhotos(
   supabase: SupabaseClient<Database>,
   paths: (string | null)[],
+  budget = PDF_PHOTO_BUDGET,
 ): Promise<Map<string, Buffer>> {
-  const photos = new Map<string, Buffer>()
-  const unique = [...new Set(paths.filter((path): path is string => path !== null))]
-  await Promise.all(
-    unique.map(async (path) => {
-      const { data, error } = await supabase.storage.from(PHOTO_BUCKET).download(path)
+  const storage = supabase.storage.from(PHOTO_BUCKET)
+  async function read(path: string) {
+    for (const candidate of [thumbPath(path), path]) {
+      const { data } = await storage.download(candidate)
       const bytes = data ? Buffer.from(await data.arrayBuffer()) : null
-      if (bytes && isJpeg(bytes)) photos.set(path, bytes)
-      else console.error('[proforma] foto omitida:', path, error?.message ?? 'no es JPEG')
-    }),
-  )
+      if (bytes && isJpeg(bytes)) return bytes
+    }
+    console.error('[proforma] foto omitida:', path)
+    return null
+  }
+  const unique = [...new Set(paths.filter((path): path is string => path !== null))]
+  const loaded = await Promise.all(unique.map(read))
+  // En el orden de las líneas: si hay que dejar fotos fuera, son las últimas.
+  const photos = new Map<string, Buffer>()
+  let used = 0
+  unique.forEach((path, index) => {
+    const bytes = loaded[index]
+    if (!bytes || used + bytes.length > budget) return
+    used += bytes.length
+    photos.set(path, bytes)
+  })
   return photos
 }
 ```
@@ -7029,12 +7810,12 @@ git commit -m "feat: print product photos in the proforma PDF"
 - Test: `tests/components/proforma-editor.test.tsx`, `tests/components/proforma-panel.test.tsx`
 
 **Interfaces:**
-- Consumes: `PhotoField`, `usePhotoUrls`, `uploadPhoto` (tarea 16); `imagePath` e `includePhotos` del borrador (tarea 18).
+- Consumes: `PhotoField`, `usePhotoUrl`, `thumbPath`, `uploadPhoto` (tarea 16); `imagePath` e `includePhotos` del borrador (tarea 18).
 - Produces:
   - `setIncludePhotos(draft, includePhotos)`;
   - `ProformaEditorProps.uploadPhoto: (file: File) => Promise<string>`, que llega a `FreeLineForm({ onClose, uploadPhoto })`;
   - `PhotosSwitch()` en `proforma-summary.tsx`;
-  - cada línea muestra su foto o «Sin foto».
+  - cada línea muestra su miniatura (una consulta por foto) o «Sin foto».
 
 - [ ] **Step 1: Escribir las pruebas**
 
@@ -7047,6 +7828,8 @@ git commit -m "feat: print product photos in the proforma PDF"
     const photo = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
 
     it('el producto libre sube su foto; las líneas sin foto dicen «Sin foto»', async () => {
+      URL.createObjectURL = vi.fn(() => 'blob:foto')
+      URL.revokeObjectURL = vi.fn()
       seedProforma({ lines: [line()], client: withClient })
       const { uploadPhoto, user } = renderEditor()
       await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
@@ -7147,10 +7930,10 @@ export function PhotosSwitch() {
 - dentro de `<ProformaSummary>`, antes del botón «Generar proforma», `<PhotosSwitch />`.
 
 `src/features/proforma/components/proforma-lines.tsx`:
-- importa `Image` de `next/image` y `usePhotoUrls` de `@/lib/use-photos`;
+- importa `Image` de `next/image`, `thumbPath` de `@/lib/photos` y `usePhotoUrl` de `@/lib/use-photos`;
 - `ProformaLines` recibe `uploadPhoto: (file: File) => Promise<string>` y se lo pasa a `<FreeLineForm uploadPhoto={uploadPhoto} … />`;
-- antes del `return` de `ProformaLines`: `const photos = usePhotoUrls(draft.lines.map((line) => line.imagePath))`; cada `LineRow` recibe `photoUrl={line.imagePath ? photos.data?.get(line.imagePath) : undefined}`;
-- `LineRow` recibe `photoUrl: string | undefined` y la cuadrícula gana una primera columna de 48 px:
+- `LineRow` pide su miniatura, una consulta por foto (plan, decisión 11), al principio del componente: `const photoUrl = usePhotoUrl(line.imagePath ? thumbPath(line.imagePath) : null)`;
+- la cuadrícula de `LineRow` gana una primera columna de 48 px:
   - el `<li>`: `grid-cols-[48px_minmax(0,1fr)_auto]` en móvil y `sm:grid-cols-[48px_minmax(0,1fr)_118px_132px_104px_36px]`;
   - el contenedor de los controles: `col-span-3` (en vez de `col-span-2`);
   - el botón de quitar: `col-start-3 row-start-1` (en vez de `col-start-2 row-start-1`);
@@ -7177,13 +7960,13 @@ export function PhotosSwitch() {
 - [ ] **Step 4: La foto del producto libre**
 
 `src/features/proforma/components/proforma-free-line.tsx`:
-- importa `PhotoField` de `@/components/photo-field`, `usePhotoUrls` de `@/lib/use-photos` y `useWatch` de `react-hook-form`;
+- importa `PhotoField` de `@/components/photo-field`, `thumbPath` de `@/lib/photos`, `usePhotoUrl` de `@/lib/use-photos` y `useWatch` de `react-hook-form`;
 - `FreeLineForm({ onClose, uploadPhoto }: { onClose: () => void; uploadPhoto: (file: File) => Promise<string> })`;
 - saca `control` y `setValue` de `useForm`, y después:
 
 ```ts
   const imagePath = useWatch({ control, name: 'imagePath' })
-  const photos = usePhotoUrls([imagePath])
+  const photoUrl = usePhotoUrl(imagePath ? thumbPath(imagePath) : null)
 ```
 
 - en la fila de Cantidad y Precio, después del precio:
@@ -7193,7 +7976,7 @@ export function PhotosSwitch() {
           <PhotoField
             compact
             value={imagePath}
-            url={imagePath ? photos.data?.get(imagePath) : undefined}
+            url={photoUrl}
             alt="Foto del producto libre"
             upload={uploadPhoto}
             onChange={(path) => setValue('imagePath', path)}
@@ -7304,7 +8087,7 @@ Expected: PASS en PC y en móvil.
 y en la lista de comprobaciones, antes de «Cerrar sesión…»:
 
 ```md
-- [ ] **Fotos:** edita `PRUEBA-001`, elige una foto y guarda: la ficha la muestra. Añádelo a una proforma con un producto libre con foto: las dos se ven en sus líneas y el PDF sale con la columna «FOTO» y «Imágenes referenciales.». Con «Incluir fotos en el PDF» apagado, sale como siempre. Las fotos ocupan unos 50 KB cada una (panel de Supabase › Storage).
+- [ ] **Fotos:** edita `PRUEBA-001`, elige una foto y guarda: la ficha la muestra. Añádelo a una proforma con un producto libre con foto: las dos se ven en sus líneas y el PDF sale con la columna «FOTO» y «Imágenes referenciales.». Con «Incluir fotos en el PDF» apagado, sale como siempre. Cada foto ocupa unos 50 KB y su miniatura unos 12 KB (panel de Supabase › Storage).
 ```
 
 - [ ] **Step 4: Ejecutar la batería completa**
