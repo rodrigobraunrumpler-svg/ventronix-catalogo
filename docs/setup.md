@@ -78,8 +78,8 @@ Abre `http://localhost:3000`; la raíz redirige a `/products`.
 El desarrollo y las pruebas de integración usan un Supabase local en Docker, nunca el proyecto de producción: las pruebas borran datos.
 
 ```bash
-# Arranca base de datos, Auth, API REST y gateway (sin servicios que el catálogo no usa)
-pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+# Arranca base de datos, Auth, API REST, Storage (fotos) y gateway, sin servicios que no se usan
+pnpm exec supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 
 pnpm exec supabase db reset   # recrea la base local y aplica supabase/migrations
 pnpm test:integration         # pruebas contra la base local
