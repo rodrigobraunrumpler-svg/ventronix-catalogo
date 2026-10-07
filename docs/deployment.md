@@ -141,8 +141,8 @@ Con Supabase Pro, las copias diarias se restauran desde la sección Backups del 
 
 ## 5. Publicar cambios
 
-1. Trabaja en la rama `dev`; para un cambio grande, en una rama `feat/…` que sale de `dev` y vuelve a ella con un pull request. GitHub Actions ([`ci.yml`](../.github/workflows/ci.yml)) comprueba en cada push a `main` o `dev` y en cada pull request el formato, el lint, los tipos, las pruebas y el build, y ejecuta la integración y las e2e contra un Supabase local. No despliega ni usa claves de la nube.
-2. Abre un pull request de `dev` a `main`. CodeRabbit lo revisa en español con las reglas de [`.coderabbit.yaml`](../.coderabbit.yaml) y vuelve a revisar cada push nuevo; resuelve sus comentarios antes de fusionar. Vercel crea un preview, que no tiene datos (ver la sección 2).
+1. Trabaja en la rama `dev`; para un cambio grande, en una rama `feat/…` que sale de `dev` y vuelve a ella con un pull request. GitHub Actions ([`ci.yml`](../.github/workflows/ci.yml)) comprueba en cada pull request y en cada push a `main` el formato, el lint, los tipos, las pruebas y el build, y ejecuta la integración y las e2e contra un Supabase local. No despliega ni usa claves de la nube.
+2. Abre un pull request de `dev` a `main` y déjalo abierto mientras trabajas: cada push a `dev` pasa por la CI y CodeRabbit lo revisa en español con las reglas de [`.coderabbit.yaml`](../.coderabbit.yaml). Resuelve sus comentarios antes de fusionar. Vercel crea un preview, que no tiene datos (ver la sección 2).
 3. Si el cambio incluye una migración, sigue este orden:
    1. Haz una copia de seguridad.
    2. Revisa `db push --dry-run`.

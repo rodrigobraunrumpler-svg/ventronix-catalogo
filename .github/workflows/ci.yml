@@ -1,9 +1,10 @@
-# Comprobaciones en cada push a main o dev y en cada pull request. No despliega: eso lo hace Vercel.
+# Comprobaciones en cada push a main y en cada pull request: con el PR de dev a main abierto, cada
+# push a dev pasa por aquí una sola vez. No despliega: eso lo hace Vercel.
 name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
 
 # Un push nuevo a la misma rama cancela la ejecución anterior.
