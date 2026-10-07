@@ -107,7 +107,7 @@ export function ProformaEditor({
           </p>
         ) : (
           <p className="text-xs leading-normal text-muted-foreground">
-            Recibe su número correlativo al generarla.
+            Recibe su número correlativo y queda guardada en el historial de Proformas.
           </p>
         )}
         <button

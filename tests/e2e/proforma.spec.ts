@@ -5,6 +5,7 @@ import {
   fillCompanyProfile,
   resetCatalog,
   resetCompanyProfile,
+  resetProformas,
   resetWhatsAppSession,
 } from '../integration/db'
 import { login } from './session'
@@ -15,6 +16,7 @@ async function seed({ company = true } = {}) {
   const db = await connect()
   try {
     await resetCatalog(db)
+    await resetProformas(db)
     await resetCompanyProfile(db)
     await resetWhatsAppSession(db)
     if (company) await fillCompanyProfile(db)

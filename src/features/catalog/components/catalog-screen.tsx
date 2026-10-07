@@ -130,6 +130,7 @@ export function CatalogScreen() {
           open={proformaOpen}
           onClose={() => setProformaOpen(false)}
           onContinue={() => setProformaOpen(false)}
+          historyLink
         />
       </div>
     </ProformaProvider>

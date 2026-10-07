@@ -55,6 +55,30 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('ProformaReady', () => {
+  it('lista, dice que quedó guardada y, desde Productos, enlaza al historial', async () => {
+    seed()
+    render(
+      <ProformaProvider>
+        <ProformaReady
+          company={{ status: 'ready', profile: completeCompany }}
+          generatePdf={vi.fn<Generate>(async () => ({ ok: true, data: pdf }))}
+          onCorrect={vi.fn()}
+          onNew={vi.fn()}
+          historyLink
+        />
+      </ProformaProvider>,
+    )
+    expect(await screen.findByText(/Quedó guardada en el historial/)).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Proformas' })).toHaveAttribute('href', '/proformas')
+  })
+
+  it('desde Proformas lo dice sin enlace', async () => {
+    seed()
+    renderReady()
+    expect(await screen.findByText('Quedó guardada en el historial.')).toBeVisible()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('prepara el PDF al entrar y lo descarga con su nombre', async () => {
     seed()
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})

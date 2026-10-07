@@ -27,10 +27,13 @@ export function ProformaDialog({
   open,
   onClose,
   onContinue,
+  historyLink,
 }: {
   open: boolean
   onClose: () => void
   onContinue?: () => void
+  // Desde Productos: al generarla, enlaza al historial de Proformas.
+  historyLink?: boolean
 }) {
   const { draft } = useProforma()
   const company = useCompanyProfile()
@@ -101,6 +104,7 @@ export function ProformaDialog({
             )
           }
           sendByWhatsApp={sendByWhatsApp}
+          historyLink={historyLink}
           onContinue={onContinue}
           onFinish={onClose}
         />

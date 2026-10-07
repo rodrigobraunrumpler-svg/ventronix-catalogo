@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, CheckCheck, Download, MessageCircle, Pencil, Plus } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useEffectEvent, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -41,6 +42,8 @@ export type ProformaReadyProps = {
   onNew: () => void
   // Con el WhatsApp de la empresa vinculado: la envía el servidor. Sin él, se abre el chat.
   sendByWhatsApp?: (input: DocumentInput) => Promise<ActionResult<{ phone: string }>>
+  // Desde Productos, el aviso de que quedó guardada enlaza al historial (spec §4.3).
+  historyLink?: boolean
 }
 
 // «Proforma N° 0001 lista» (spec del documento §6 y prototipo). El PDF se prepara al entrar: así
@@ -51,6 +54,7 @@ export function ProformaReady({
   onCorrect,
   onNew,
   sendByWhatsApp,
+  historyLink,
 }: ProformaReadyProps) {
   const { draft } = useProforma()
   const [delivery, setDelivery] = useState<Delivery>({ kind: 'idle' })
@@ -198,6 +202,21 @@ export function ProformaReady({
           <button type="button" className={inlineAction} onClick={retry}>
             Reintentar
           </button>
+        </p>
+      ) : null}
+      {status.kind === 'ready' ? (
+        <p className="text-xs text-muted-foreground">
+          Quedó guardada en el historial
+          {historyLink ? (
+            <>
+              {' '}
+              de{' '}
+              <Link href="/proformas" className={inlineAction}>
+                Proformas
+              </Link>
+            </>
+          ) : null}
+          .
         </p>
       ) : null}
       {phoneOk ? null : (

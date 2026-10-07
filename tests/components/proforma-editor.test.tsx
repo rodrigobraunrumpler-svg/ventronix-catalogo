@@ -61,6 +61,16 @@ const found = (legalName: string, status = 'ACTIVO', condition = 'HABIDO'): RucL
 })
 
 describe('ProformaEditor', () => {
+  it('lista para generar, dice que quedará en el historial', () => {
+    seedProforma({ lines: [line()], client: withClient })
+    renderEditor()
+    expect(
+      screen.getByText(
+        'Recibe su número correlativo y queda guardada en el historial de Proformas.',
+      ),
+    ).toBeVisible()
+  })
+
   it('sin lista a la que volver no ofrece «Seguir eligiendo productos»', () => {
     seedProforma({ lines: [line()] })
     renderEditor({ onContinue: undefined })

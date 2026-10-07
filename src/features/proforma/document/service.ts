@@ -8,8 +8,11 @@ import type { Database } from '@/lib/supabase/database.types'
 import type { DocumentInput, GeneratedDocument } from './input'
 import { buildDocumentModel, documentProblem, type DocumentModel } from './model'
 import { renderProformaPdf } from './pdf'
+import { saveProforma } from '../history/repository'
 
-// Genera el PDF con los datos de la empresa guardados; no se guarda nada (spec del documento §3).
+// Genera el PDF con los datos de la empresa guardados. Una proforma que no es borrador queda en el
+// historial antes de salir del servidor (spec de productos libres §6): si no se guarda, no se
+// entrega.
 export async function renderProformaDocument(
   supabase: SupabaseClient<Database>,
   input: DocumentInput,
@@ -20,7 +23,13 @@ export async function renderProformaDocument(
   const problem = documentProblem(input, company)
   if (problem) return failure('VALIDATION', problem)
   const model = buildDocumentModel(input, company, now)
-  return { ok: true, data: { model, pdf: await renderProformaPdf(model), company } }
+  const pdf = await renderProformaPdf(model)
+  if (!input.draft) {
+    const issuedAt = input.issuedAt ? new Date(input.issuedAt) : now
+    const saved = await saveProforma(supabase, input, company, issuedAt)
+    if (!saved.ok) return saved
+  }
+  return { ok: true, data: { model, pdf, company } }
 }
 
 // El PDF viaja al navegador en base64 (descargar, ver y compartir).

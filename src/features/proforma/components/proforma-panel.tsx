@@ -14,6 +14,7 @@ export type ProformaPanelProps = Omit<
   reserveNumber: () => Promise<ActionResult<number>>
   onFinish: () => void
   sendByWhatsApp?: ProformaReadyProps['sendByWhatsApp']
+  historyLink?: ProformaReadyProps['historyLink']
 }
 
 // El número se pide una sola vez: «Corregir» lo conserva y «Nueva proforma» lo libera (spec §4.4).
@@ -21,6 +22,7 @@ export function ProformaPanel({
   reserveNumber,
   onFinish,
   sendByWhatsApp,
+  historyLink,
   ...editor
 }: ProformaPanelProps) {
   const { draft, update } = useProforma()
@@ -58,6 +60,7 @@ export function ProformaPanel({
         company={editor.company}
         generatePdf={editor.generatePdf}
         sendByWhatsApp={sendByWhatsApp}
+        historyLink={historyLink}
         onCorrect={() => setView('edit')}
         onNew={startNew}
       />
