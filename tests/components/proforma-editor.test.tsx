@@ -13,7 +13,7 @@ import { EMPTY_DRAFT } from '@/features/proforma/draft'
 import type { RucLookupResult } from '@/features/proforma/ruc'
 import { ProformaProvider } from '@/features/proforma/store'
 import type { ActionResult } from '@/lib/action-result'
-import { completeCompany, e1Lines, line, seedProforma } from '../support/proforma'
+import { completeCompany, e1Lines, freeLine, line, seedProforma } from '../support/proforma'
 
 type Lookup = (ruc: string) => Promise<RucLookupResult>
 type Generate = (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
@@ -348,6 +348,66 @@ describe('ProformaEditor', () => {
       const { user } = renderEditor({ searchProducts: vi.fn<Search>(async () => []) })
       await user.type(search(), 'xyz')
       expect(await screen.findByText('No encontramos productos con «xyz».')).toBeVisible()
+    })
+  })
+
+  describe('productos libres', () => {
+    const freeForm = () => within(screen.getByRole('form', { name: 'Añadir producto libre' }))
+
+    it('se añaden sin el catálogo, con su etiqueta, y el formulario queda listo para otro', async () => {
+      seedProforma({ client: withClient })
+      const { user } = renderEditor()
+      await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
+      const form = freeForm()
+      expect(
+        form.getByText('Para productos que no están en el catálogo. No se guardan en él.'),
+      ).toBeVisible()
+      await user.type(form.getByLabelText('Descripción'), 'Instalación en sitio')
+      await user.clear(form.getByLabelText('Cantidad'))
+      await user.type(form.getByLabelText('Cantidad'), '2')
+      await user.type(form.getByLabelText('Precio con IGV (S/)'), '350')
+      await user.click(form.getByRole('button', { name: 'Añadir a la proforma' }))
+      expect(screen.getByText('Producto libre')).toBeVisible()
+      expect(screen.getByLabelText('Cantidad de Instalación en sitio')).toHaveValue('2')
+      expect(screen.getByLabelText('Precio unitario de Instalación en sitio')).toHaveValue('350')
+      expect(form.getByLabelText('Descripción')).toHaveValue('')
+      expect(form.getByLabelText('Descripción')).toHaveFocus()
+      expect(form.getByRole('status')).toHaveTextContent('Añadiste «Instalación en sitio».')
+      expect(form.getByRole('button', { name: 'Cerrar' })).toBeVisible()
+      expect(generate()).toBeEnabled()
+    })
+
+    it('pide la descripción y un precio válido antes de añadir', async () => {
+      seedProforma({})
+      const { user } = renderEditor()
+      await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
+      const form = freeForm()
+      await user.type(form.getByLabelText('Precio con IGV (S/)'), '0')
+      await user.click(form.getByRole('button', { name: 'Añadir a la proforma' }))
+      expect(await form.findByText('Escribe la descripción.')).toBeVisible()
+      expect(
+        form.getByText('Escribe un precio mayor que cero, con hasta dos decimales.'),
+      ).toBeVisible()
+      expect(screen.getByText(/La proforma está vacía/)).toBeVisible()
+    })
+
+    it('«Cancelar» lo cierra y devuelve el foco al botón', async () => {
+      seedProforma({})
+      const { user } = renderEditor()
+      const toggle = screen.getByRole('button', { name: 'Añadir producto libre' })
+      await user.click(toggle)
+      await user.click(freeForm().getByRole('button', { name: 'Cancelar' }))
+      expect(screen.queryByRole('form', { name: 'Añadir producto libre' })).not.toBeInTheDocument()
+      expect(toggle).toHaveFocus()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('no avisa de precio cambiado ni de «Ya no está en el catálogo»', () => {
+      seedProforma({ lines: [freeLine({ unitPrice: '300' })] })
+      renderEditor({ prices: new Map() })
+      expect(screen.getByText('Producto libre')).toBeVisible()
+      expect(screen.queryByText(/Ya no está en el catálogo/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Restaurar' })).not.toBeInTheDocument()
     })
   })
 })

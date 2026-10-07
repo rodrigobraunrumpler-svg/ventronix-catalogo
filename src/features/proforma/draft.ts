@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ProductListItem } from '@/features/catalog/types'
+import { priceError } from './readiness'
 import { MAX_QUANTITY } from './totals'
 
 // Proforma en curso (spec §6.1): una sola, en este navegador. Los datos del producto se copian al
@@ -109,6 +110,31 @@ export function addFreeLine(
   }
   return { ...draft, lines: [...draft.lines, line] }
 }
+
+// «Añadir producto libre» (spec de productos libres §4.3): las reglas de una línea del catálogo,
+// con la descripción obligatoria y el código opcional.
+export const freeLineSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Escribe la descripción.')
+    .max(120, 'Usa como máximo 120 caracteres.'),
+  code: z.string().trim().max(64, 'Usa como máximo 64 caracteres.'),
+  quantity: z
+    .string()
+    .trim()
+    .refine((value) => /^\d{1,4}$/.test(value) && Number(value) >= 1, 'De 1 a 9 999.')
+    .transform(Number),
+  unitPrice: z
+    .string()
+    .trim()
+    .refine(
+      (value) => priceError(value) === null,
+      'Escribe un precio mayor que cero, con hasta dos decimales.',
+    ),
+})
+
+export type FreeLineValues = z.input<typeof freeLineSchema>
 
 export const setQuantity = (draft: ProformaDraft, id: string, quantity: number) =>
   mapLine(draft, id, (line) => ({ ...line, quantity }))

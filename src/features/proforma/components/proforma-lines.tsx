@@ -1,7 +1,7 @@
 'use client'
 
-import { Minus, Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { Minus, PencilLine, Plus, X } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/features/catalog/money'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { formatCents, parseCents } from '../money'
 import { priceError, quantityError } from '../readiness'
 import { useProforma, useRemoveLine } from '../store'
 import { MAX_QUANTITY } from '../totals'
+import { FreeLineForm } from './proforma-free-line'
 import { ProformaProductSearch, type SearchProducts } from './proforma-product-search'
 
 const inlineAction =
@@ -31,6 +32,8 @@ export function ProformaLines({
   searchProducts: SearchProducts
 }) {
   const { draft } = useProforma()
+  const [freeOpen, setFreeOpen] = useState(false)
+  const freeToggle = useRef<HTMLButtonElement>(null)
   return (
     <section aria-labelledby="proforma-lines-title">
       <div className="mb-2.5 flex items-center justify-between gap-3">
@@ -47,10 +50,34 @@ export function ProformaLines({
           Seguir eligiendo productos
         </button>
       </div>
-      <ProformaProductSearch searchProducts={searchProducts} />
+      <div className="mb-3 flex flex-wrap gap-2">
+        <div className="min-w-0 flex-[1_1_280px]">
+          <ProformaProductSearch searchProducts={searchProducts} />
+        </div>
+        <Button
+          ref={freeToggle}
+          variant="outline"
+          aria-expanded={freeOpen}
+          aria-controls={freeOpen ? 'free-line-form' : undefined}
+          className={cn('h-11 px-3.5', freeOpen && 'border-ring bg-[#f6fbef]')}
+          onClick={() => setFreeOpen(!freeOpen)}
+        >
+          <PencilLine aria-hidden />
+          Añadir producto libre
+        </Button>
+      </div>
+      {freeOpen ? (
+        <FreeLineForm
+          onClose={() => {
+            setFreeOpen(false)
+            freeToggle.current?.focus()
+          }}
+        />
+      ) : null}
       {draft.lines.length === 0 ? (
         <p className="rounded-xl border border-dashed border-input p-6 text-center text-muted-foreground">
-          La proforma está vacía. Busca los productos aquí arriba o elígelos en la lista.
+          La proforma está vacía. Busca productos del catálogo aquí arriba o añade un producto
+          libre.
         </p>
       ) : (
         <ul className="grid rounded-xl border">
@@ -120,9 +147,16 @@ function LineRow({
           </span>
         </button>
         <div className="mt-0.75 flex flex-wrap items-center gap-2">
-          <span className="rounded-md border bg-background px-1.5 font-mono text-xs text-secondary-foreground">
-            {line.code}
-          </span>
+          {line.code ? (
+            <span className="rounded-md border bg-background px-1.5 font-mono text-xs text-secondary-foreground">
+              {line.code}
+            </span>
+          ) : null}
+          {line.productId === null ? (
+            <span className="rounded-full bg-[#eef7e2] px-2 text-[11px] font-bold text-[#3f7d0a]">
+              Producto libre
+            </span>
+          ) : null}
           {catalogPrice !== null && cents !== parseCents(catalogPrice) ? (
             <span className="inline-flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
               <span className="whitespace-nowrap">Catálogo S/ {formatPrice(catalogPrice)}</span>

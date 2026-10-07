@@ -69,7 +69,7 @@ export function ProformaProductSearch({ searchProducts }: { searchProducts: Sear
   }
 
   return (
-    <div className="relative mb-3">
+    <div className="relative">
       <Search
         className="pointer-events-none absolute top-3 left-3.5 size-4.5 text-muted-foreground"
         aria-hidden
