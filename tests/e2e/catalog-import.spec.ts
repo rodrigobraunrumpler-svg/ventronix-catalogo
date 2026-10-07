@@ -273,6 +273,29 @@ test('solo Código y Precio: actualiza los precios y no toca lo demás', async (
   expect(await product('IMP-001')).toMatchObject({ name: 'Impresora láser', price: '600.00' })
 })
 
+test('la plantilla acepta el precio con punto o con coma decimal y lo importa igual', async ({
+  page,
+}) => {
+  await seed()
+  await login(page)
+  await openImport(page)
+  const book = await readDownload(await download(page, 'Descargar plantilla'))
+  // Como lo escribe alguien con su Excel en punto o en coma decimal: Excel lo guarda como texto.
+  const sheet = book.getWorksheet('Productos')!
+  sheet.getRow(2).values = ['PUNTO-001', 'Con punto', null, 'Laptops', '300.50']
+  sheet.getRow(3).values = ['COMA-001', 'Con coma', null, 'Laptops', '300,50']
+  await upload(page, Buffer.from(await book.xlsx.writeBuffer()), 'plantilla-carga-masiva.xlsx')
+  await expect(page.getByRole('heading', { name: 'Esto es lo que va a pasar' })).toBeFocused()
+  await expect(page.getByText('S/ 300.50').filter({ visible: true })).toHaveCount(2)
+  // Solo productos nuevos: no pide confirmación.
+  await page.getByRole('button', { name: 'Importar 2 productos' }).click()
+  await expect(
+    page.getByRole('heading', { name: '¡Listo! Tu catálogo está actualizado' }),
+  ).toBeFocused()
+  expect(await product('PUNTO-001')).toMatchObject({ price: '300.50' })
+  expect(await product('COMA-001')).toMatchObject({ price: '300.50' })
+})
+
 test('la hoja «Para revertir» del comprobante deja los productos como estaban', async ({
   page,
 }) => {

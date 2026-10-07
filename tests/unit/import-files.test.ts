@@ -109,7 +109,9 @@ describe('buildErrorsFile', () => {
         {
           line: 7,
           cells: { code: { kind: 'text', value: 'BAD-1' }, price: { kind: 'text', value: 'abc' } },
-          errors: ['Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50.'],
+          errors: [
+            'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
+          ],
         },
         {
           line: 9,
@@ -130,7 +132,7 @@ describe('buildErrorsFile', () => {
       'BAD-1',
       'abc',
       7,
-      'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50.',
+      'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
     ])
     expect(sheet.getCell('D3').value).toBe(
       'Código: escribe un código para identificar el producto.\nOtro motivo.',

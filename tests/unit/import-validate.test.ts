@@ -69,7 +69,7 @@ describe('checkRows', () => {
       'Nombre: está vacío. Escríbelo o quita la columna del archivo.',
       'Descripción: usa como máximo 2000 caracteres.',
       'Categoría: está vacía. Escríbela o quita la columna del archivo.',
-      'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50.',
+      'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
     ])
   })
 

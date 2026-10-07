@@ -142,6 +142,6 @@ export function cellPrice(cell: Cell): Parsed {
     case 'error':
       return { ok: false, error: cell.message }
     default:
-      return { ok: false, error: 'Escribe el precio como número, por ejemplo 1250.50.' }
+      return { ok: false, error: 'Escribe el precio como número, por ejemplo 1250.50 o 1250,50.' }
   }
 }

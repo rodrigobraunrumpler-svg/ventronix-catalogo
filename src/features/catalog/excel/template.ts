@@ -38,7 +38,7 @@ function writeInstructions(sheet: ExcelJS.Worksheet) {
     'Completa la hoja «Productos»: una fila por producto, desde la fila 2.',
     'Código es obligatorio. Si ya existe, se actualiza ese producto; si no, se crea uno nuevo.',
     `Para un producto nuevo completa también Nombre, Categoría y ${titles.price}.`,
-    `${priceColumns().note} Por ejemplo 1250.50 o 1,250.50.`,
+    `${priceColumns().note} Por ejemplo 1250.50 o 1250,50.`,
     'Elige la categoría del desplegable o escribe una nueva: se creará al importar.',
     `Para actualizar solo precios, deja Código y ${titles.price}, y borra las demás columnas.`,
     'Puedes dejar filas vacías: se ignoran. No cambies los títulos de la primera fila.',
@@ -156,14 +156,12 @@ export async function buildTemplate(categories: string[]): Promise<Buffer> {
   )
   rules.add(`E2:E${LAST_ROW}`, {
     ...help,
+    showErrorMessage: false,
     type: 'decimal',
     operator: 'greaterThan',
     formulae: [0],
     promptTitle: titles.price,
-    prompt: priceColumns().note,
-    errorStyle: 'stop',
-    errorTitle: 'Precio',
-    error: 'Escribe un precio mayor que 0, con hasta 2 decimales.',
+    prompt: `${priceColumns().note} Mayor que 0, hasta 2 decimales. Puedes escribir 300.50 o 300,50. Se revisará al subir.`,
   })
 
   const list = workbook.addWorksheet('Categorías', { state: 'hidden' })

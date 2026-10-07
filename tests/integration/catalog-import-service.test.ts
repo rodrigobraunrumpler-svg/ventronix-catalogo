@@ -101,7 +101,7 @@ describe('analyzeImport', () => {
     expect(preview.rows[1].warnings).toEqual(['El precio baja un 95 %. ¿Es correcto?'])
     expect(preview.rows[4]).toMatchObject({ category: 'Impresoras' })
     expect(preview.rows[6].errors).toEqual([
-      'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50.',
+      'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
     ])
     expect(preview.rows[7].errors).toEqual(['Código repetido: ya está en la fila 2.'])
     expect(preview.rows[8].warnings).toEqual([

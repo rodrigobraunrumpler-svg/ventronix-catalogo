@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs'
 import { describe, expect, it } from 'vitest'
 import { readImportFile } from '@/features/catalog/excel/read'
 import { buildTemplate } from '@/features/catalog/excel/template'
+import { checkRows } from '@/features/catalog/excel/validate'
 import { FILE_MESSAGES } from '@/features/catalog/import/options'
 
 async function load(buffer: Buffer) {
@@ -26,6 +27,9 @@ describe('buildTemplate', () => {
       .flat()
       .filter((value) => typeof value === 'string')
     expect(instructions).toContain('Las filas de ejemplo de esta hoja no se importan.')
+    expect(instructions).toContain(
+      '4. Precios en soles (S/), con IGV incluido. Por ejemplo 1250.50 o 1250,50.',
+    )
   })
 
   it('la hoja Productos lleva títulos, código como texto, ayudas y el desplegable de categorías', async () => {
@@ -53,11 +57,20 @@ describe('buildTemplate', () => {
       errorTitle: 'Categoría nueva',
       error: 'No está en tu lista: se creará al importar.',
     })
-    expect(products.getCell('E2').dataValidation).toMatchObject({
+    const priceValidation = products.getCell('E2').dataValidation
+    expect(priceValidation).toMatchObject({
       type: 'decimal',
       operator: 'greaterThan',
-      errorStyle: 'stop',
+      formulae: [0],
+      showInputMessage: true,
+      promptTitle: 'Precio con IGV (S/)',
+      prompt:
+        'Precios en soles (S/), con IGV incluido. Mayor que 0, hasta 2 decimales. Puedes escribir 300.50 o 300,50. Se revisará al subir.',
     })
+    expect(priceValidation.showErrorMessage).not.toBe(true)
+    expect(priceValidation).not.toHaveProperty('errorStyle')
+    expect(priceValidation).not.toHaveProperty('errorTitle')
+    expect(priceValidation).not.toHaveProperty('error')
   })
 
   it('sin categorías, la columna se escribe a mano', async () => {
@@ -82,5 +95,26 @@ describe('buildTemplate', () => {
     const filled = new Uint8Array(await workbook.xlsx.writeBuffer()).buffer
     const result = await readImportFile(filled, 'plantilla.xlsx')
     expect(result.ok && result.sheet).toMatchObject({ sheetName: 'Productos', rows: [{ line: 2 }] })
+  })
+
+  it('guarda precios con punto o coma y ambos se normalizan con punto', async () => {
+    const workbook = await load(await buildTemplate(['Laptops']))
+    const products = workbook.getWorksheet('Productos')!
+    products.getRow(2).values = ['PUNTO-1', 'Con punto', null, 'Laptops', '300.50']
+    products.getRow(3).values = ['COMA-1', 'Con coma', null, 'Laptops', '300,50']
+
+    const data = new Uint8Array(await workbook.xlsx.writeBuffer()).buffer
+    const result = await readImportFile(data, 'plantilla.xlsx')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    const checked = checkRows(result.sheet.rows, result.sheet.columns, {
+      pricesIncludeTax: true,
+      ratePercent: 18,
+    })
+    expect(checked.map(({ code, price, errors }) => ({ code, price, errors }))).toEqual([
+      { code: 'PUNTO-1', price: '300.50', errors: [] },
+      { code: 'COMA-1', price: '300.50', errors: [] },
+    ])
   })
 })

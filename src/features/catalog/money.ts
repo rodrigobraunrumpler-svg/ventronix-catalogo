@@ -7,7 +7,7 @@ export const unitPriceSchema = z
   .min(1, 'Escribe el precio unitario.')
   .regex(
     /^\d{1,10}(?:[.,]\d{1,2})?$/,
-    'Escribe solo números con hasta dos decimales, por ejemplo 1250.50.',
+    'Escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
   )
   .transform((value) => {
     const [whole, fraction = ''] = value.replace(',', '.').split('.')

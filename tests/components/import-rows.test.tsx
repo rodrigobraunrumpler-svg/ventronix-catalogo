@@ -62,7 +62,9 @@ describe('PreviewRows', () => {
       status: 'error',
       action: null,
       price: null,
-      errors: ['Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50.'],
+      errors: [
+        'Precio: escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
+      ],
     }),
   ]
 

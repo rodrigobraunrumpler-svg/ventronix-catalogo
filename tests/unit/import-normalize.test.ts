@@ -110,7 +110,7 @@ describe('precios', () => {
     expect(cellPrice(text('0,00'))).toEqual({ ok: false, error: 'Debe ser mayor que cero.' })
     expect(cellPrice(text('abc'))).toEqual({
       ok: false,
-      error: 'Escribe solo números con hasta dos decimales, por ejemplo 1250.50.',
+      error: 'Escribe solo números con hasta dos decimales, por ejemplo 1250.50 o 1250,50.',
     })
     expect(cellPrice(number(12345678901))).toEqual({
       ok: false,
@@ -118,7 +118,7 @@ describe('precios', () => {
     })
     expect(cellPrice({ kind: 'boolean', value: true })).toEqual({
       ok: false,
-      error: 'Escribe el precio como número, por ejemplo 1250.50.',
+      error: 'Escribe el precio como número, por ejemplo 1250.50 o 1250,50.',
     })
   })
 })
