@@ -45,8 +45,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Base de datos, Auth, API REST y gateway, como en docs/setup.md. Aplica las migraciones.
-      - run: pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      # Base de datos, Auth, API REST, Storage (fotos) y gateway, como en docs/setup.md. Aplica las
+      # migraciones.
+      - run: pnpm exec supabase start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       # La app que arrancan las e2e apunta a ese Supabase local: aquí no hay claves de la nube.
       - name: Crear .env.development.local
         run: |
