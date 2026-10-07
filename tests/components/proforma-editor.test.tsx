@@ -547,6 +547,22 @@ describe('ProformaEditor', () => {
     open.mockRestore()
   })
 
+  it('«Vista previa» muestra la carga en la pestaña mientras prepara el borrador', async () => {
+    seedProforma({ lines: [line()] })
+    const frame = document.createElement('iframe')
+    document.body.append(frame)
+    const tab = { document: frame.contentDocument!, location: { href: '' }, close: vi.fn() }
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+    const { user } = renderEditor({ generatePdf: vi.fn<Generate>(() => new Promise(() => {})) })
+    await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+    expect(tab.document.title).toBe('Vista previa · Proforma')
+    expect(within(tab.document.body).getByRole('status')).toHaveTextContent(
+      'Preparando la vista previa…',
+    )
+    open.mockRestore()
+    frame.remove()
+  })
+
   it('«Vista previa» espera a que la validez de la oferta sea válida', () => {
     seedProforma({ lines: [line()], validityDays: '0' })
     renderEditor()

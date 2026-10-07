@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
-import { base64ToFile, newTab, openFile, TAB_BLOCKED } from '../document/files'
+import { base64ToFile, openFile, pdfTab, TAB_BLOCKED } from '../document/files'
 import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
 import { formatProformaNumber } from '../number'
 import { generateBlocker, validityError, type CompanyStatus } from '../readiness'
@@ -65,7 +65,7 @@ export function ProformaEditor({
   // La pestaña se abre al pulsar, antes de esperar al servidor, para que el navegador no la bloquee.
   async function preview() {
     setPreviewError(null)
-    const tab = newTab()
+    const tab = pdfTab('Vista previa · Proforma', 'Preparando la vista previa…')
     setPreviewing(true)
     const result = await generatePdf(documentInput(draft, { draft: true }))
     setPreviewing(false)

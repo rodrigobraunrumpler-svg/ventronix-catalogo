@@ -8,7 +8,8 @@ import { limaDay, resolveDateRange } from '@/features/catalog/list-options'
 import { useDebouncedValue } from '@/features/catalog/products/hooks'
 import { settle } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
-import { base64ToFile, downloadFile, newTab, openFile, TAB_BLOCKED } from '../document/files'
+import { base64ToFile, downloadFile, openFile, pdfTab, TAB_BLOCKED } from '../document/files'
+import { formatProformaNumber } from '../number'
 import { getProformaDocument } from './actions'
 import {
   findClient,
@@ -92,7 +93,8 @@ export function useStoredDocument() {
   return {
     pending,
     async view(row: ProformaRow) {
-      const tab = newTab()
+      const number = formatProformaNumber(row.number)
+      const tab = pdfTab(`Proforma ${number}`, `Preparando la proforma ${number}…`)
       const file = await fetchFile(row)
       if (!file) {
         tab?.close()

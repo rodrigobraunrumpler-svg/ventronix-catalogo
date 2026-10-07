@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, screen } from '@testing-library/react'
+import { act, renderHook, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { Toaster } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -61,6 +61,21 @@ describe('useStoredDocument', () => {
     expect(getProformaDocument).toHaveBeenCalledWith(row.id)
     expect(click).toHaveBeenCalledTimes(2)
     expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe('Proforma-0042-Cliente.pdf')
+  })
+
+  it('«Ver» muestra la carga en la pestaña mientras prepara el PDF guardado', async () => {
+    vi.mocked(getProformaDocument).mockReturnValue(new Promise(() => {}))
+    const frame = document.createElement('iframe')
+    document.body.append(frame)
+    const tab = { document: frame.contentDocument!, location: { href: '' }, close: vi.fn() }
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+    const { result } = setup()
+    act(() => void result.current.documents.view(row))
+    expect(tab.document.title).toBe('Proforma N° 0042')
+    expect(within(tab.document.body).getByRole('status')).toHaveTextContent(
+      'Preparando la proforma N° 0042…',
+    )
+    frame.remove()
   })
 
   it('si no se puede preparar el PDF, lo dice con el mensaje del servidor', async () => {
