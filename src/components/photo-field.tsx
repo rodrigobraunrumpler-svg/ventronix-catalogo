@@ -4,6 +4,7 @@ import { ImageIcon, LoaderCircle } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { PHOTO_TYPES } from '@/lib/photos'
 import { UnreadablePhotoError } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
@@ -70,78 +71,125 @@ export function PhotoField({
     }
   }
 
-  return (
-    <div className="grid gap-2">
-      <div className="flex items-center gap-2">
-        <span id={`${id}-label`} className="text-sm font-medium text-foreground">
-          Foto
-        </span>
-        <span className="rounded-full bg-muted px-2 text-xs text-muted-foreground">Opcional</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-4">
-        <span
+  const preview = (
+    <span
+      data-slot="photo-preview"
+      className={cn(
+        'relative grid shrink-0 place-items-center overflow-hidden border bg-muted text-muted-foreground',
+        compact ? 'size-10.5 rounded-lg' : 'size-28 rounded-xl',
+      )}
+    >
+      {shown ? (
+        <Image
+          src={shown}
+          alt={alt}
+          width={compact ? 42 : 112}
+          height={compact ? 42 : 112}
+          unoptimized
+          className={cn('size-full object-contain', uploading && 'opacity-50')}
+        />
+      ) : (
+        <ImageIcon className={compact ? 'size-4.5' : 'size-8'} aria-hidden />
+      )}
+      {uploading ? (
+        <LoaderCircle
+          className={cn('absolute animate-spin text-foreground', compact ? 'size-4.5' : 'size-6')}
+          aria-hidden
+        />
+      ) : null}
+    </span>
+  )
+
+  // Compacto (producto libre): «Cambiar» y «Quitar» a la altura de los campos de al lado.
+  const buttons = (
+    <div className="flex flex-wrap gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={uploading}
+        aria-label={compact && value ? 'Cambiar foto' : undefined}
+        aria-describedby={`${id}-help`}
+        className={cn(compact && 'h-10.5')}
+        onClick={() => input.current?.click()}
+      >
+        {value ? (compact ? 'Cambiar' : 'Cambiar foto') : 'Elegir foto'}
+      </Button>
+      {value ? (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={uploading}
+          aria-label={compact ? 'Quitar foto' : undefined}
           className={cn(
-            'relative grid shrink-0 place-items-center overflow-hidden rounded-xl border bg-muted text-muted-foreground',
-            compact ? 'size-12' : 'size-28',
+            'text-destructive hover:bg-destructive/10 hover:text-destructive',
+            compact && 'h-10.5 px-3',
           )}
+          onClick={() => {
+            setLocal(null)
+            onChange(null)
+          }}
         >
-          {shown ? (
-            <Image
-              src={shown}
-              alt={alt}
-              width={compact ? 48 : 112}
-              height={compact ? 48 : 112}
-              unoptimized
-              className={cn('size-full object-contain', uploading && 'opacity-50')}
-            />
-          ) : (
-            <ImageIcon className={compact ? 'size-5' : 'size-8'} aria-hidden />
-          )}
-          {uploading ? (
-            <LoaderCircle className="absolute size-6 animate-spin text-foreground" aria-hidden />
-          ) : null}
-        </span>
-        <div className="grid gap-2">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={uploading}
-              aria-describedby={`${id}-help`}
-              onClick={() => input.current?.click()}
-            >
-              {value ? 'Cambiar foto' : 'Elegir foto'}
-            </Button>
-            {value ? (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={uploading}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => {
-                  setLocal(null)
-                  onChange(null)
-                }}
-              >
-                Quitar foto
-              </Button>
-            ) : null}
-          </div>
-          <p id={`${id}-help`} className="text-xs text-muted-foreground">
-            JPG, PNG o WebP. Antes de guardarla se reduce a 600 px (unos 50 KB).
-          </p>
-          {error ? (
-            <p role="alert" className="text-xs font-medium text-destructive">
-              {error}
-            </p>
-          ) : null}
-          {uploading ? (
-            <p role="status" className="sr-only">
-              Subiendo la foto…
-            </p>
-          ) : null}
+          {compact ? 'Quitar' : 'Quitar foto'}
+        </Button>
+      ) : null}
+    </div>
+  )
+
+  const notes = (
+    <>
+      <p id={`${id}-help`} className="text-xs text-muted-foreground">
+        {compact
+          ? 'JPG, PNG o WebP'
+          : 'JPG, PNG o WebP. Antes de guardarla se reduce a 600 px (unos 50 KB).'}
+      </p>
+      {error ? (
+        <p role="alert" className="text-xs font-medium text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {uploading ? (
+        <p role="status" className="sr-only">
+          Subiendo la foto…
+        </p>
+      ) : null}
+    </>
+  )
+
+  return (
+    <div className={cn('grid', compact ? 'gap-1.5' : 'gap-2')}>
+      {compact ? (
+        // Igual que las etiquetas del formulario del producto libre: la fila queda a su altura.
+        <div className="flex items-center gap-1.5">
+          <Label id={`${id}-label`} className="text-[13px] font-semibold text-foreground">
+            Foto
+          </Label>
+          <span className="text-[13px] text-muted-foreground">(opcional)</span>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span id={`${id}-label`} className="text-sm font-medium text-foreground">
+            Foto
+          </span>
+          <span className="rounded-full bg-muted px-2 text-xs text-muted-foreground">Opcional</span>
+        </div>
+      )}
+      {compact ? (
+        <>
+          <div className="flex items-center gap-2">
+            {preview}
+            {buttons}
+          </div>
+          {notes}
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center gap-4">
+          {preview}
+          <div className="grid gap-2">
+            {buttons}
+            {notes}
+          </div>
+        </div>
+      )}
       <input
         ref={input}
         type="file"

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
   connect,
   fillCompanyProfile,
@@ -385,4 +385,28 @@ test('tras «Nueva proforma» en la proforma lista, el foco vuelve a «Nueva pro
   await expect(panel).toHaveCount(0)
   // El de la cabecera: el historial vacío, mientras se actualiza, tiene otro.
   await expect(page.getByRole('button', { name: 'Nueva proforma' }).first()).toBeFocused()
+})
+
+test('el formulario del producto libre queda alineado y sin desbordarse', async ({ page }) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  const form = panel.getByRole('form', { name: 'Añadir producto libre' })
+  const middle = async (locator: Locator) => {
+    const box = (await locator.boundingBox())!
+    return box.y + box.height / 2
+  }
+  const choose = await middle(form.getByRole('button', { name: 'Elegir foto' }))
+  // La miniatura y su botón, en la misma fila.
+  expect(
+    Math.abs((await middle(form.locator('[data-slot="photo-preview"]'))) - choose),
+  ).toBeLessThan(2)
+  // En PC, la foto va en la fila de la cantidad y el precio.
+  if (page.viewportSize()!.width >= 1024) {
+    expect(Math.abs((await middle(form.getByLabel('Cantidad'))) - choose)).toBeLessThan(2)
+  }
+  expect(await form.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
 })
