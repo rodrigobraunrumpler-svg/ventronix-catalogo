@@ -75,8 +75,8 @@ test('arma, genera, corrige y empieza otra proforma', async ({ page }) => {
   await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
   await panel.getByRole('button', { name: 'Corregir' }).click()
   await panel.getByLabel('Cantidad de Laptop de 16 pulgadas').fill('2')
-  await panel.getByRole('button', { name: 'Generar proforma' }).click()
-  await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
+  await panel.getByRole('button', { name: 'Guardar cambios de la N° 0001' }).click()
+  await expect(panel.getByText('Proforma N° 0001 actualizada')).toBeVisible()
 
   await panel.getByRole('button', { name: 'Nueva proforma' }).click()
   await expect(panel).toHaveCount(0)

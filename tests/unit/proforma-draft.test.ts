@@ -6,6 +6,7 @@ import {
   draftSchema,
   EMPTY_DRAFT,
   freeLinePhotos,
+  isEmptyDraft,
   patchClient,
   removeLine,
   restoreLine,
@@ -192,5 +193,15 @@ describe('fotos de los productos libres', () => {
       imagePath: null,
     })
     expect(freeLinePhotos(draft.lines)).toEqual([free])
+  })
+})
+
+describe('proforma vacía', () => {
+  it('sin productos, número ni datos escritos; la preferencia de fotos no cuenta', () => {
+    expect(isEmptyDraft({ ...EMPTY_DRAFT, includePhotos: false, updatedAt: 'ayer' })).toBe(true)
+    expect(isEmptyDraft(patchClient(EMPTY_DRAFT, { name: 'Cliente' }))).toBe(false)
+    expect(isEmptyDraft({ ...EMPTY_DRAFT, number: 3 })).toBe(false)
+    expect(isEmptyDraft({ ...EMPTY_DRAFT, shipping: '20' })).toBe(false)
+    expect(isEmptyDraft(addProduct(EMPTY_DRAFT, laptop))).toBe(false)
   })
 })

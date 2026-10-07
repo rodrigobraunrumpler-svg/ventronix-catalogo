@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProformaBar } from '@/features/proforma/components/proforma-bar'
 import { ProformaProvider, UNDO_MS } from '@/features/proforma/store'
@@ -53,6 +53,30 @@ describe('ProformaBar', () => {
     expect(bar()).not.toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Deshacer' }))
     expect(bar()).toHaveTextContent('S/ 8,114.00')
+  })
+
+  it('con una proforma ya numerada, dice que hay cambios sin guardar', () => {
+    seedProforma({ lines: e1Lines, number: 3, issuedAt: '2026-10-07T15:00:00.000Z' })
+    renderBar()
+    expect(bar()).toHaveTextContent('Proforma N° 0003')
+    expect(bar()).toHaveTextContent('Cambios sin guardar · 3 productos · 4 unidades')
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Completar proforma' })).not.toBeInTheDocument()
+  })
+
+  it('«Descartar cambios» deja lo guardado en el historial y se puede deshacer', async () => {
+    seedProforma({ lines: e1Lines, number: 3, issuedAt: '2026-10-07T15:00:00.000Z' })
+    const { user } = renderBar()
+    await user.click(screen.getByRole('button', { name: 'Descartar cambios' }))
+    expect(bar()).not.toBeInTheDocument()
+    const message = await screen.findByText(
+      'Descartaste los cambios de la N° 0003. Lo guardado sigue en el historial.',
+    )
+    expect(message).toBeVisible()
+    // El aviso de «Vaciar» de la prueba anterior puede seguir saliendo: se usa el de este.
+    const notice = message.closest<HTMLElement>('[data-sonner-toast]')!
+    await user.click(within(notice).getByRole('button', { name: 'Deshacer' }))
+    expect(bar()).toHaveTextContent('Proforma N° 0003')
   })
 
   it('al pasar «Deshacer» de «Vaciar», borra las fotos de los productos libres', async () => {

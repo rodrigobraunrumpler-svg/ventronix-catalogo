@@ -4,12 +4,14 @@ import { ArrowRight, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { unitCount } from '../draft'
 import { formatCents } from '../money'
+import { formatProformaNumber } from '../number'
 import { useEmptyProforma, useProforma } from '../store'
 import { TAX_CONFIG } from '../tax'
 import { totalsFromText } from '../totals'
 
 // Barra oscura flotante con el total y «Completar proforma» (spec §4.2 y prototipo). Aparece con al
-// menos un producto; en móvil ocupa todo el ancho y los botones bajan a una segunda fila.
+// menos un producto; en móvil ocupa todo el ancho y los botones bajan a una segunda fila. Una
+// proforma guardada se vacía sola: si la barra muestra un número, es una corrección a medias.
 export function ProformaBar({ onComplete }: { onComplete: () => void }) {
   const { draft } = useProforma()
   const empty = useEmptyProforma()
@@ -18,6 +20,7 @@ export function ProformaBar({ onComplete }: { onComplete: () => void }) {
   const totals = totalsFromText(draft)
   const products = draft.lines.length
   const units = unitCount(draft)
+  const number = draft.number === null ? null : formatProformaNumber(draft.number)
 
   return (
     <>
@@ -33,8 +36,9 @@ export function ProformaBar({ onComplete }: { onComplete: () => void }) {
             <FileText className="size-4.5" aria-hidden />
           </span>
           <p className="grid min-w-0 leading-snug">
-            <span className="font-bold">Proforma</span>
+            <span className="font-bold">{number ? `Proforma ${number}` : 'Proforma'}</span>
             <span className="truncate text-[13px] text-[#c7cdc2]">
+              {number ? 'Cambios sin guardar · ' : ''}
               {products} {products === 1 ? 'producto' : 'productos'} · {units}{' '}
               {units === 1 ? 'unidad' : 'unidades'}
             </span>
@@ -54,13 +58,13 @@ export function ProformaBar({ onComplete }: { onComplete: () => void }) {
             className="h-10 px-3.5 text-sm text-[#d6dbd2] hover:bg-white/12 hover:text-white"
             onClick={empty}
           >
-            Vaciar
+            {number ? 'Descartar cambios' : 'Vaciar'}
           </Button>
           <Button
             className="h-11 flex-1 px-4.5 text-[15px] font-bold sm:flex-none"
             onClick={onComplete}
           >
-            Completar proforma
+            {number ? 'Continuar' : 'Completar proforma'}
             <ArrowRight className="size-4.25" aria-hidden />
           </Button>
         </div>

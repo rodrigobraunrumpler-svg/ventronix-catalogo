@@ -68,6 +68,15 @@ export const EMPTY_DRAFT: ProformaDraft = {
   updatedAt: '',
 }
 
+// Nada que perder: ni productos, ni número, ni datos escritos. La preferencia de fotos no cuenta.
+export const isEmptyDraft = (draft: ProformaDraft) =>
+  draft.lines.length === 0 &&
+  draft.number === null &&
+  Object.values(draft.client).every((value) => value === '') &&
+  draft.validityDays === '' &&
+  draft.discountPercent === '' &&
+  draft.shipping === ''
+
 // Una línea del catálogo tiene el id de su producto: buscarla por producto es buscarla por línea.
 export const findLine = (draft: ProformaDraft, id: string) =>
   draft.lines.find((line) => line.id === id)

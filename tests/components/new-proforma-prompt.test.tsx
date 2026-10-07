@@ -21,6 +21,24 @@ describe('NewProformaPrompt', () => {
     expect(dialog.getByRole('button', { name: 'Seguir con la actual' })).toHaveFocus()
   })
 
+  it('con una corrección a medias, dice que se descartan los cambios', () => {
+    render(
+      <NewProformaPrompt
+        open
+        number="N° 0003"
+        summary="2 productos · S/ 410.00"
+        onKeep={vi.fn()}
+        onStartNew={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(
+      screen.getByText(
+        'Tienes cambios sin guardar en la N° 0003 (2 productos · S/ 410.00). Si empiezas otra, se descartan; lo guardado sigue en el historial.',
+      ),
+    ).toBeVisible()
+  })
+
   it('«Seguir con la actual» la conserva', async () => {
     const { dialog, onKeep, onStartNew, user } = renderPrompt()
     await user.click(dialog.getByRole('button', { name: 'Seguir con la actual' }))

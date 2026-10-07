@@ -129,6 +129,7 @@ export function CatalogScreen() {
         <ProformaDialog
           open={proformaOpen}
           onClose={() => setProformaOpen(false)}
+          onReopen={() => setProformaOpen(true)}
           onContinue={() => setProformaOpen(false)}
           historyLink
         />

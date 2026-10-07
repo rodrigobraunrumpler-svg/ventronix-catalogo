@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -18,23 +19,27 @@ import { useReturnFocus } from '@/lib/use-return-focus'
 import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
 import { generateProformaDocument, reserveProformaNumber, sendProformaByWhatsApp } from '../actions'
 import type { DocumentInput } from '../document/input'
+import type { ProformaDraft } from '../draft'
 import { useCurrentPrices, useRucLookup } from '../hooks'
 import { formatProformaNumber } from '../number'
 import { firstPendingField, type CompanyStatus } from '../readiness'
 import { historyKeys, useClientLookup } from '../history/hooks'
-import { useProforma } from '../store'
+import { dismissSavedNotice, useProforma, useSavedNotice } from '../store'
 import { ProformaPanel } from './proforma-panel'
 
 // Ventana centrada (pantalla completa en móvil); Esc la cierra (spec §4.3).
 export function ProformaDialog({
   open,
   onClose,
+  onReopen,
   onContinue,
   historyLink,
   returnFocusTo = 'product-search',
 }: {
   open: boolean
   onClose: () => void
+  // Abre la ventana otra vez: «Corregir» del aviso que sale al cerrar una proforma guardada.
+  onReopen: () => void
   onContinue?: () => void
   // Desde Productos: al generarla, enlaza al historial de Proformas.
   historyLink?: boolean
@@ -53,6 +58,17 @@ export function ProformaDialog({
   const returnFocus = useReturnFocus(open, returnFocusTo)
   const whatsapp = useWhatsAppStatus(open)
   const { refresh } = useWhatsAppLink()
+  // La proforma guardada que se está mostrando como «lista».
+  const saved = useRef<ProformaDraft | null>(null)
+  const notifySaved = useSavedNotice(onReopen)
+  useEffect(() => dismissSavedNotice, [])
+
+  // Al cerrarla (X, Escape o fuera), si quedó guardada, se ofrece corregirla unos segundos.
+  function close() {
+    if (saved.current) notifySaved(saved.current)
+    saved.current = null
+    onClose()
+  }
 
   // Con el WhatsApp de la empresa vinculado, la proforma se envía sola (spec de WhatsApp §4). Si
   // falla, el estado se vuelve a pedir: el teléfono pudo cerrar la sesión.
@@ -72,7 +88,7 @@ export function ProformaDialog({
       : { status: 'ready', profile: company.data }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent
         {...returnFocus}
         // Con texto en el buscador de productos, Escape solo lo borra: la ventana sigue abierta.
@@ -123,6 +139,9 @@ export function ProformaDialog({
           sendByWhatsApp={sendByWhatsApp}
           historyLink={historyLink}
           onContinue={onContinue}
+          onSavedChange={(proforma) => {
+            saved.current = proforma
+          }}
           onFinish={onClose}
         />
       </DialogContent>

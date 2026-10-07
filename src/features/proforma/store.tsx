@@ -15,11 +15,13 @@ import {
   draftSchema,
   EMPTY_DRAFT,
   freeLinePhotos,
+  isEmptyDraft,
   PROFORMA_DRAFT_KEY,
   removeLine,
   restoreLine,
   type ProformaDraft,
 } from './draft'
+import { formatProformaNumber } from './number'
 
 // «Deshacer» dura 5 segundos (spec §4.2).
 export const UNDO_MS = 5000
@@ -144,12 +146,50 @@ export function useRemoveLine() {
   }
 }
 
-// «Vaciar» también se puede deshacer; recupera la proforma tal como estaba.
+// «Vaciar» también se puede deshacer; recupera la proforma tal como estaba. Con número es una
+// corrección a medias: se descartan los cambios y lo guardado sigue en el historial.
 export function useEmptyProforma() {
   const { draft, update } = useProforma()
   return () => {
     const previous = draft
     update(() => EMPTY_DRAFT)
-    undoToast('Vaciaste la proforma', freeLinePhotos(previous.lines), () => update(() => previous))
+    const message =
+      previous.number === null
+        ? 'Vaciaste la proforma'
+        : `Descartaste los cambios de la ${formatProformaNumber(previous.number)}. Lo guardado sigue en el historial.`
+    undoToast(message, freeLinePhotos(previous.lines), () => update(() => previous))
   }
+}
+
+const SAVED_NOTICE = 'proforma-saved'
+
+// Al cerrar una proforma ya guardada (y vaciada), «Corregir» la recupera con su número unos
+// segundos. Si ya empezaste otra, no la pisa.
+export function useSavedNotice(reopen: () => void) {
+  const { update } = useProforma()
+  return (saved: ProformaDraft) => {
+    const label = formatProformaNumber(saved.number ?? 0)
+    toast(`Proforma ${label} guardada en el historial`, {
+      id: SAVED_NOTICE,
+      duration: 8000,
+      action: {
+        label: 'Corregir',
+        onClick: () => {
+          let restored = false
+          update((current) => {
+            if (!isEmptyDraft(current)) return current
+            restored = true
+            return saved
+          })
+          if (restored) reopen()
+          else toast.error(`Tienes otra proforma en curso. Vacíala para corregir la ${label}.`)
+        },
+      },
+    })
+  }
+}
+
+// El aviso es de la pantalla que lo mostró: al salir de ella, se retira.
+export const dismissSavedNotice = () => {
+  toast.dismiss(SAVED_NOTICE)
 }

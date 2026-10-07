@@ -1,11 +1,11 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CompanyProfile } from '@/features/company/schemas'
 import { ProformaReady } from '@/features/proforma/components/proforma-ready'
 import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
-import { EMPTY_DRAFT } from '@/features/proforma/draft'
+import { EMPTY_DRAFT, type ProformaDraft } from '@/features/proforma/draft'
 import { ProformaProvider } from '@/features/proforma/store'
 import type { ActionResult } from '@/lib/action-result'
 import { completeCompany, line, seedProforma } from '../support/proforma'
@@ -21,32 +21,42 @@ function renderReady(
   generatePdf: Generate = vi.fn<Generate>(async () => ({ ok: true, data: pdf })),
   sendByWhatsApp?: Send,
   profile: Partial<CompanyProfile> = {},
+  corrected = false,
 ) {
+  const onSaved = vi.fn()
   render(
     <ProformaProvider>
       <ProformaReady
+        proforma={seeded}
+        corrected={corrected}
         company={{
           status: 'ready',
           profile: { ...completeCompany, trade_name: 'Ventronix', ...profile },
         }}
         generatePdf={generatePdf}
         sendByWhatsApp={sendByWhatsApp}
+        onSaved={onSaved}
         onCorrect={vi.fn()}
         onNew={vi.fn()}
       />
       <Toaster />
     </ProformaProvider>,
   )
-  return { generatePdf, user: userEvent.setup() }
+  return { generatePdf, onSaved, user: userEvent.setup() }
 }
 
-const seed = (phone = '900000000', quantity = 1) =>
-  seedProforma({
+// La proforma recién generada: la «lista» trabaja con esta copia, no con el borrador.
+let seeded: ProformaDraft = EMPTY_DRAFT
+function seed(phone = '900000000', quantity = 1) {
+  seeded = {
+    ...EMPTY_DRAFT,
     lines: [line({ quantity })],
     client: { ...EMPTY_DRAFT.client, name: 'Cliente de ejemplo S.A.C.', phone },
     number: 1,
     issuedAt: '2026-09-30T15:00:00.000Z',
-  })
+  }
+  seedProforma(seeded)
+}
 
 beforeEach(() => {
   URL.createObjectURL = vi.fn(() => 'blob:proforma')
@@ -60,8 +70,11 @@ describe('ProformaReady', () => {
     render(
       <ProformaProvider>
         <ProformaReady
+          proforma={seeded}
+          corrected={false}
           company={{ status: 'ready', profile: completeCompany }}
           generatePdf={vi.fn<Generate>(async () => ({ ok: true, data: pdf }))}
+          onSaved={vi.fn()}
           onCorrect={vi.fn()}
           onNew={vi.fn()}
           historyLink
@@ -160,23 +173,37 @@ describe('ProformaReady', () => {
     expect(generatePdf).toHaveBeenCalledTimes(2)
   })
 
-  it('si otra pestaña cambia la proforma, no deja descargar el PDF anterior', async () => {
+  it('si otra pestaña cambia el borrador, sigue con la guardada y no la vuelve a guardar', async () => {
     seed()
-    let finish: (value: ActionResult<GeneratedDocument>) => void = () => {}
-    const generatePdf = vi
-      .fn<Generate>()
-      .mockResolvedValueOnce({ ok: true, data: pdf })
-      .mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)))
-    renderReady(generatePdf)
+    const { generatePdf } = renderReady()
     const download = screen.getByRole('button', { name: 'Descargar PDF' })
     await vi.waitFor(() => expect(download).toBeEnabled())
-    seed('900000000', 2)
+    seedProforma({ ...seeded, lines: [line({ quantity: 2 })] })
     act(() => window.dispatchEvent(new StorageEvent('storage', { key: null })))
-    expect(download).toBeDisabled()
-    expect(screen.getByText('Preparando el PDF…')).toBeVisible()
-    await act(async () => finish({ ok: true, data: pdf }))
     expect(download).toBeEnabled()
-    expect(generatePdf).toHaveBeenCalledTimes(2)
+    expect(screen.getByText('Cliente de ejemplo S.A.C. · Total S/ 2,590.00')).toBeVisible()
+    expect(generatePdf).toHaveBeenCalledTimes(1)
+  })
+
+  it('avisa cuando quedó guardada, y no si falló', async () => {
+    seed()
+    const failing = vi.fn<Generate>(async () => ({
+      ok: false,
+      error: { code: 'UNEXPECTED', message: 'Revisa tu conexión.' },
+    }))
+    const { onSaved } = renderReady(failing)
+    expect(await screen.findByRole('alert')).toHaveTextContent('No pudimos preparar el PDF.')
+    expect(onSaved).not.toHaveBeenCalled()
+    cleanup()
+    const saved = renderReady()
+    await vi.waitFor(() => expect(saved.onSaved).toHaveBeenCalledTimes(1))
+  })
+
+  it('una corrección dice que quedó actualizada', async () => {
+    seed()
+    renderReady(undefined, undefined, {}, true)
+    expect(screen.getByText('Proforma N° 0001 actualizada')).toBeVisible()
+    await screen.findByText('Quedó guardada en el historial.')
   })
 
   it('si el navegador bloquea la pestaña, «Ver el documento» descarga el PDF y lo avisa', async () => {

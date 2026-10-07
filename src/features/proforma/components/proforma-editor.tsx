@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import type { ActionResult } from '@/lib/action-result'
 import { base64ToFile, newTab, openFile, TAB_BLOCKED } from '../document/files'
 import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
+import { formatProformaNumber } from '../number'
 import { generateBlocker, validityError, type CompanyStatus } from '../readiness'
 import type { RucLookupResult } from '../ruc'
 import { useProforma } from '../store'
@@ -101,7 +102,12 @@ export function ProformaEditor({
           onClick={onGenerate}
         >
           <FileText className="size-4.5" aria-hidden />
-          {generating ? 'Generando…' : 'Generar proforma'}
+          {generating
+            ? 'Generando…'
+            : draft.number === null
+              ? 'Generar proforma'
+              : // Una corrección: se guarda con su número, sobre la que está en el historial.
+                `Guardar cambios de la ${formatProformaNumber(draft.number)}`}
         </Button>
         {error ? (
           <p id="generate-reason" role="alert" className="text-xs leading-normal text-destructive">

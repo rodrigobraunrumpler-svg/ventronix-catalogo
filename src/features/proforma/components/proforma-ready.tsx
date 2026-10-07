@@ -16,10 +16,10 @@ import {
 } from '../document/files'
 import { documentDates, whatsappMessage } from '../document/format'
 import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
+import type { ProformaDraft } from '../draft'
 import { formatCents, ZERO } from '../money'
 import { formatProformaNumber } from '../number'
 import type { CompanyStatus } from '../readiness'
-import { useProforma } from '../store'
 import { totalsFromText } from '../totals'
 import { toastChatBlocked } from './chat-blocked'
 
@@ -37,8 +37,14 @@ const inlineAction =
   'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3 disabled:opacity-50'
 
 export type ProformaReadyProps = {
+  // La proforma tal como se generó: el borrador puede cambiar o vaciarse mientras tanto.
+  proforma: ProformaDraft
+  // Una corrección de una ya guardada: «actualizada» en vez de «lista».
+  corrected: boolean
   company: CompanyStatus
   generatePdf: (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
+  // Quedó guardada en el historial; se avisa aunque la ventana ya se haya cerrado.
+  onSaved: () => void
   onCorrect: () => void
   onNew: () => void
   // Con el WhatsApp de la empresa vinculado: la envía el servidor. Sin él, se abre el chat.
@@ -50,25 +56,30 @@ export type ProformaReadyProps = {
 // «Proforma N° 0001 lista» (spec del documento §6 y prototipo). El PDF se prepara al entrar: así
 // descargar, ver y compartir son inmediatos y el navegador no los bloquea.
 export function ProformaReady({
+  proforma,
+  corrected,
   company,
   generatePdf,
+  onSaved,
   onCorrect,
   onNew,
   sendByWhatsApp,
   historyLink,
 }: ProformaReadyProps) {
-  const { draft } = useProforma()
+  const draft = proforma
   const [delivery, setDelivery] = useState<Delivery>({ kind: 'idle' })
   const [attempt, setAttempt] = useState(0)
-  // El PDF vale solo para la proforma y el intento con que se pidió: si otra pestaña cambia la
-  // proforma, se prepara de nuevo y mientras tanto no se puede bajar el anterior.
+  // El PDF vale solo para el intento con que se pidió: «Reintentar» lo prepara de nuevo y mientras
+  // tanto no se puede bajar el anterior.
   const [result, setResult] = useState<{ payload: string; attempt: number; outcome: Outcome }>()
   const payload = JSON.stringify(documentInput(draft, { draft: false }))
   const generate = useEffectEvent((input: DocumentInput) => generatePdf(input))
+  const saved = useEffectEvent(() => onSaved())
 
   useEffect(() => {
     let active = true
     void generate(JSON.parse(payload)).then((response) => {
+      if (response.ok) saved()
       if (!active) return
       setResult({
         payload,
@@ -139,7 +150,7 @@ export function ProformaReady({
         <Check className="size-7" strokeWidth={2.2} aria-hidden />
       </span>
       <p role="status" className="text-xl font-extrabold text-foreground">
-        Proforma {numberLabel} lista
+        Proforma {numberLabel} {corrected ? 'actualizada' : 'lista'}
       </p>
       <p className="mb-3.5 text-muted-foreground">
         {draft.client.name} · Total {total}

@@ -11,6 +11,7 @@ import { ProformaBar } from '../../components/proforma-bar'
 import { ProformaDialog } from '../../components/proforma-dialog'
 import { EMPTY_DRAFT, freeLinePhotos } from '../../draft'
 import { formatCents } from '../../money'
+import { formatProformaNumber } from '../../number'
 import { ProformaProvider, useProforma } from '../../store'
 import { totalsFromText } from '../../totals'
 import { resendProforma } from '../actions'
@@ -76,16 +77,17 @@ function ProformasContent() {
   }, [data, filters.page, totalPages, setFilters])
 
   function openEmpty() {
-    // Una proforma sin generar que se reemplaza no vuelve: sus fotos de productos libres se borran.
-    if (draft.number === null) void discardPhotos(freeLinePhotos(draft.lines))
+    // Lo que se reemplaza no vuelve: sus fotos de productos libres se borran. Las que usa una
+    // proforma guardada no: la base no deja borrarlas.
+    void discardPhotos(freeLinePhotos(draft.lines))
     update(() => EMPTY_DRAFT)
     setOpen(true)
   }
 
-  // «Nueva proforma» empieza una vacía. Una ya generada está guardada y se reemplaza; una sin
-  // generar no se borra sin preguntar (plan, decisión 4).
+  // «Nueva proforma» empieza una vacía. Una guardada ya se vació sola; con productos, sea una sin
+  // generar o una corrección a medias, pregunta antes de borrarla (plan, decisión 4).
   function startNew() {
-    if (draft.number === null && products > 0) setAsking(true)
+    if (products > 0) setAsking(true)
     else openEmpty()
   }
 
@@ -191,7 +193,12 @@ function ProformasContent() {
       </section>
 
       <ProformaBar onComplete={() => setOpen(true)} />
-      <ProformaDialog open={open} onClose={() => setOpen(false)} returnFocusTo="new-proforma" />
+      <ProformaDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onReopen={() => setOpen(true)}
+        returnFocusTo="new-proforma"
+      />
       <ResendDialog
         row={resending}
         today={today}
@@ -201,6 +208,7 @@ function ProformasContent() {
       />
       <NewProformaPrompt
         open={asking}
+        number={draft.number === null ? null : formatProformaNumber(draft.number)}
         summary={`${products} ${products === 1 ? 'producto' : 'productos'} · S/ ${totals ? formatCents(totals.total) : '—'}`}
         onKeep={() => {
           afterPrompt.current = () => setOpen(true)

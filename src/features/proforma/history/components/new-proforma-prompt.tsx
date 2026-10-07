@@ -11,10 +11,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 
-// «Nueva proforma» con una sin generar (spec de productos libres §4.3): se elige, nada se borra solo.
-// El foco empieza en «Seguir con la actual», la opción que no pierde nada.
+// «Nueva proforma» con una sin generar o una corrección a medias (spec de productos libres §4.3):
+// se elige, nada se borra solo. El foco empieza en «Seguir con la actual», la opción que no pierde
+// nada.
 export function NewProformaPrompt({
   open,
+  number = null,
   summary,
   onKeep,
   onStartNew,
@@ -22,6 +24,8 @@ export function NewProformaPrompt({
   onClosed,
 }: {
   open: boolean
+  // «N° 0003» si es una corrección a medias de una proforma guardada.
+  number?: string | null
   // «3 productos · S/ 1,234.00»
   summary: string
   onKeep: () => void
@@ -37,7 +41,9 @@ export function NewProformaPrompt({
         <AlertDialogHeader>
           <AlertDialogTitle>¿Empezar una proforma nueva?</AlertDialogTitle>
           <AlertDialogDescription>
-            Tienes una proforma sin generar ({summary}). Si empiezas otra, esa se borra.
+            {number
+              ? `Tienes cambios sin guardar en la ${number} (${summary}). Si empiezas otra, se descartan; lo guardado sigue en el historial.`
+              : `Tienes una proforma sin generar (${summary}). Si empiezas otra, esa se borra.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -295,7 +295,8 @@ test('la proforma generada aparece en el historial y «Corregir» la actualiza',
   await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
   await panel.getByRole('button', { name: 'Corregir' }).click()
   await panel.getByLabel('Cantidad de Instalación en sitio').fill('2')
-  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await panel.getByRole('button', { name: 'Guardar cambios de la N° 0001' }).click()
+  await expect(panel.getByText('Proforma N° 0001 actualizada')).toBeVisible()
   await expect(panel.getByText('Cliente de prueba · Total S/ 700.00')).toBeVisible()
   await page.keyboard.press('Escape')
 
@@ -478,4 +479,70 @@ test('en la proforma, cada línea deja sitio al nombre y nada se desborda', asyn
   ).toBeLessThan(24)
   const list = panel.getByRole('list')
   expect(await list.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
+})
+
+// Arma y genera una proforma con un producto libre desde Proformas; queda en «lista», guardada.
+async function generateFreeProforma(page: Page) {
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
+  await panel.getByLabel('Razón social o nombre').fill('Cliente de prueba')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await expect(panel.getByText('Quedó guardada en el historial.')).toBeVisible()
+}
+
+// Exacto: «Proforma» también está en «Historial de proformas».
+const proformaBar = (page: Page) => page.getByRole('region', { name: 'Proforma', exact: true })
+
+test('al cerrar una proforma guardada, la barra queda vacía, también al recargar', async ({
+  page,
+}) => {
+  await seed()
+  await login(page)
+  await generateFreeProforma(page)
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('Proforma N° 0001 guardada en el historial')).toBeVisible()
+  // Ya cerrada del todo: mientras se cierra, la página sigue oculta para los lectores de pantalla.
+  await expect(dialog(page)).toHaveCount(0)
+  await expect(proformaBar(page)).toHaveCount(0)
+  await page.reload()
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
+  await expect(proformaBar(page)).toHaveCount(0)
+})
+
+test('«Corregir» del aviso la recupera; a medias, la barra lo dice y «Nueva proforma» pregunta', async ({
+  page,
+}) => {
+  await seed()
+  await login(page)
+  await generateFreeProforma(page)
+  await page.keyboard.press('Escape')
+  await page.locator('[data-sonner-toast]').getByRole('button', { name: 'Corregir' }).click()
+  const panel = dialog(page)
+  await expect(panel.getByRole('button', { name: 'Guardar cambios de la N° 0001' })).toBeVisible()
+  await expect(panel.getByLabel('Razón social o nombre')).toHaveValue('Cliente de prueba')
+
+  // Cerrada sin guardar, la barra dice que es la 0001 a medias, y cabe también en el teléfono.
+  await page.keyboard.press('Escape')
+  await expect(proformaBar(page)).toContainText('Proforma N° 0001')
+  await expect(proformaBar(page)).toContainText('Cambios sin guardar · 1 producto · 1 unidad')
+  await expect(proformaBar(page).getByRole('button', { name: 'Continuar' })).toBeVisible()
+  expect(
+    await proformaBar(page).evaluate((element) => element.scrollWidth - element.clientWidth),
+  ).toBe(0)
+
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const prompt = page.getByRole('alertdialog', { name: '¿Empezar una proforma nueva?' })
+  await expect(
+    prompt.getByText(
+      'Tienes cambios sin guardar en la N° 0001 (1 producto · S/ 350.00). Si empiezas otra, se descartan; lo guardado sigue en el historial.',
+    ),
+  ).toBeVisible()
+  await prompt.getByRole('button', { name: 'Empezar una nueva' }).click()
+  await expect(panel.getByText(/La proforma está vacía/)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(proformaBar(page)).toHaveCount(0)
+  await expect(history(page).getByText('S/ 350.00').filter({ visible: true }).first()).toBeVisible()
 })
