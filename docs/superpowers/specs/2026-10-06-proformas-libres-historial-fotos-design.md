@@ -41,7 +41,8 @@ Cuatro entregas, cada una publicable por separado:
 - borrar o anular proformas;
 - un enlace público para el cliente;
 - guardar los PDF como archivos;
-- historial de precios.
+- historial de precios;
+- «Duplicar» una proforma del historial como base de una nueva (se deja para más adelante, 06-10-2026).
 
 ## 3. Decisiones
 
