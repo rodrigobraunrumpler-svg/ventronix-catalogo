@@ -8,16 +8,34 @@ import { saveDraft } from '@/lib/drafts'
 
 export { completeCompany } from './company'
 
-export const line = (overrides: Partial<ProformaLine> = {}): ProformaLine => ({
-  productId: '8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c',
-  code: 'LAP-001',
-  name: 'Laptop de 14 pulgadas',
-  description: null,
-  catalogPrice: '2590.00',
-  unitPrice: '2590.00',
-  quantity: 1,
-  ...overrides,
-})
+// Línea del catálogo: su id es el del producto (plan, decisión 1).
+export const line = (overrides: Partial<ProformaLine> = {}): ProformaLine => {
+  const productId =
+    overrides.productId === undefined ? '8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c' : overrides.productId
+  return {
+    id: productId ?? 'libre-1',
+    productId,
+    code: 'LAP-001',
+    name: 'Laptop de 14 pulgadas',
+    description: null,
+    catalogPrice: '2590.00',
+    unitPrice: '2590.00',
+    quantity: 1,
+    ...overrides,
+  }
+}
+
+// Producto libre (spec de productos libres §4.3): sin producto, sin código y sin precio de catálogo.
+export const freeLine = (overrides: Partial<ProformaLine> = {}): ProformaLine =>
+  line({
+    id: 'libre-1',
+    productId: null,
+    code: '',
+    name: 'Instalación en sitio',
+    catalogPrice: null,
+    unitPrice: '350.00',
+    ...overrides,
+  })
 
 // Las líneas del ejemplo E1 de la spec (§5.3); la impresora lleva un precio especial.
 export const e1Lines = [

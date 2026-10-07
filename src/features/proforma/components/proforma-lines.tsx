@@ -56,10 +56,13 @@ export function ProformaLines({
         <ul className="grid rounded-xl border">
           {draft.lines.map((line) => (
             <LineRow
-              key={line.productId}
+              key={line.id}
               line={line}
-              currentPrice={prices?.get(line.productId)}
-              missing={prices !== undefined && !prices.has(line.productId)}
+              // Un producto libre no se compara con el catálogo (spec de productos libres §4.3).
+              currentPrice={line.productId ? prices?.get(line.productId) : undefined}
+              missing={
+                prices !== undefined && line.productId !== null && !prices.has(line.productId)
+              }
             />
           ))}
         </ul>
@@ -84,7 +87,7 @@ function LineRow({
   const [open, setOpen] = useState(false)
   const { update } = useProforma()
   const removeLine = useRemoveLine()
-  const id = `line-${line.productId}`
+  const id = `line-${line.id}`
   const quantityProblem = quantityError(line.quantity)
   const priceProblem = priceError(line.unitPrice)
   const cents = parseCents(line.unitPrice)
@@ -92,12 +95,11 @@ function LineRow({
     !quantityProblem && !priceProblem && cents !== null
       ? `S/ ${formatCents(BigInt(line.quantity) * cents)}`
       : '—'
-  const edited = cents !== parseCents(line.catalogPrice)
+  const catalogPrice = line.catalogPrice
   // Precio del catálogo distinto del que tenía al añadirlo (spec §4.5).
   const newPrice =
     currentPrice !== undefined && currentPrice !== line.catalogPrice ? currentPrice : null
-  const change = (quantity: number) =>
-    update((current) => setQuantity(current, line.productId, quantity))
+  const change = (quantity: number) => update((current) => setQuantity(current, line.id, quantity))
 
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_118px_132px_104px_36px]">
@@ -121,15 +123,13 @@ function LineRow({
           <span className="rounded-md border bg-background px-1.5 font-mono text-xs text-secondary-foreground">
             {line.code}
           </span>
-          {edited ? (
+          {catalogPrice !== null && cents !== parseCents(catalogPrice) ? (
             <span className="inline-flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-              <span className="whitespace-nowrap">
-                Catálogo S/ {formatPrice(line.catalogPrice)}
-              </span>
+              <span className="whitespace-nowrap">Catálogo S/ {formatPrice(catalogPrice)}</span>
               <button
                 type="button"
                 className={cn(inlineAction, 'text-xs')}
-                onClick={() => update((current) => restorePrice(current, line.productId))}
+                onClick={() => update((current) => restorePrice(current, line.id))}
               >
                 Restaurar
               </button>
@@ -198,7 +198,7 @@ function LineRow({
             autoComplete="off"
             value={line.unitPrice}
             onChange={(event) =>
-              update((current) => setUnitPrice(current, line.productId, event.target.value))
+              update((current) => setUnitPrice(current, line.id, event.target.value))
             }
             className="w-full min-w-0 bg-transparent px-2.25 text-foreground tabular-nums outline-none"
           />
@@ -214,7 +214,7 @@ function LineRow({
         aria-label={`Quitar ${line.name}`}
         title="Quitar"
         className="col-start-2 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:col-start-auto sm:row-start-auto"
-        onClick={() => removeLine(line.productId)}
+        onClick={() => removeLine(line.id)}
       >
         <X aria-hidden />
       </Button>
@@ -246,9 +246,7 @@ function LineRow({
           <button
             type="button"
             className={cn(inlineAction, 'text-xs')}
-            onClick={() =>
-              update((current) => applyCatalogPrice(current, line.productId, newPrice))
-            }
+            onClick={() => update((current) => applyCatalogPrice(current, line.id, newPrice))}
           >
             Actualizar
           </button>

@@ -97,6 +97,13 @@ describe('clientErrors', () => {
 })
 
 describe('firstPendingField', () => {
+  it('un producto libre se identifica por su línea', () => {
+    const value = draft({
+      lines: [line({ id: 'libre-1', productId: null, catalogPrice: null, unitPrice: '' })],
+    })
+    expect(firstPendingField(value)).toBe('line-libre-1-price')
+  })
+
   it('va a la primera cantidad o precio con error', () => {
     const value = draft({ lines: [line(), line({ productId: 'p2', unitPrice: 'abc' })] })
     expect(firstPendingField(value)).toBe('line-p2-price')

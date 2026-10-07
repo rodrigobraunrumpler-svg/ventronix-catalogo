@@ -12,7 +12,7 @@ export const documentInputSchema = z.object({
   lines: z
     .array(
       z.object({
-        code: z.string().trim().min(1).max(64),
+        code: z.string().trim().max(64), // un producto libre puede no tener código
         name: z.string().trim().min(1).max(120),
         description: z.string().max(2000).nullable(),
         unitPrice: text(20),

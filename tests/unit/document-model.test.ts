@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { CompanyProfile } from '@/features/company/schemas'
 import { buildDocumentModel, documentProblem } from '@/features/proforma/document/model'
-import { documentInput, type DocumentInput } from '@/features/proforma/document/input'
+import {
+  documentInput,
+  documentInputSchema,
+  type DocumentInput,
+} from '@/features/proforma/document/input'
 import { EMPTY_DRAFT } from '@/features/proforma/draft'
-import { completeCompany, e1Lines } from '../support/proforma'
+import { completeCompany, e1Lines, freeLine } from '../support/proforma'
 
 const company: CompanyProfile = {
   ...completeCompany,
@@ -179,5 +183,26 @@ describe('documentProblem', () => {
     expect(documentProblem({ ...draft, validityDays: '0' }, company)).toBe(problem)
     expect(documentProblem({ ...e1, validityDays: '400' }, company)).toBe(problem)
     expect(documentProblem({ ...draft, validityDays: '' }, company)).toBeNull()
+  })
+})
+
+describe('producto libre', () => {
+  it('sin código sale con «—» en el documento', () => {
+    const free = documentInput(
+      {
+        ...EMPTY_DRAFT,
+        lines: [freeLine()],
+        client,
+        number: 1,
+        issuedAt: '2026-09-30T15:00:00.000Z',
+      },
+      { draft: false },
+    )
+    expect(documentInputSchema.parse(free).lines[0].code).toBe('')
+    expect(buildDocumentModel(free, company, now).rows[0]).toMatchObject({
+      code: '—',
+      name: 'Instalación en sitio',
+      unitPrice: '350.00',
+    })
   })
 })

@@ -26,6 +26,9 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['tests/components/**/*.test.tsx'],
           setupFiles: ['tests/setup.ts'],
+          // Los recorridos con user-event tardan ~1 s solos, pero con todos los archivos de jsdom en
+          // paralelo pasan de los 5 s por defecto.
+          testTimeout: 15_000,
         },
       },
       {

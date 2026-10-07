@@ -110,11 +110,11 @@ export function useProforma() {
 // Quitar una línea no pide confirmación: avisa con «Deshacer» (spec §4.2).
 export function useRemoveLine() {
   const { draft, update } = useProforma()
-  return (productId: string) => {
-    const index = draft.lines.findIndex((line) => line.productId === productId)
+  return (id: string) => {
+    const index = draft.lines.findIndex((line) => line.id === id)
     if (index === -1) return
     const line = draft.lines[index]
-    update((current) => removeLine(current, productId))
+    update((current) => removeLine(current, id))
     toast(`Quitaste ${line.name}`, {
       duration: UNDO_MS,
       action: {

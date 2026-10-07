@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  addFreeLine,
   addProduct,
   applyCatalogPrice,
   draftSchema,
@@ -34,6 +35,7 @@ describe('proforma en curso', () => {
     const draft = addProduct(addProduct(EMPTY_DRAFT, laptop), laptop)
     expect(draft.lines).toEqual([
       {
+        id: 'p1',
         productId: 'p1',
         code: 'LAP-001',
         name: 'Laptop de 14 pulgadas',
@@ -92,5 +94,62 @@ describe('proforma en curso', () => {
     const { issuedAt, ...older } = { ...EMPTY_DRAFT, number: 3 }
     expect(issuedAt).toBeNull()
     expect(draftSchema.parse(older)).toMatchObject({ number: 3, issuedAt: null })
+  })
+})
+
+describe('productos libres', () => {
+  const service = { code: '', name: 'Instalación en sitio', unitPrice: '350', quantity: 2 }
+
+  it('se añaden con su código opcional, sin producto ni precio de catálogo', () => {
+    expect(addFreeLine(EMPTY_DRAFT, service, 'libre-1').lines).toEqual([
+      {
+        id: 'libre-1',
+        productId: null,
+        code: '',
+        name: 'Instalación en sitio',
+        description: null,
+        catalogPrice: null,
+        unitPrice: '350',
+        quantity: 2,
+      },
+    ])
+  })
+
+  it('cada uno es una línea propia, aunque se repita la descripción', () => {
+    const draft = addFreeLine(addFreeLine(EMPTY_DRAFT, service, 'libre-1'), service, 'libre-2')
+    expect(draft.lines.map((item) => item.id)).toEqual(['libre-1', 'libre-2'])
+  })
+
+  it('sin id indicado, cada línea recibe uno nuevo', () => {
+    const [first, second] = addFreeLine(addFreeLine(EMPTY_DRAFT, service), service).lines
+    expect(first.id).toMatch(/^libre-[0-9a-f-]{36}$/)
+    expect(second.id).not.toBe(first.id)
+  })
+
+  it('se cambian y se quitan por su línea, sin tocar los del catálogo', () => {
+    const draft = addFreeLine(addProduct(EMPTY_DRAFT, laptop), service, 'libre-1')
+    expect(setQuantity(draft, 'libre-1', 3).lines.map((item) => item.quantity)).toEqual([1, 3])
+    expect(restorePrice(setUnitPrice(draft, 'libre-1', '300'), 'libre-1').lines[1].unitPrice).toBe(
+      '300',
+    )
+    expect(removeLine(draft, 'libre-1').lines.map((item) => item.id)).toEqual(['p1'])
+  })
+
+  it('lee los borradores anteriores, que identificaban la línea por su producto', () => {
+    const old = {
+      ...EMPTY_DRAFT,
+      lines: [
+        {
+          productId: 'p1',
+          code: 'LAP-001',
+          name: 'Laptop',
+          description: null,
+          catalogPrice: '2590.00',
+          unitPrice: '2590.00',
+          quantity: 1,
+        },
+      ],
+    }
+    expect(draftSchema.parse(old).lines[0]).toMatchObject({ id: 'p1', productId: 'p1' })
   })
 })

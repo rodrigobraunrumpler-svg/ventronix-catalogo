@@ -8,7 +8,7 @@ import { ProformaProvider } from '@/features/proforma/store'
 import { line, seedProforma } from '../support/proforma'
 
 const laptop: ProductListItem = {
-  id: line().productId,
+  id: line().id,
   code: 'LAP-001',
   name: 'Laptop de 14 pulgadas',
   description: null,

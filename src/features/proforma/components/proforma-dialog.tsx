@@ -27,7 +27,7 @@ export function ProformaDialog({ open, onClose }: { open: boolean; onClose: () =
   const { draft } = useProforma()
   const company = useCompanyProfile()
   const prices = useCurrentPrices(
-    draft.lines.map((line) => line.productId),
+    draft.lines.flatMap((line) => (line.productId ? [line.productId] : [])),
     open,
   )
   const lookupRuc = useRucLookup()

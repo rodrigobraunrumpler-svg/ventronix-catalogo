@@ -121,7 +121,7 @@ export function buildDocumentModel(
     ).filter((item) => item.value),
     rows: input.lines.map((line, index) => ({
       quantity: String(line.quantity),
-      code: line.code,
+      code: line.code || '—',
       name: line.name,
       description: line.description?.trim() || null,
       unitPrice: formatCents(parseCents(line.unitPrice) ?? ZERO),

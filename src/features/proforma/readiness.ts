@@ -89,8 +89,8 @@ export function generateBlocker(
 // Al abrir la ventana, el foco va al primer campo pendiente (spec §4.3).
 export function firstPendingField(draft: ProformaDraft) {
   for (const line of draft.lines) {
-    if (quantityError(line.quantity)) return `line-${line.productId}-quantity`
-    if (priceError(line.unitPrice)) return `line-${line.productId}-price`
+    if (quantityError(line.quantity)) return `line-${line.id}-quantity`
+    if (priceError(line.unitPrice)) return `line-${line.id}-price`
   }
   const client = clientErrors(draft.client)
   if (client.name) return 'client-name'

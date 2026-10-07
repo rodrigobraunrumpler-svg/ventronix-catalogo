@@ -3,16 +3,25 @@ import type { ProductListItem } from '@/features/catalog/types'
 import { MAX_QUANTITY } from './totals'
 
 // Proforma en curso (spec §6.1): una sola, en este navegador. Los datos del producto se copian al
-// añadirlo; el catálogo nunca se modifica desde aquí.
-const lineSchema = z.object({
-  productId: z.string(),
-  code: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-  catalogPrice: z.string(), // precio del catálogo al añadirlo
-  unitPrice: z.string(), // precio de la proforma, tal como se escribe
-  quantity: z.number().int().nonnegative(),
-})
+// añadirlo; el catálogo nunca se modifica desde aquí. Un producto libre (spec de productos libres
+// §4.3) existe solo en la proforma: no tiene producto ni precio de catálogo.
+const lineSchema = z.preprocess(
+  // Los borradores anteriores a los productos libres identificaban la línea por su producto.
+  (value) =>
+    value !== null && typeof value === 'object' && !('id' in value) && 'productId' in value
+      ? { ...value, id: value.productId }
+      : value,
+  z.object({
+    id: z.string(), // el del producto, o «libre-…»
+    productId: z.string().nullable(), // null en un producto libre
+    code: z.string(), // puede ir vacío en un producto libre
+    name: z.string(),
+    description: z.string().nullable(),
+    catalogPrice: z.string().nullable(), // precio del catálogo al añadirlo; null si es libre
+    unitPrice: z.string(), // precio de la proforma, tal como se escribe
+    quantity: z.number().int().nonnegative(),
+  }),
+)
 
 export const draftSchema = z.object({
   lines: z.array(lineSchema),
@@ -49,18 +58,16 @@ export const EMPTY_DRAFT: ProformaDraft = {
   updatedAt: '',
 }
 
-export const findLine = (draft: ProformaDraft, productId: string) =>
-  draft.lines.find((line) => line.productId === productId)
+// Una línea del catálogo tiene el id de su producto: buscarla por producto es buscarla por línea.
+export const findLine = (draft: ProformaDraft, id: string) =>
+  draft.lines.find((line) => line.id === id)
 
 function mapLine(
   draft: ProformaDraft,
-  productId: string,
+  id: string,
   change: (line: ProformaLine) => ProformaLine,
 ): ProformaDraft {
-  return {
-    ...draft,
-    lines: draft.lines.map((line) => (line.productId === productId ? change(line) : line)),
-  }
+  return { ...draft, lines: draft.lines.map((line) => (line.id === id ? change(line) : line)) }
 }
 
 // Añadir un producto que ya está suma una unidad, hasta el máximo.
@@ -72,6 +79,7 @@ export function addProduct(draft: ProformaDraft, product: ProductData): Proforma
     }))
   }
   const line: ProformaLine = {
+    id: product.id,
     productId: product.id,
     code: product.code,
     name: product.name,
@@ -83,22 +91,44 @@ export function addProduct(draft: ProformaDraft, product: ProductData): Proforma
   return { ...draft, lines: [...draft.lines, line] }
 }
 
-export const setQuantity = (draft: ProformaDraft, productId: string, quantity: number) =>
-  mapLine(draft, productId, (line) => ({ ...line, quantity }))
+// Lo que se escribe en «Añadir producto libre» (spec de productos libres §4.3).
+export type FreeLineInput = Pick<ProformaLine, 'code' | 'name' | 'unitPrice' | 'quantity'>
 
-export const setUnitPrice = (draft: ProformaDraft, productId: string, unitPrice: string) =>
-  mapLine(draft, productId, (line) => ({ ...line, unitPrice }))
+// Cada producto libre es una línea nueva, aunque repita la descripción de otro.
+export function addFreeLine(
+  draft: ProformaDraft,
+  input: FreeLineInput,
+  id = `libre-${crypto.randomUUID()}`,
+): ProformaDraft {
+  const line: ProformaLine = {
+    ...input,
+    id,
+    productId: null,
+    description: null,
+    catalogPrice: null,
+  }
+  return { ...draft, lines: [...draft.lines, line] }
+}
 
-export const restorePrice = (draft: ProformaDraft, productId: string) =>
-  mapLine(draft, productId, (line) => ({ ...line, unitPrice: line.catalogPrice }))
+export const setQuantity = (draft: ProformaDraft, id: string, quantity: number) =>
+  mapLine(draft, id, (line) => ({ ...line, quantity }))
+
+export const setUnitPrice = (draft: ProformaDraft, id: string, unitPrice: string) =>
+  mapLine(draft, id, (line) => ({ ...line, unitPrice }))
+
+// Un producto libre no tiene precio de catálogo al que volver.
+export const restorePrice = (draft: ProformaDraft, id: string) =>
+  mapLine(draft, id, (line) =>
+    line.catalogPrice === null ? line : { ...line, unitPrice: line.catalogPrice },
+  )
 
 // «Actualizar» (spec §4.5): el precio actual del catálogo pasa a ser el de la línea.
-export const applyCatalogPrice = (draft: ProformaDraft, productId: string, price: string) =>
-  mapLine(draft, productId, (line) => ({ ...line, catalogPrice: price, unitPrice: price }))
+export const applyCatalogPrice = (draft: ProformaDraft, id: string, price: string) =>
+  mapLine(draft, id, (line) => ({ ...line, catalogPrice: price, unitPrice: price }))
 
-export const removeLine = (draft: ProformaDraft, productId: string): ProformaDraft => ({
+export const removeLine = (draft: ProformaDraft, id: string): ProformaDraft => ({
   ...draft,
-  lines: draft.lines.filter((line) => line.productId !== productId),
+  lines: draft.lines.filter((line) => line.id !== id),
 })
 
 // «Deshacer» devuelve la línea a su sitio, salvo que se haya vuelto a añadir mientras tanto.
@@ -107,7 +137,7 @@ export function restoreLine(
   line: ProformaLine,
   index: number,
 ): ProformaDraft {
-  if (findLine(draft, line.productId)) return draft
+  if (findLine(draft, line.id)) return draft
   const lines = [...draft.lines]
   lines.splice(Math.min(index, lines.length), 0, line)
   return { ...draft, lines }
@@ -142,9 +172,9 @@ export const unitCount = (draft: ProformaDraft) =>
 export const unitsText = (quantity: number) =>
   `${quantity} ${quantity === 1 ? 'unidad' : 'unidades'}`
 
-// Aviso para lectores de pantalla con las unidades de un producto en esta proforma.
-export const quantityMessage = (draft: ProformaDraft, product: { id: string; name: string }) =>
-  `${product.name}: ${unitsText(findLine(draft, product.id)?.quantity ?? 0)} en la proforma`
+// Aviso para lectores de pantalla con las unidades de una línea de esta proforma.
+export const quantityMessage = (draft: ProformaDraft, item: { id: string; name: string }) =>
+  `${item.name}: ${unitsText(findLine(draft, item.id)?.quantity ?? 0)} en la proforma`
 
 // Clave del borrador en el navegador (prefijo de src/lib/drafts.ts, que se borra al cerrar sesión).
 export const PROFORMA_DRAFT_KEY = 'proforma'

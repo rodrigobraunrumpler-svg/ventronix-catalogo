@@ -108,7 +108,7 @@ describe('ProformaEditor', () => {
 
   it('avisa si el precio del catálogo cambió y «Actualizar» lo aplica', async () => {
     seedProforma({ lines: [line()] })
-    const { user } = renderEditor({ prices: new Map([[line().productId, '2490.00']]) })
+    const { user } = renderEditor({ prices: new Map([[line().id, '2490.00']]) })
     expect(screen.getByText(/El precio del catálogo cambió a S\/ 2,490\.00/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Actualizar' }))
     expect(price('Laptop de 14 pulgadas')).toHaveValue('2490.00')
