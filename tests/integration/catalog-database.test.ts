@@ -50,12 +50,16 @@ function insertProduct(categoryId: string, overrides: Partial<ProductRow> = {}, 
   )
 }
 
+// En microsegundos, como los guarda Postgres. Un Date de JS se queda en milisegundos y, en una
+// máquina rápida como la de la CI, crear y modificar caen en el mismo milisegundo.
 async function timestamps(table: 'categories' | 'products', id: string) {
-  const { rows } = await db.query<{ created_at: Date; updated_at: Date }>(
-    `select created_at, updated_at from public.${table} where id = $1`,
+  const { rows } = await db.query<{ created_at: string; updated_at: string }>(
+    `select (extract(epoch from created_at) * 1000000)::bigint as created_at,
+            (extract(epoch from updated_at) * 1000000)::bigint as updated_at
+       from public.${table} where id = $1`,
     [id],
   )
-  return rows[0]
+  return { created_at: BigInt(rows[0].created_at), updated_at: BigInt(rows[0].updated_at) }
 }
 
 describe('categorías', () => {
@@ -63,8 +67,8 @@ describe('categorías', () => {
     const id = await insertCategory()
     expect(id).toMatch(/^[0-9a-f-]{36}$/)
     const { created_at, updated_at } = await timestamps('categories', id)
-    expect(created_at).toBeInstanceOf(Date)
-    expect(updated_at).toBeInstanceOf(Date)
+    expect(created_at).toBeGreaterThan(BigInt(0))
+    expect(updated_at).toBeGreaterThan(BigInt(0))
   })
 
   it.each(['', '   ', 'a'.repeat(121)])('rechaza el nombre %j', async (name) => {
@@ -89,7 +93,7 @@ describe('categorías', () => {
     await db.query("update public.categories set name = 'Portátiles' where id = $1", [id])
     const after = await timestamps('categories', id)
     expect(after.created_at).toEqual(before.created_at)
-    expect(after.updated_at.getTime()).toBeGreaterThan(before.updated_at.getTime())
+    expect(after.updated_at).toBeGreaterThan(before.updated_at)
   })
 })
 
@@ -171,6 +175,6 @@ describe('productos', () => {
     await db.query("update public.products set name = 'Laptop ligera' where id = $1", [rows[0].id])
     const after = await timestamps('products', rows[0].id)
     expect(after.created_at).toEqual(before.created_at)
-    expect(after.updated_at.getTime()).toBeGreaterThan(before.updated_at.getTime())
+    expect(after.updated_at).toBeGreaterThan(before.updated_at)
   })
 })

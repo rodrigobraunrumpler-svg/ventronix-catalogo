@@ -1,4 +1,5 @@
-# Comprobaciones en cada push a main y en cada pull request. No despliega: eso lo hace Vercel.
+# Comprobaciones en cada push a main y en cada pull request: con el PR de dev a main abierto, cada
+# push a dev pasa por aquí una sola vez. No despliega: eso lo hace Vercel.
 name: CI
 
 on:
