@@ -410,3 +410,47 @@ test('el formulario del producto libre queda alineado y sin desbordarse', async 
   }
   expect(await form.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
 })
+
+// Las fotos subidas en esta prueba (la foto y su miniatura), contadas en la base.
+async function photosSince(since: Date) {
+  const db = await connect()
+  try {
+    const { rows } = await db.query<{ count: string }>(
+      "select count(*) from storage.objects where bucket_id = 'images' and created_at >= $1",
+      [since],
+    )
+    return Number(rows[0].count)
+  } finally {
+    await db.end()
+  }
+}
+
+test('la foto que se quita del producto libre se borra de Storage', async ({ page }) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  const form = panel.getByRole('form', { name: 'Añadir producto libre' })
+  const since = new Date(Date.now() - 1000)
+  await form.getByLabel('Foto').setInputFiles(PHOTO)
+  await expect(form.getByRole('button', { name: 'Quitar foto' })).toBeEnabled()
+  await expect.poll(() => photosSince(since)).toBe(2)
+  await form.getByRole('button', { name: 'Quitar foto' }).click()
+  await expect.poll(() => photosSince(since)).toBe(0)
+
+  // Una proforma sin generar que se reemplaza con «Empezar una nueva» tampoco deja sus fotos.
+  await form.getByLabel('Foto').setInputFiles(PHOTO)
+  await expect(form.getByRole('button', { name: 'Quitar foto' })).toBeEnabled()
+  await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
+  await expect(panel.getByRole('img', { name: 'Foto de Instalación en sitio' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  await page
+    .getByRole('alertdialog', { name: '¿Empezar una proforma nueva?' })
+    .getByRole('button', { name: 'Empezar una nueva' })
+    .click()
+  await expect(panel.getByText(/La proforma está vacía/)).toBeVisible()
+  await expect.poll(() => photosSince(since)).toBe(0)
+})

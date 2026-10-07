@@ -10,9 +10,11 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import { draftStorageKey, readDraft, saveDraft } from '@/lib/drafts'
+import { discardPhotos } from '@/lib/use-photos'
 import {
   draftSchema,
   EMPTY_DRAFT,
+  freeLinePhotos,
   PROFORMA_DRAFT_KEY,
   removeLine,
   restoreLine,
@@ -107,6 +109,27 @@ export function useProforma() {
   return { draft, update: store.update, announce: store.announce }
 }
 
+// Aviso con «Deshacer». Si pasa sin deshacer, las fotos de los productos libres que salieron de la
+// proforma ya no las usa nadie y se borran (la base conserva las que usa una proforma guardada).
+function undoToast(message: string, photos: string[], undo: () => void) {
+  let restored = false
+  const forget = () => {
+    if (!restored && photos.length > 0) void discardPhotos(photos)
+  }
+  toast(message, {
+    duration: UNDO_MS,
+    action: {
+      label: 'Deshacer',
+      onClick: () => {
+        restored = true
+        undo()
+      },
+    },
+    onAutoClose: forget,
+    onDismiss: forget,
+  })
+}
+
 // Quitar una línea no pide confirmación: avisa con «Deshacer» (spec §4.2).
 export function useRemoveLine() {
   const { draft, update } = useProforma()
@@ -115,13 +138,9 @@ export function useRemoveLine() {
     if (index === -1) return
     const line = draft.lines[index]
     update((current) => removeLine(current, id))
-    toast(`Quitaste ${line.name}`, {
-      duration: UNDO_MS,
-      action: {
-        label: 'Deshacer',
-        onClick: () => update((current) => restoreLine(current, line, index)),
-      },
-    })
+    undoToast(`Quitaste ${line.name}`, freeLinePhotos([line]), () =>
+      update((current) => restoreLine(current, line, index)),
+    )
   }
 }
 
@@ -131,9 +150,6 @@ export function useEmptyProforma() {
   return () => {
     const previous = draft
     update(() => EMPTY_DRAFT)
-    toast('Vaciaste la proforma', {
-      duration: UNDO_MS,
-      action: { label: 'Deshacer', onClick: () => update(() => previous) },
-    })
+    undoToast('Vaciaste la proforma', freeLinePhotos(previous.lines), () => update(() => previous))
   }
 }

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { ActionResult } from '@/lib/action-result'
 import { clearDraft, readDraft, saveDraft } from '@/lib/drafts'
 import { thumbPath } from '@/lib/photos'
-import { usePhotoUrl } from '@/lib/use-photos'
+import { discardPhotos, usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
 import { categoryColor } from '../../categories/theme'
 import { formatPrice, unitPriceSchema } from '../../money'
@@ -109,6 +109,12 @@ export function ProductForm({
       setPhotoBusy(false)
     }
   }
+  // Una foto que no es la guardada del producto solo la usa este formulario (o su borrador): si se
+  // cambia, se quita o se descarta el borrador, se borra. La guardada, al guardar el producto sin ella.
+  const savedPhoto = product?.image_path ?? null
+  const dropUnsaved = (path: string | null | undefined) => {
+    if (path && path !== savedPhoto) void discardPhotos([path])
+  }
   const draftKey = productDraftKey(product?.id)
   const base = product?.updated_at ?? null
   // Punto de partida sin borrador: los datos del producto o un alta vacía. «Descartar» vuelve aquí.
@@ -163,6 +169,7 @@ export function ProductForm({
   }, [live, baseline, draftKey, base])
 
   function discard() {
+    dropUnsaved(getValues('image_path'))
     setBaseline(initial)
     reset(initial)
     clearDraft(draftKey)
@@ -174,6 +181,7 @@ export function ProductForm({
       setServerError(null)
       const result = await onSubmit(values)
       if (result.ok) {
+        if (savedPhoto && result.data.image_path !== savedPhoto) void discardPhotos([savedPhoto])
         clearDraft(draftKey)
         setRestored(null)
         if (another) {
@@ -235,7 +243,10 @@ export function ProductForm({
             url={photoUrl}
             alt={`Foto de ${live.name?.trim() || 'tu producto'}`}
             upload={upload}
-            onChange={(path) => setValue('image_path', path, { shouldDirty: true })}
+            onChange={(path) => {
+              dropUnsaved(getValues('image_path'))
+              setValue('image_path', path, { shouldDirty: true })
+            }}
           />
           {errors.image_path ? (
             <p className="text-xs font-medium text-destructive">{errors.image_path.message}</p>

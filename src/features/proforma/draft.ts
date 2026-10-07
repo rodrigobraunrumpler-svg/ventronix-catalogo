@@ -211,6 +211,10 @@ export const setNumber = (
   issuedAt: string,
 ): ProformaDraft => ({ ...draft, number, issuedAt })
 
+// Las fotos de los productos libres: solo las usa la proforma (las del catálogo son del producto).
+export const freeLinePhotos = (lines: ProformaLine[]) =>
+  lines.flatMap((line) => (line.productId === null && line.imagePath ? [line.imagePath] : []))
+
 export const unitCount = (draft: ProformaDraft) =>
   draft.lines.reduce((sum, line) => sum + line.quantity, 0)
 

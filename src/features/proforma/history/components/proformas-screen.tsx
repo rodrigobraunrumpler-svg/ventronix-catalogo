@@ -6,9 +6,10 @@ import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
 import { settle } from '@/lib/action-result'
+import { discardPhotos } from '@/lib/use-photos'
 import { ProformaBar } from '../../components/proforma-bar'
 import { ProformaDialog } from '../../components/proforma-dialog'
-import { EMPTY_DRAFT } from '../../draft'
+import { EMPTY_DRAFT, freeLinePhotos } from '../../draft'
 import { formatCents } from '../../money'
 import { ProformaProvider, useProforma } from '../../store'
 import { totalsFromText } from '../../totals'
@@ -75,6 +76,8 @@ function ProformasContent() {
   }, [data, filters.page, totalPages, setFilters])
 
   function openEmpty() {
+    // Una proforma sin generar que se reemplaza no vuelve: sus fotos de productos libres se borran.
+    if (draft.number === null) void discardPhotos(freeLinePhotos(draft.lines))
     update(() => EMPTY_DRAFT)
     setOpen(true)
   }

@@ -1,10 +1,16 @@
-import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
-import { describe, expect, it, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProformaBar } from '@/features/proforma/components/proforma-bar'
-import { ProformaProvider } from '@/features/proforma/store'
-import { e1Lines, seedProforma } from '../support/proforma'
+import { ProformaProvider, UNDO_MS } from '@/features/proforma/store'
+import { discardPhotos } from '@/lib/use-photos'
+import { e1Lines, freeLine, seedProforma } from '../support/proforma'
+
+vi.mock('@/lib/use-photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/use-photos')>()),
+  discardPhotos: vi.fn(),
+}))
 
 function renderBar() {
   const onComplete = vi.fn()
@@ -48,4 +54,19 @@ describe('ProformaBar', () => {
     await user.click(await screen.findByRole('button', { name: 'Deshacer' }))
     expect(bar()).toHaveTextContent('S/ 8,114.00')
   })
+
+  it('al pasar «Deshacer» de «Vaciar», borra las fotos de los productos libres', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const free = 'lines/11111111-1111-4111-8111-111111111111.jpg'
+    seedProforma({ lines: [...e1Lines, freeLine({ imagePath: free })] })
+    const { user } = renderBar()
+    await user.click(screen.getByRole('button', { name: 'Vaciar' }))
+    expect(discardPhotos).not.toHaveBeenCalled()
+    await act(async () => {
+      vi.advanceTimersByTime(UNDO_MS + 1000)
+    })
+    expect(discardPhotos).toHaveBeenCalledWith([free])
+  })
 })
+
+afterEach(() => vi.useRealTimers())

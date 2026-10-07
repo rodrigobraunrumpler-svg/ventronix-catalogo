@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Toaster } from 'sonner'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ProformaEditor,
   type ProformaEditorProps,
@@ -12,9 +12,15 @@ import type { DocumentInput, GeneratedDocument } from '@/features/proforma/docum
 import { EMPTY_DRAFT } from '@/features/proforma/draft'
 import type { ClientMatch } from '@/features/proforma/history/queries'
 import type { RucLookupResult } from '@/features/proforma/ruc'
-import { ProformaProvider } from '@/features/proforma/store'
+import { ProformaProvider, UNDO_MS } from '@/features/proforma/store'
 import type { ActionResult } from '@/lib/action-result'
+import { discardPhotos } from '@/lib/use-photos'
 import { completeCompany, e1Lines, freeLine, line, seedProforma } from '../support/proforma'
+
+vi.mock('@/lib/use-photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/use-photos')>()),
+  discardPhotos: vi.fn(),
+}))
 
 type Lookup = (ruc: string) => Promise<RucLookupResult>
 type Generate = (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
@@ -126,6 +132,93 @@ describe('ProformaEditor', () => {
       expect(add).toBeDisabled()
       await act(async () => finish('lines/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'))
       expect(add).toBeEnabled()
+    })
+
+    describe('borrar las fotos que no se usan', () => {
+      const first = 'lines/11111111-1111-4111-8111-111111111111.jpg'
+      const second = 'lines/22222222-2222-4222-8222-222222222222.jpg'
+      const twoUploads = () =>
+        vi
+          .fn<(file: File) => Promise<string>>()
+          .mockResolvedValueOnce(first)
+          .mockResolvedValueOnce(second)
+      const png = (name: string) => new File([name], name, { type: 'image/png' })
+
+      beforeEach(() => {
+        vi.mocked(discardPhotos).mockClear()
+        URL.createObjectURL = vi.fn(() => 'blob:foto')
+        URL.revokeObjectURL = vi.fn()
+      })
+      afterEach(() => vi.useRealTimers())
+
+      async function openFreeForm(user: ReturnType<typeof userEvent.setup>) {
+        await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
+        return within(screen.getByRole('form', { name: 'Añadir producto libre' }))
+      }
+
+      it('cambiar o quitar la foto del producto libre borra la que se había subido', async () => {
+        seedProforma({})
+        const { user } = renderEditor({ uploadPhoto: twoUploads() })
+        const form = await openFreeForm(user)
+        await user.upload(form.getByLabelText('Foto'), png('a.png'))
+        await vi.waitFor(() =>
+          expect(form.getByRole('button', { name: 'Quitar foto' })).toBeEnabled(),
+        )
+        await user.upload(form.getByLabelText('Foto'), png('b.png'))
+        await vi.waitFor(() => expect(discardPhotos).toHaveBeenCalledWith([first]))
+        await user.click(form.getByRole('button', { name: 'Quitar foto' }))
+        expect(discardPhotos).toHaveBeenLastCalledWith([second])
+      })
+
+      it('al añadirlo conserva su foto; al cerrar sin añadir, borra la que se subió', async () => {
+        seedProforma({})
+        const { user } = renderEditor({ uploadPhoto: twoUploads() })
+        const form = await openFreeForm(user)
+        await user.upload(form.getByLabelText('Foto'), png('a.png'))
+        await vi.waitFor(() =>
+          expect(form.getByRole('button', { name: 'Quitar foto' })).toBeEnabled(),
+        )
+        await user.type(form.getByLabelText('Descripción'), 'Instalación en sitio')
+        await user.type(form.getByLabelText('Precio con IGV (S/)'), '350')
+        await user.click(form.getByRole('button', { name: 'Añadir a la proforma' }))
+        await user.upload(form.getByLabelText('Foto'), png('b.png'))
+        await vi.waitFor(() =>
+          expect(form.getByRole('button', { name: 'Quitar foto' })).toBeEnabled(),
+        )
+        await user.click(form.getByRole('button', { name: 'Cerrar' }))
+        expect(discardPhotos).toHaveBeenCalledTimes(1)
+        expect(discardPhotos).toHaveBeenCalledWith([second])
+      })
+
+      it('quitar una línea libre borra su foto al pasar «Deshacer»; la del catálogo, nunca', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        seedProforma({
+          lines: [freeLine({ imagePath: first }), line({ imagePath: photo })],
+          client: withClient,
+        })
+        const { user } = renderEditor()
+        await user.click(screen.getByRole('button', { name: 'Quitar Laptop de 14 pulgadas' }))
+        await user.click(screen.getByRole('button', { name: 'Quitar Instalación en sitio' }))
+        expect(discardPhotos).not.toHaveBeenCalled()
+        await act(async () => {
+          vi.advanceTimersByTime(UNDO_MS + 1000)
+        })
+        expect(discardPhotos).toHaveBeenCalledWith([first])
+        expect(discardPhotos).not.toHaveBeenCalledWith([photo])
+      })
+
+      it('con «Deshacer», la línea libre vuelve con su foto y no se borra', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        seedProforma({ lines: [freeLine({ imagePath: first })], client: withClient })
+        const { user } = renderEditor()
+        await user.click(screen.getByRole('button', { name: 'Quitar Instalación en sitio' }))
+        await user.click(await screen.findByRole('button', { name: 'Deshacer' }))
+        await act(async () => {
+          vi.advanceTimersByTime(UNDO_MS + 1000)
+        })
+        expect(discardPhotos).not.toHaveBeenCalled()
+        expect(screen.getByLabelText('Cantidad de Instalación en sitio')).toBeVisible()
+      })
     })
 
     it('sin fotos no aparece el interruptor', () => {

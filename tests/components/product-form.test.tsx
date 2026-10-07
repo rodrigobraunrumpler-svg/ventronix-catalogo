@@ -1,10 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProductForm } from '@/features/catalog/products/components/product-form'
 import type { CategoryOption, Product, ProductListItem } from '@/features/catalog/types'
 import type { ActionResult } from '@/lib/action-result'
+import { discardPhotos } from '@/lib/use-photos'
+
+vi.mock('@/lib/use-photos', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/use-photos')>()),
+  discardPhotos: vi.fn(),
+}))
 
 const categories: CategoryOption[] = [
   { id: '6f1c2a7e-3b4d-4c5e-8f9a-0b1c2d3e4f5a', name: 'Impresoras' },
@@ -260,5 +266,60 @@ describe('ProductForm', () => {
     await user.click(button)
     expect(onSubmit).toHaveBeenCalledTimes(1)
     finish({ ok: true, data: saved })
+  })
+})
+
+describe('fotos que no se guardan', () => {
+  const first = 'products/11111111-1111-4111-8111-111111111111.jpg'
+  const second = 'products/22222222-2222-4222-8222-222222222222.jpg'
+  const png = (name: string) => new File([name], name, { type: 'image/png' })
+
+  beforeEach(() => {
+    vi.mocked(discardPhotos).mockClear()
+    URL.createObjectURL = vi.fn(() => 'blob:foto')
+    URL.revokeObjectURL = vi.fn()
+  })
+
+  it('cambiar o quitar una foto que aún no se guardó la borra', async () => {
+    const uploadPhoto = vi
+      .fn<(file: File) => Promise<string>>()
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce(second)
+    const { user } = renderForm({ uploadPhoto })
+    await user.upload(screen.getByLabelText('Foto'), png('a.png'))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Quitar foto' })).toBeEnabled(),
+    )
+    await user.upload(screen.getByLabelText('Foto'), png('b.png'))
+    await vi.waitFor(() => expect(discardPhotos).toHaveBeenCalledWith([first]))
+    await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
+    expect(discardPhotos).toHaveBeenLastCalledWith([second])
+  })
+
+  it('la foto guardada del producto se borra recién al guardarlo sin ella', async () => {
+    const product: ProductListItem = { ...saved, category_name: 'Laptops', image_path: first }
+    const onSubmit = vi.fn(async (): Promise<ActionResult<Product>> => ({
+      ok: true,
+      data: { ...saved, image_path: null },
+    }))
+    const { user } = renderForm({ product, onSubmit })
+    await user.click(screen.getByRole('button', { name: 'Quitar foto' }))
+    expect(discardPhotos).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await vi.waitFor(() => expect(discardPhotos).toHaveBeenCalledWith([first]))
+  })
+
+  it('«Descartar» el borrador borra la foto que se había subido', async () => {
+    const product: ProductListItem = { ...saved, category_name: 'Laptops' }
+    const { user } = renderForm({ product, uploadPhoto: vi.fn(async () => first) })
+    await user.upload(screen.getByLabelText('Foto'), png('a.png'))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Quitar foto' })).toBeEnabled(),
+    )
+    cleanup()
+    expect(discardPhotos).not.toHaveBeenCalled()
+    const reopened = renderForm({ product })
+    await reopened.user.click(screen.getByRole('button', { name: 'Descartar' }))
+    expect(discardPhotos).toHaveBeenCalledWith([first])
   })
 })

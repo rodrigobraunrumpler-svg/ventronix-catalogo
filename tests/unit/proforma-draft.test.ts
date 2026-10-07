@@ -5,6 +5,7 @@ import {
   applyCatalogPrice,
   draftSchema,
   EMPTY_DRAFT,
+  freeLinePhotos,
   patchClient,
   removeLine,
   restoreLine,
@@ -168,5 +169,28 @@ describe('productos libres', () => {
     const parsed = draftSchema.parse(old)
     expect(parsed.lines[0]).toMatchObject({ id: 'p1', productId: 'p1', imagePath: null })
     expect(parsed.includePhotos).toBe(true)
+  })
+})
+
+describe('fotos de los productos libres', () => {
+  it('solo cuentan las de los productos libres, no las del catálogo', () => {
+    const free = 'lines/11111111-1111-4111-8111-111111111111.jpg'
+    const catalog = 'products/22222222-2222-4222-8222-222222222222.jpg'
+    let draft = addProduct(EMPTY_DRAFT, { ...laptop, image_path: catalog })
+    draft = addFreeLine(draft, {
+      code: '',
+      name: 'Instalación',
+      unitPrice: '350',
+      quantity: 1,
+      imagePath: free,
+    })
+    draft = addFreeLine(draft, {
+      code: '',
+      name: 'Cable',
+      unitPrice: '25',
+      quantity: 1,
+      imagePath: null,
+    })
+    expect(freeLinePhotos(draft.lines)).toEqual([free])
   })
 })

@@ -1,14 +1,14 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { PhotoField } from '@/components/photo-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { thumbPath } from '@/lib/photos'
-import { usePhotoUrl } from '@/lib/use-photos'
+import { discardPhotos, usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
 import { addFreeLine, freeLineSchema, type FreeLineValues } from '../draft'
 import { useProforma } from '../store'
@@ -78,6 +78,7 @@ export function FreeLineForm({
   const {
     register,
     control,
+    getValues,
     setValue,
     handleSubmit,
     reset,
@@ -85,6 +86,15 @@ export function FreeLineForm({
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(freeLineSchema), defaultValues: EMPTY })
   const imagePath = useWatch({ control, name: 'imagePath' })
+  // La foto subida y no añadida a la proforma no la usa nadie: al cambiarla, quitarla o cerrar el
+  // formulario, se borra. Al añadir el producto, el formulario se vacía y la foto queda en su línea.
+  useEffect(
+    () => () => {
+      const pending = getValues('imagePath')
+      if (pending) void discardPhotos([pending])
+    },
+    [getValues],
+  )
   const photoUrl = usePhotoUrl(imagePath ? thumbPath(imagePath) : null)
 
   const add = handleSubmit((values) => {
@@ -174,7 +184,11 @@ export function FreeLineForm({
             url={photoUrl}
             alt="Foto del producto libre"
             upload={upload}
-            onChange={(path) => setValue('imagePath', path)}
+            onChange={(path) => {
+              const previous = getValues('imagePath')
+              if (previous) void discardPhotos([previous])
+              setValue('imagePath', path)
+            }}
           />
         </div>
       </div>

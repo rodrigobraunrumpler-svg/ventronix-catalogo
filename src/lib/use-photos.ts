@@ -58,6 +58,17 @@ export async function uploadPhoto(folder: PhotoFolder, file: File) {
   return path
 }
 
+// Borra fotos que ya no se usan, con sus miniaturas. La base solo deja borrar las que no usa ningún
+// producto ni ninguna proforma guardada; si no se puede, la foto se queda sin avisar: no es un error
+// de quien usa la app.
+export async function discardPhotos(paths: string[]) {
+  if (paths.length === 0) return
+  await createClient()
+    .storage.from(PHOTO_BUCKET)
+    .remove(paths.flatMap((path) => [path, thumbPath(path)]))
+    .catch(() => undefined)
+}
+
 // URL firmada de una hora para ver una foto del bucket privado. Una consulta por foto: añadir una
 // línea no vuelve a pedir ni a descargar las demás (plan, decisión 11).
 export function usePhotoUrl(path: string | null) {
