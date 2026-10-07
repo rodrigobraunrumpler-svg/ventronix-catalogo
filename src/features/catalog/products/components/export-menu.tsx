@@ -23,11 +23,43 @@ const OPTIONS: { format: ExportFormat; title: string; help: string }[] = [
   },
 ]
 
+const NOTHING_TO_DOWNLOAD = 'No hay productos para descargar con estos filtros.'
+
 // «Descargar Excel» (spec del Excel §5.1): lo filtrado y en el orden de la lista. Muestra «Excel»
 // para que la cabecera quepa en una línea en un laptop; el nombre completo va en aria-label y title.
 export function ExportMenu({ filters, disabled }: { filters: ExportFilters; disabled: boolean }) {
   const [pending, setPending] = useState(false)
   const name = pending ? 'Preparando Excel…' : 'Descargar Excel'
+
+  const content = (
+    <>
+      {pending ? (
+        <LoaderCircle className="animate-spin" aria-hidden />
+      ) : (
+        <FileSpreadsheet aria-hidden />
+      )}
+      <span className="max-sm:hidden">{pending ? 'Preparando…' : 'Excel'}</span>
+      <ChevronDown aria-hidden />
+    </>
+  )
+
+  // Sin productos que descargar se ve desactivado y explica por qué (al pasar el mouse, al pulsarlo
+  // y a los lectores de pantalla), sin abrir el menú. Con `disabled`, el texto no se veía.
+  if (disabled) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label={name}
+        aria-disabled
+        title={NOTHING_TO_DOWNLOAD}
+        className="cursor-not-allowed opacity-50"
+        onClick={() => toast(NOTHING_TO_DOWNLOAD)}
+      >
+        {content}
+      </Button>
+    )
+  }
 
   async function download(format: ExportFormat) {
     setPending(true)
@@ -54,20 +86,9 @@ export function ExportMenu({ filters, disabled }: { filters: ExportFilters; disa
 
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild disabled={disabled || pending}>
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={name}
-          title={disabled ? 'No hay productos para descargar con estos filtros.' : name}
-        >
-          {pending ? (
-            <LoaderCircle className="animate-spin" aria-hidden />
-          ) : (
-            <FileSpreadsheet aria-hidden />
-          )}
-          <span className="max-sm:hidden">{pending ? 'Preparando…' : 'Excel'}</span>
-          <ChevronDown aria-hidden />
+      <DropdownMenu.Trigger asChild disabled={pending}>
+        <Button variant="outline" size="sm" aria-label={name} title={name}>
+          {content}
         </Button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

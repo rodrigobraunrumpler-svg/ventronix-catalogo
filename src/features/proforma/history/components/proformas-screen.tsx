@@ -13,6 +13,7 @@ import { ProformaProvider, useProforma } from '../../store'
 import { totalsFromText } from '../../totals'
 import { useHistoryFilters, useProformaHistory, useStoredDocument } from '../hooks'
 import { HISTORY_PAGE_SIZE } from '../queries'
+import { HistoryExcelButton } from './history-excel-button'
 import { HistoryFilters } from './history-filters'
 import { HistoryLoading, HistoryResults } from './history-results'
 import { NewProformaPrompt } from './new-proforma-prompt'
@@ -92,6 +93,21 @@ function ProformasContent() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <HistoryExcelButton
+            filters={{
+              search: filters.search,
+              date: filters.date,
+              from: filters.from,
+              to: filters.to,
+            }}
+            unavailable={
+              data?.all === 0
+                ? 'Todavía no hay proformas para descargar.'
+                : data?.total === 0
+                  ? 'No hay proformas para descargar con estos filtros.'
+                  : null
+            }
+          />
           <Button onClick={startNew}>
             <Plus aria-hidden />
             Nueva proforma

@@ -1,5 +1,9 @@
 import 'server-only'
-import type { Row, Workbook, Worksheet } from 'exceljs'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { format } from 'date-fns'
+import { formatDate, lima } from '@/lib/dates'
+import type { CellValue, Font, Row, Workbook, Worksheet } from 'exceljs'
 
 // Colores de la app (globals.css) en ARGB, para que los Excel se vean de la marca.
 export const COLORS = {
@@ -53,4 +57,56 @@ export function addLogo(workbook: Workbook, sheet: Worksheet, logo: Buffer | nul
   if (!logo) return
   const image = workbook.addImage({ buffer: new Uint8Array(logo).buffer, extension: 'jpeg' })
   sheet.addImage(image, { tl: { col: 0, row: 0 }, ext: { width: 150, height: 85 } })
+}
+
+// La tabla de los reportes empieza aquí: arriba van el logotipo y la cabecera (spec del Excel §5.2).
+export const REPORT_TABLE_ROW = 8
+
+// Se incluye en las funciones de /products, /products/import y /proformas (next.config.ts).
+const REPORT_LOGO = path.join(process.cwd(), 'public/brand/ventronix-logo-proforma.jpg')
+export const readReportLogo = () => readFile(REPORT_LOGO).catch(() => null)
+
+// 10000 → «10 000», como en los textos de la spec.
+export const spaced = (count: number) => String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+
+export type ReportHeader = {
+  logo: Buffer | null
+  companyName: string
+  title: string
+  generatedAt: Date
+  filtersText: string
+  countText: string
+  viewUrl: string | null
+  truncatedText: string | null
+}
+
+// Cabecera de los reportes (spec del Excel §5.2): empresa, título, fecha y hora de Lima, filtros,
+// cuántas filas, el enlace a la misma vista y, si se recortó, el aviso.
+export function writeReportHeader(workbook: Workbook, sheet: Worksheet, header: ReportHeader) {
+  addLogo(workbook, sheet, header.logo)
+  const put = (address: string, value: CellValue, font: Partial<Font>) => {
+    const cell = sheet.getCell(address)
+    cell.value = value
+    cell.font = { name: FONT, ...font }
+  }
+  const muted = { size: 10, color: { argb: COLORS.muted } }
+  put('C1', header.companyName, { size: 16, bold: true, color: { argb: COLORS.ink } })
+  put('C2', header.title, { size: 13, bold: true, color: { argb: COLORS.link } })
+  put(
+    'C3',
+    `Generado el ${formatDate(header.generatedAt)} a las ${format(header.generatedAt, 'HH:mm', { in: lima })} (hora de Lima)`,
+    muted,
+  )
+  put('C4', header.filtersText, muted)
+  put('C5', header.countText, { size: 11, bold: true, color: { argb: COLORS.ink } })
+  if (header.viewUrl) {
+    put(
+      'C6',
+      { text: 'Abrir esta vista en la app', hyperlink: header.viewUrl },
+      { size: 10, underline: true, color: { argb: COLORS.link } },
+    )
+  }
+  if (header.truncatedText) {
+    put('C7', header.truncatedText, { size: 10, bold: true, color: { argb: COLORS.warning } })
+  }
 }

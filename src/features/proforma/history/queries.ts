@@ -74,3 +74,17 @@ export async function listProformas(
     thisMonth: page.this_month,
   }
 }
+
+// Todo lo filtrado para el Excel (spec §6). Quien llama pide una de más para saber si hubo recorte.
+export async function exportProformaRows(
+  supabase: Client,
+  query: Omit<HistoryQuery, 'page'>,
+  maxRows: number,
+): Promise<ProformaRow[]> {
+  const { data, error } = await supabase.rpc('export_proformas', {
+    ...historyArgs(query),
+    max_rows: maxRows,
+  })
+  if (error) throw error
+  return z.array(rowSchema).parse(data)
+}

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterAll, afterEach } from 'vitest'
 
 // jsdom no implementa la captura del puntero; Sonner la usa al pulsar un aviso (por ejemplo,
 // «Deshacer»).
@@ -21,3 +21,7 @@ afterEach(() => {
   cleanup()
   localStorage.clear()
 })
+
+// Sonner retira un aviso cerrado 200 ms después y no cancela ese temporizador al desmontarse. Se
+// espera antes de cerrar jsdom: si saltara sin `window`, Vitest lo contaría como error.
+afterAll(() => new Promise((resolve) => setTimeout(resolve, 250)))

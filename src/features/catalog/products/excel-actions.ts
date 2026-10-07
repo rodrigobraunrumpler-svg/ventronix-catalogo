@@ -1,13 +1,11 @@
 'use server'
 
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { headers } from 'next/headers'
 import { z } from 'zod'
 import { getCompanyProfile } from '@/features/company/queries'
 import type { ActionResult } from '@/lib/action-result'
 import { withOwner } from '@/lib/auth/with-owner'
+import { appUrl } from '@/lib/request-url'
 import type { Database } from '@/lib/supabase/database.types'
 import { failure, invalid } from '../action-errors'
 import { listCategoryOptions } from '../categories/queries'
@@ -22,25 +20,12 @@ import {
   type ExportFormat,
 } from '../excel/export-request'
 import { readImportRequest } from '../excel/import-request'
+import { readReportLogo } from '../excel/theme'
 import type { DownloadedFile, ImportOutcome, ImportPreview } from '../import/types'
 import { resolveDateRange } from '../list-options'
 import { exportProductRows } from './queries'
 
 export type ExcelFile = { base64: string; fileName: string; count: number; truncated: boolean }
-
-// Se incluye en las funciones de /products y /products/import (next.config.ts,
-// outputFileTracingIncludes).
-const LOGO = path.join(process.cwd(), 'public/brand/ventronix-logo-proforma.jpg')
-
-// Dirección de la app para «Abrir esta vista en la app», tomada de la petición (spec §5.2).
-async function viewUrl(pathAndQuery: string) {
-  const list = await headers()
-  const host = list.get('x-forwarded-host') ?? list.get('host')
-  if (!host) return null
-  const protocol =
-    list.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
-  return `${protocol}://${host}${pathAndQuery}`
-}
 
 // «Descargar Excel» (spec del Excel §5): lo filtrado, en el orden de la lista. ExcelJS se carga
 // solo aquí, con import(), para no frenar el arranque de la página.
@@ -87,10 +72,7 @@ export async function exportProducts(
           .maybeSingle()
       : null
     const categoryName = category?.data?.name ?? null
-    const [company, logo] = await Promise.all([
-      getCompanyProfile(supabase),
-      readFile(LOGO).catch(() => null),
-    ])
+    const [company, logo] = await Promise.all([getCompanyProfile(supabase), readReportLogo()])
 
     const buffer =
       kind.data === 'report'
@@ -102,7 +84,7 @@ export async function exportProducts(
             logo,
             generatedAt: now,
             filtersText: describeExportFilters(parsed.data, categoryName),
-            viewUrl: await viewUrl(exportViewPath(parsed.data)),
+            viewUrl: await appUrl(exportViewPath(parsed.data)),
             truncatedAt: truncated ? EXPORT_MAX_ROWS : null,
           })
         : await (

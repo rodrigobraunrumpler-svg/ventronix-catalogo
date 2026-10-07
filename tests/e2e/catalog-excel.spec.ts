@@ -79,4 +79,11 @@ test('sin productos que descargar, el botón queda desactivado', async ({ page }
   await page.goto('/products?search=nada-que-coincida')
   await expect(page.getByText('No encontramos productos')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Descargar Excel' })).toBeDisabled()
+  const excel = page.getByRole('button', { name: 'Descargar Excel' })
+  await expect(excel).toHaveAccessibleDescription(
+    'No hay productos para descargar con estos filtros.',
+  )
+  // Con aria-disabled, Playwright no lo pulsa sin force; una persona sí puede pulsarlo.
+  await excel.click({ force: true })
+  await expect(page.getByText('No hay productos para descargar con estos filtros.')).toBeVisible()
 })

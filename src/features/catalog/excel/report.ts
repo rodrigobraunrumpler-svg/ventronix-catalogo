@@ -1,21 +1,24 @@
 import 'server-only'
-import { format } from 'date-fns'
 import ExcelJS from 'exceljs'
-import { formatDate, lima } from '@/lib/dates'
 import { limaDay } from '../list-options'
 import { priceColumns } from '../price-columns'
 import type { ProductListItem } from '../types'
 import { summarizeByCategory } from './category-summary'
 import {
-  addLogo,
   COLORS,
   DATE_FORMAT,
   excelDay,
   FONT,
   MONEY_FORMAT,
+  REPORT_TABLE_ROW,
+  spaced,
   styleBodyRow,
   styleHeaderRow,
+  writeReportHeader,
 } from './theme'
+
+// Quien ya lo importaba de aquí lo sigue encontrando.
+export { REPORT_TABLE_ROW }
 
 export type ReportInput = {
   rows: ProductListItem[]
@@ -25,54 +28,6 @@ export type ReportInput = {
   filtersText: string
   viewUrl: string | null
   truncatedAt: number | null
-}
-
-// La tabla empieza aquí: arriba van el logotipo y la cabecera (spec del Excel §5.2).
-export const REPORT_TABLE_ROW = 8
-
-// 10000 → «10 000», como en los textos de la spec.
-const spaced = (count: number) => String(count).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
-
-function writeHeader(workbook: ExcelJS.Workbook, sheet: ExcelJS.Worksheet, input: ReportInput) {
-  addLogo(workbook, sheet, input.logo)
-  const put = (address: string, value: ExcelJS.CellValue, font: Partial<ExcelJS.Font>) => {
-    const cell = sheet.getCell(address)
-    cell.value = value
-    cell.font = { name: FONT, ...font }
-  }
-  const total = input.rows.length
-  const muted = { size: 10, color: { argb: COLORS.muted } }
-  put('C1', input.companyName ?? 'Catálogo de productos', {
-    size: 16,
-    bold: true,
-    color: { argb: COLORS.ink },
-  })
-  put('C2', 'Reporte de productos', { size: 13, bold: true, color: { argb: COLORS.link } })
-  put(
-    'C3',
-    `Generado el ${formatDate(input.generatedAt)} a las ${format(input.generatedAt, 'HH:mm', { in: lima })} (hora de Lima)`,
-    muted,
-  )
-  put('C4', input.filtersText, muted)
-  put('C5', `${spaced(total)} ${total === 1 ? 'producto' : 'productos'}`, {
-    size: 11,
-    bold: true,
-    color: { argb: COLORS.ink },
-  })
-  if (input.viewUrl) {
-    put(
-      'C6',
-      { text: 'Abrir esta vista en la app', hyperlink: input.viewUrl },
-      { size: 10, underline: true, color: { argb: COLORS.link } },
-    )
-  }
-  if (input.truncatedAt !== null) {
-    put('C7', `Este reporte muestra los primeros ${spaced(input.truncatedAt)} productos.`, {
-      size: 10,
-      bold: true,
-      color: { argb: COLORS.warning },
-    })
-  }
 }
 
 function writeSummary(workbook: ExcelJS.Workbook, rows: ProductListItem[]) {
@@ -147,7 +102,20 @@ export async function buildProductsReport(input: ReportInput): Promise<Buffer> {
     },
   })
   sheet.columns = widths.map((width) => ({ width }))
-  writeHeader(workbook, sheet, input)
+  const count = input.rows.length
+  writeReportHeader(workbook, sheet, {
+    logo: input.logo,
+    companyName: input.companyName ?? 'Catálogo de productos',
+    title: 'Reporte de productos',
+    generatedAt: input.generatedAt,
+    filtersText: input.filtersText,
+    countText: `${spaced(count)} ${count === 1 ? 'producto' : 'productos'}`,
+    viewUrl: input.viewUrl,
+    truncatedText:
+      input.truncatedAt === null
+        ? null
+        : `Este reporte muestra los primeros ${spaced(input.truncatedAt)} productos.`,
+  })
 
   const header = sheet.getRow(REPORT_TABLE_ROW)
   header.values = headers
