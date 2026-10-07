@@ -101,3 +101,48 @@ test('cambia el mensaje de WhatsApp y lo conserva', async ({ page }) => {
     'Buen día, {cliente}. Adjunto la proforma {numero}',
   )
 })
+
+test('en el teléfono, cada pestaña de Empresa se lee entera, con su marca, sin pisar a las demás', async ({
+  page,
+}) => {
+  test.skip(page.viewportSize()!.width >= 640, 'En PC las pestañas van en una fila con espacio.')
+  const db = await connect()
+  try {
+    await fillCompanyProfile(db)
+  } finally {
+    await db.end()
+  }
+  await login(page)
+  await page.getByRole('link', { name: 'Empresa' }).click()
+  const tabs = page.getByRole('tablist', { name: 'Secciones de los datos de la empresa' })
+  await expect(tabs.getByRole('tab', { name: /Contacto.*completo/ })).toBeVisible()
+  for (const width of [320, 360, 370, 390]) {
+    await page.setViewportSize({ width, height: 800 })
+    const clashes = await tabs.evaluate((list) => {
+      const boxes = [...list.querySelectorAll('[role="tab"]')].map((tab) => {
+        // Lo que se ve de cada pestaña: su ícono, su nombre y su marca (✓ o errores).
+        const parts = [...tab.querySelectorAll('svg, span')]
+          .filter((element) => !element.classList.contains('sr-only'))
+          .map((element) => element.getBoundingClientRect())
+          .filter((rect) => rect.width > 0)
+        return {
+          tab: tab.getBoundingClientRect(),
+          left: Math.min(...parts.map((rect) => rect.left)),
+          right: Math.max(...parts.map((rect) => rect.right)),
+        }
+      })
+      return boxes.flatMap((box, index) =>
+        [
+          box.left < box.tab.left - 0.5 || box.right > box.tab.right + 0.5
+            ? `la pestaña ${index + 1} se sale`
+            : null,
+          index > 0 && box.tab.left < boxes[index - 1].tab.right - 0.5
+            ? `la pestaña ${index + 1} pisa a la anterior`
+            : null,
+        ].filter((clash) => clash !== null),
+      )
+    })
+    expect(clashes, `a ${width} px`).toEqual([])
+    expect(await tabs.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
+  }
+})

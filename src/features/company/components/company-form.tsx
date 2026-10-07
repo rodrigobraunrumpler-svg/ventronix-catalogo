@@ -64,6 +64,32 @@ const SECTIONS = [
 
 type Section = (typeof SECTIONS)[number]['value']
 
+// Marca de cada pestaña: cuántos campos por revisar o, si está completa, ✓.
+function SectionMark({
+  count,
+  complete,
+  className,
+}: {
+  count: number
+  complete: boolean
+  className?: string
+}) {
+  if (count > 0) {
+    return (
+      <span
+        aria-hidden
+        className={cn(
+          'grid h-4.5 min-w-4.5 place-items-center rounded-full bg-destructive px-1 text-[11px] font-bold text-white',
+          className,
+        )}
+      >
+        {count}
+      </span>
+    )
+  }
+  return complete ? <Check className={cn('size-3.5 text-ring', className)} aria-hidden /> : null
+}
+
 const SCALAR_FIELDS = [
   'legal_name',
   'trade_name',
@@ -316,7 +342,7 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
         >
           <Tabs.List
             aria-label="Secciones de los datos de la empresa"
-            className="grid grid-cols-5 border-b sm:flex sm:px-2"
+            className="flex border-b sm:px-2"
           >
             {SECTIONS.map((section) => {
               const Icon = section.icon
@@ -325,28 +351,30 @@ export function CompanyForm({ profile, onSubmit, onSaved, lookupRuc, aside }: Co
                 <Tabs.Trigger
                   key={section.value}
                   value={section.value}
-                  className="relative flex h-15 flex-col items-center justify-center gap-1 px-1 text-xs font-semibold text-muted-foreground transition-colors outline-none after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-[state=active]:text-foreground data-[state=active]:after:bg-primary sm:h-12 sm:flex-row sm:gap-2 sm:px-3.5 sm:text-sm"
+                  className="relative flex h-15 flex-1 flex-col items-center justify-center gap-1 px-1 text-xs font-semibold max-[359px]:px-0.5 max-[359px]:text-[11px] text-muted-foreground transition-colors outline-none after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-[state=active]:text-foreground data-[state=active]:after:bg-primary sm:h-12 sm:flex-none sm:flex-row sm:gap-2 sm:px-3.5 sm:text-sm"
                 >
-                  <Icon className="size-4" aria-hidden />
-                  <span className="inline-flex items-center gap-1.5">
+                  {/* En el teléfono, la marca va sobre el ícono: así cada nombre cabe entero. */}
+                  <span className="relative">
+                    <Icon className="size-4" aria-hidden />
+                    <SectionMark
+                      count={count}
+                      complete={complete[section.value]}
+                      className="absolute -top-1.5 left-3 sm:hidden"
+                    />
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                     {section.label}
+                    <SectionMark
+                      count={count}
+                      complete={complete[section.value]}
+                      className="max-sm:hidden"
+                    />
                     {count > 0 ? (
-                      <>
-                        <span
-                          aria-hidden
-                          className="grid h-4.5 min-w-4.5 place-items-center rounded-full bg-destructive px-1 text-[11px] font-bold text-white"
-                        >
-                          {count}
-                        </span>
-                        <span className="sr-only">
-                          , {count} {count === 1 ? 'campo' : 'campos'} por revisar
-                        </span>
-                      </>
+                      <span className="sr-only">
+                        , {count} {count === 1 ? 'campo' : 'campos'} por revisar
+                      </span>
                     ) : complete[section.value] ? (
-                      <>
-                        <Check className="size-3.5 text-ring" aria-hidden />
-                        <span className="sr-only">, completo</span>
-                      </>
+                      <span className="sr-only">, completo</span>
                     ) : null}
                   </span>
                 </Tabs.Trigger>
