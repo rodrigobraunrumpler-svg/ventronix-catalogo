@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckCheck } from 'lucide-react'
 import { useRef } from 'react'
 import type { UseFormRegisterReturn } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
@@ -54,103 +55,120 @@ export function MessageEditor({ field, value, error, sender, onChange }: Message
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="grid gap-3">
-        <div className="grid gap-1">
-          <h3 className="text-sm font-semibold text-foreground">Mensaje al enviar por WhatsApp</h3>
-          <p className="text-sm text-muted-foreground">
-            Acompaña al PDF cuando lo envías y cuando lo reenvías desde el historial.
-          </p>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="company-message" className="text-sm font-medium text-foreground">
-            Texto del mensaje
-          </Label>
-          <Textarea
-            id="company-message"
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'company-message-error' : 'company-message-help'}
-            maxLength={WHATSAPP_MESSAGE_LIMIT}
-            className="min-h-28 bg-card px-3 leading-normal"
-            {...field}
-            ref={(element) => {
-              field.ref(element)
-              textarea.current = element
-            }}
-          />
-        </div>
-        <div role="group" aria-label="Insertar dato" className="flex flex-wrap items-center gap-2">
-          <span aria-hidden className="text-[13px] text-muted-foreground">
-            Insertar dato:
-          </span>
-          {MESSAGE_FIELDS.map((item) => (
-            <Button
-              key={item.token}
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => insert(item.token)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
-        {error ? (
-          <p id="company-message-error" className="text-xs font-medium text-destructive">
-            {error}
-          </p>
-        ) : (
-          <p
-            id="company-message-help"
-            className="flex flex-wrap justify-between gap-2 text-[13px] text-muted-foreground"
-          >
-            <span>Los datos entre llaves se reemplazan solos al enviar.</span>
-            <span className="tabular-nums">
-              {value.length} / {WHATSAPP_MESSAGE_LIMIT}
-            </span>
-          </p>
-        )}
-        {unknown.length > 0 ? (
-          <p role="status" className="text-xs font-medium text-amber-800">
-            {listFormat.format(unknown)}{' '}
-            {unknown.length === 1 ? 'no es un dato y se enviará' : 'no son datos y se enviarán'} tal
-            cual. Usa los botones para insertar los datos.
-          </p>
-        ) : null}
-        <button
-          type="button"
-          className="justify-self-start text-[13px] font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3"
-          onClick={() => onChange(DEFAULT_WHATSAPP_MESSAGE)}
-        >
-          Volver al mensaje original
-        </button>
-      </div>
-
-      <figure className="grid gap-2.5">
-        <figcaption className="text-[13px] font-semibold text-muted-foreground">
-          Así lo recibe el cliente
-        </figcaption>
-        <div className="grid justify-items-end rounded-[14px] bg-[#e9e4dc] p-4">
-          <div className="grid max-w-[300px] gap-2 rounded-[10px] rounded-br-sm bg-[#d9fdd3] p-2 shadow-xs">
-            <div className="flex items-center gap-2.5 rounded-lg bg-white/65 p-2.5">
-              <span
-                aria-hidden
-                className="grid h-10 w-8.5 shrink-0 place-items-center rounded bg-[#d92d20] text-[9px] font-extrabold text-white"
-              >
-                PDF
-              </span>
-              <span className="min-w-0 truncate text-xs font-semibold">
-                Proforma-0049-Inversiones-Nuevo-Sol-SAC.pdf
-              </span>
-            </div>
-            <p className="mx-1 text-[13.5px] leading-normal whitespace-pre-line [overflow-wrap:anywhere]">
-              {whatsappMessage(value, { ...EXAMPLE, sender })}
+    // La vista previa va al lado solo si la tarjeta tiene sitio; si no, debajo del texto.
+    <div className="@container">
+      <div className="grid items-start gap-6 @4xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid gap-3">
+          <div className="grid gap-1">
+            <h3 className="text-sm font-semibold text-foreground">
+              Mensaje al enviar por WhatsApp
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Acompaña al PDF cuando lo envías y cuando lo reenvías desde el historial.
             </p>
           </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="company-message" className="text-sm font-medium text-foreground">
+              Texto del mensaje
+            </Label>
+            <Textarea
+              id="company-message"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'company-message-error' : 'company-message-help'}
+              maxLength={WHATSAPP_MESSAGE_LIMIT}
+              className="min-h-28 bg-card px-3 leading-normal"
+              {...field}
+              ref={(element) => {
+                field.ref(element)
+                textarea.current = element
+              }}
+            />
+          </div>
+          <div
+            role="group"
+            aria-label="Insertar dato"
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span aria-hidden className="text-[13px] text-muted-foreground">
+              Insertar dato:
+            </span>
+            {MESSAGE_FIELDS.map((item) => (
+              <Button
+                key={item.token}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => insert(item.token)}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
+          {error ? (
+            <p id="company-message-error" className="text-xs font-medium text-destructive">
+              {error}
+            </p>
+          ) : (
+            <p
+              id="company-message-help"
+              className="flex flex-wrap justify-between gap-2 text-[13px] text-muted-foreground"
+            >
+              <span>Los datos entre llaves se reemplazan solos al enviar.</span>
+              <span className="tabular-nums">
+                {value.length} / {WHATSAPP_MESSAGE_LIMIT}
+              </span>
+            </p>
+          )}
+          {unknown.length > 0 ? (
+            <p role="status" className="text-xs font-medium text-amber-800">
+              {listFormat.format(unknown)}{' '}
+              {unknown.length === 1 ? 'no es un dato y se enviará' : 'no son datos y se enviarán'}{' '}
+              tal cual. Usa los botones para insertar los datos.
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className="justify-self-start text-[13px] font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3"
+            onClick={() => onChange(DEFAULT_WHATSAPP_MESSAGE)}
+          >
+            Volver al mensaje original
+          </button>
         </div>
-        <p className="text-xs text-muted-foreground">Vista previa con datos de ejemplo.</p>
-      </figure>
+
+        <figure className="grid gap-2.5">
+          <figcaption className="text-[13px] font-semibold text-muted-foreground">
+            Así lo recibe el cliente
+          </figcaption>
+          <div className="grid justify-items-end rounded-[14px] bg-[#e9e4dc] p-3">
+            {/* Ocupa su columna como mucho: el mensaje baja de línea y nada se corta. */}
+            <div className="grid w-full max-w-[300px] min-w-0 gap-2 rounded-[10px] rounded-br-sm bg-[#d9fdd3] p-2 shadow-xs">
+              <div className="flex min-w-0 items-center gap-2.5 rounded-lg bg-white/65 p-2.5">
+                <span
+                  aria-hidden
+                  className="grid h-10 w-8.5 shrink-0 place-items-center rounded bg-[#d92d20] text-[9px] font-extrabold text-white"
+                >
+                  PDF
+                </span>
+                <span className="min-w-0 truncate text-xs font-semibold">
+                  Proforma-0049-Inversiones-Nuevo-Sol-SAC.pdf
+                </span>
+              </div>
+              <p className="mx-1 text-[13.5px] leading-normal whitespace-pre-line [overflow-wrap:anywhere]">
+                {whatsappMessage(value, { ...EXAMPLE, sender })}
+              </p>
+              <span
+                aria-hidden
+                className="mx-1 -mt-1.5 flex items-center justify-end gap-1 text-[11px] text-muted-foreground"
+              >
+                10:42
+                <CheckCheck className="size-3.5 text-[#53bdeb]" />
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Vista previa con datos de ejemplo.</p>
+        </figure>
+      </div>
     </div>
   )
 }

@@ -71,6 +71,17 @@ test('cambia el mensaje de WhatsApp y lo conserva', async ({ page }) => {
   const tabs = page.getByRole('tablist', { name: 'Secciones de los datos de la empresa' })
   expect(await tabs.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
   await page.getByRole('tab', { name: /Mensaje/ }).click()
+  // La vista previa se ve entera: nada de la burbuja queda fuera de su recuadro.
+  const preview = page.getByRole('figure', { name: 'Así lo recibe el cliente' })
+  await expect(preview).toContainText('Quedamos atentos.')
+  const outside = await preview.evaluate((figure) => {
+    const box = figure.getBoundingClientRect()
+    return [...figure.querySelectorAll('*')].filter((element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.left < box.left - 0.5 || rect.right > box.right + 0.5
+    }).length
+  })
+  expect(outside).toBe(0)
   const text = page.getByLabel('Texto del mensaje')
   await text.fill('Buen día, {cliente}. Adjunto la proforma ')
   await page
