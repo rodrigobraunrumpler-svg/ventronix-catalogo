@@ -40,6 +40,7 @@ const laptop = {
   description: null,
   unitPrice: '2590.00',
   quantity: 1,
+  imagePath: null,
 }
 
 const input = (overrides: Partial<DocumentInput> = {}): DocumentInput => ({
@@ -57,6 +58,7 @@ const input = (overrides: Partial<DocumentInput> = {}): DocumentInput => ({
   validityDays: '',
   discountPercent: '',
   shipping: '',
+  includePhotos: false,
   ...overrides,
 })
 
@@ -124,6 +126,7 @@ describe('historial al generar', () => {
       description: null,
       unitPrice: '350',
       quantity: 1,
+      imagePath: null,
     }
     await generate(input({ lines: [service] }))
     expect((await saved())[0].document.input.lines).toEqual([service])

@@ -11,7 +11,7 @@ import { addFreeLine, freeLineSchema, type FreeLineValues } from '../draft'
 import { useProforma } from '../store'
 import { TAX_CONFIG } from '../tax'
 
-const EMPTY: FreeLineValues = { name: '', code: '', quantity: '1', unitPrice: '' }
+const EMPTY: FreeLineValues = { name: '', code: '', quantity: '1', unitPrice: '', imagePath: null }
 const PRICE_LABEL = TAX_CONFIG.mode.startsWith('included')
   ? 'Precio con IGV (S/)'
   : 'Precio unitario (S/)'

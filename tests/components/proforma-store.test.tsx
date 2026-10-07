@@ -22,6 +22,7 @@ const laptop = {
   name: 'Laptop de 14 pulgadas',
   description: null,
   unit_price: '2590.00',
+  image_path: null,
 }
 
 function Probe() {

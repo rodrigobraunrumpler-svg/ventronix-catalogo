@@ -68,6 +68,7 @@ describe('buildDocumentModel', () => {
         { label: 'Celular', value: '900 000 000', weight: 400 },
         { label: 'Tiempo de entrega', value: '3 días hábiles', weight: 400 },
       ],
+      photos: false,
       rows: [
         {
           quantity: '2',
@@ -76,6 +77,7 @@ describe('buildDocumentModel', () => {
           description: null,
           unitPrice: '2,590.00',
           total: '5,180.00',
+          photo: null,
         },
         {
           quantity: '1',
@@ -84,6 +86,7 @@ describe('buildDocumentModel', () => {
           description: null,
           unitPrice: '850.00',
           total: '850.00',
+          photo: null,
         },
         {
           quantity: '1',
@@ -92,6 +95,7 @@ describe('buildDocumentModel', () => {
           description: null,
           unitPrice: '2,490.00',
           total: '2,490.00',
+          photo: null,
         },
       ],
       adjustments: [
@@ -204,5 +208,53 @@ describe('producto libre', () => {
       name: 'Instalación en sitio',
       unitPrice: '350.00',
     })
+  })
+})
+
+describe('fotos', () => {
+  const path = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
+  const withPhoto = (includePhotos: boolean): DocumentInput => ({
+    ...e1,
+    includePhotos,
+    lines: e1.lines.map((item, index) => (index === 0 ? { ...item, imagePath: path } : item)),
+  })
+
+  it('con el interruptor, la columna lleva la ruta de cada foto', () => {
+    const model = buildDocumentModel(withPhoto(true), company, now)
+    expect(model.photos).toBe(true)
+    expect(model.rows.map((row) => row.photo)).toEqual([path, null, null])
+  })
+
+  it('sin el interruptor o sin ninguna foto, no hay columna', () => {
+    expect(buildDocumentModel(withPhoto(false), company, now)).toMatchObject({ photos: false })
+    expect(buildDocumentModel({ ...e1, includePhotos: true }, company, now).photos).toBe(false)
+  })
+
+  it('el servidor solo acepta rutas de fotos del bucket', () => {
+    for (const imagePath of [
+      'otros/foto.jpg',
+      'https://otro.sitio/foto.jpg',
+      'products/../8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg',
+    ]) {
+      const value = { ...e1, lines: [{ ...e1.lines[0], imagePath }] }
+      expect(documentInputSchema.safeParse(value).success, imagePath).toBe(false)
+    }
+  })
+
+  it('lee lo que envía un navegador con la versión anterior, sin fotos', () => {
+    const old: Record<string, unknown> = {
+      ...e1,
+      lines: e1.lines.map(({ code, name, description, unitPrice, quantity }) => ({
+        code,
+        name,
+        description,
+        unitPrice,
+        quantity,
+      })),
+    }
+    delete old.includePhotos
+    const parsed = documentInputSchema.parse(old)
+    expect(parsed.includePhotos).toBe(false)
+    expect(parsed.lines[0].imagePath).toBeNull()
   })
 })

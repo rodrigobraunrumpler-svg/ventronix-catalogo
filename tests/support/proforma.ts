@@ -21,6 +21,7 @@ export const line = (overrides: Partial<ProformaLine> = {}): ProformaLine => {
     catalogPrice: '2590.00',
     unitPrice: '2590.00',
     quantity: 1,
+    imagePath: null,
     ...overrides,
   }
 }

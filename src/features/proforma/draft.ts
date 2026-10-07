@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ProductListItem } from '@/features/catalog/types'
+import { photoPathSchema } from '@/lib/photos'
 import { priceError } from './readiness'
 import { MAX_QUANTITY } from './totals'
 
@@ -21,6 +22,8 @@ const lineSchema = z.preprocess(
     catalogPrice: z.string().nullable(), // precio del catálogo al añadirlo; null si es libre
     unitPrice: z.string(), // precio de la proforma, tal como se escribe
     quantity: z.number().int().nonnegative(),
+    // La foto copiada del producto o la subida para el libre (spec de productos libres §4.3).
+    imagePath: z.string().nullable().default(null),
   }),
 )
 
@@ -36,6 +39,8 @@ export const draftSchema = z.object({
   validityDays: z.string(), // vacío: la validez por defecto de la empresa
   discountPercent: z.string(),
   shipping: z.string(),
+  // «Incluir fotos en el PDF» (spec §4.5): activado; solo se ve si alguna línea tiene foto.
+  includePhotos: z.boolean().default(true),
   number: z.number().int().positive().nullable(), // asignado al generar
   // Fecha al generar (ISO). Los borradores anteriores no la tienen: se lee como null.
   issuedAt: z.string().nullable().default(null),
@@ -46,7 +51,10 @@ export type ProformaLine = z.infer<typeof lineSchema>
 export type ProformaDraft = z.infer<typeof draftSchema>
 export type ProformaClient = ProformaDraft['client']
 type Conditions = Pick<ProformaDraft, 'validityDays' | 'discountPercent' | 'shipping'>
-type ProductData = Pick<ProductListItem, 'id' | 'code' | 'name' | 'description' | 'unit_price'>
+type ProductData = Pick<
+  ProductListItem,
+  'id' | 'code' | 'name' | 'description' | 'unit_price' | 'image_path'
+>
 
 export const EMPTY_DRAFT: ProformaDraft = {
   lines: [],
@@ -54,6 +62,7 @@ export const EMPTY_DRAFT: ProformaDraft = {
   validityDays: '',
   discountPercent: '',
   shipping: '',
+  includePhotos: true,
   number: null,
   issuedAt: null,
   updatedAt: '',
@@ -88,12 +97,16 @@ export function addProduct(draft: ProformaDraft, product: ProductData): Proforma
     catalogPrice: product.unit_price,
     unitPrice: product.unit_price,
     quantity: 1,
+    imagePath: product.image_path,
   }
   return { ...draft, lines: [...draft.lines, line] }
 }
 
 // Lo que se escribe en «Añadir producto libre» (spec de productos libres §4.3).
-export type FreeLineInput = Pick<ProformaLine, 'code' | 'name' | 'unitPrice' | 'quantity'>
+export type FreeLineInput = Pick<
+  ProformaLine,
+  'code' | 'name' | 'unitPrice' | 'quantity' | 'imagePath'
+>
 
 // Cada producto libre es una línea nueva, aunque repita la descripción de otro.
 export function addFreeLine(
@@ -132,6 +145,7 @@ export const freeLineSchema = z.object({
       (value) => priceError(value) === null,
       'Escribe un precio mayor que cero, con hasta dos decimales.',
     ),
+  imagePath: photoPathSchema('lines').nullable(),
 })
 
 export type FreeLineValues = z.input<typeof freeLineSchema>

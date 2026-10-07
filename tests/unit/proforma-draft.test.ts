@@ -21,6 +21,7 @@ const laptop = {
   name: 'Laptop de 14 pulgadas',
   description: 'Ligera',
   unit_price: '2590.00',
+  image_path: null,
 }
 const printer = {
   id: 'p2',
@@ -28,6 +29,7 @@ const printer = {
   name: 'Impresora láser',
   description: null,
   unit_price: '890.00',
+  image_path: null,
 }
 
 describe('proforma en curso', () => {
@@ -43,8 +45,14 @@ describe('proforma en curso', () => {
         catalogPrice: '2590.00',
         unitPrice: '2590.00',
         quantity: 2,
+        imagePath: null,
       },
     ])
+  })
+
+  it('copia la foto del producto al añadirlo', () => {
+    const path = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
+    expect(addProduct(EMPTY_DRAFT, { ...laptop, image_path: path }).lines[0].imagePath).toBe(path)
   })
 
   it('no pasa de 9 999 unidades', () => {
@@ -98,7 +106,13 @@ describe('proforma en curso', () => {
 })
 
 describe('productos libres', () => {
-  const service = { code: '', name: 'Instalación en sitio', unitPrice: '350', quantity: 2 }
+  const service = {
+    code: '',
+    name: 'Instalación en sitio',
+    unitPrice: '350',
+    quantity: 2,
+    imagePath: null,
+  }
 
   it('se añaden con su código opcional, sin producto ni precio de catálogo', () => {
     expect(addFreeLine(EMPTY_DRAFT, service, 'libre-1').lines).toEqual([
@@ -111,6 +125,7 @@ describe('productos libres', () => {
         catalogPrice: null,
         unitPrice: '350',
         quantity: 2,
+        imagePath: null,
       },
     ])
   })
@@ -150,6 +165,8 @@ describe('productos libres', () => {
         },
       ],
     }
-    expect(draftSchema.parse(old).lines[0]).toMatchObject({ id: 'p1', productId: 'p1' })
+    const parsed = draftSchema.parse(old)
+    expect(parsed.lines[0]).toMatchObject({ id: 'p1', productId: 'p1', imagePath: null })
+    expect(parsed.includePhotos).toBe(true)
   })
 })

@@ -9,6 +9,7 @@ import type { Database } from '@/lib/supabase/database.types'
 import { whatsappMessage } from '../document/format'
 import { buildDocumentModel, type DocumentModel } from '../document/model'
 import { renderProformaPdf } from '../document/pdf'
+import { loadPhotos } from '../document/photos'
 import { deliverByWhatsApp } from '../document/send'
 import { snapshotSchema, type StoredDocument } from './snapshot'
 
@@ -37,7 +38,13 @@ async function renderStored(
   }
   const { input, company } = snapshot.data
   const model = buildDocumentModel(input, company, new Date(input.issuedAt ?? 0))
-  const [pdf, current] = await Promise.all([renderProformaPdf(model), getCompanyProfile(supabase)])
+  const [pdf, current] = await Promise.all([
+    loadPhotos(
+      supabase,
+      model.rows.map((row) => row.photo),
+    ).then((images) => renderProformaPdf(model, images)),
+    getCompanyProfile(supabase),
+  ])
   const message = whatsappMessage(current?.whatsapp_message ?? null, {
     clientName: input.client.name,
     numberLabel: model.numberLabel ?? '',

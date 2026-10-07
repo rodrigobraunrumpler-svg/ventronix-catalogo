@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { photoPathSchema } from '@/lib/photos'
 import type { ProformaDraft } from '../draft'
 import { MAX_QUANTITY } from '../totals'
 
@@ -17,6 +18,8 @@ export const documentInputSchema = z.object({
         description: z.string().max(2000).nullable(),
         unitPrice: text(20),
         quantity: z.number().int().min(1).max(MAX_QUANTITY),
+        // Solo rutas del bucket (spec §8). Los navegadores con la versión anterior no la envían.
+        imagePath: photoPathSchema().nullable().default(null),
       }),
     )
     .min(1)
@@ -31,6 +34,8 @@ export const documentInputSchema = z.object({
   validityDays: text(3),
   discountPercent: text(10),
   shipping: text(20),
+  // «Incluir fotos en el PDF» (spec §4.5).
+  includePhotos: z.boolean().default(false),
 })
 
 export type DocumentInput = z.infer<typeof documentInputSchema>
@@ -43,16 +48,18 @@ export function documentInput(draft: ProformaDraft, options: { draft: boolean })
     draft: options.draft,
     number: draft.number,
     issuedAt: draft.issuedAt,
-    lines: draft.lines.map(({ code, name, description, unitPrice, quantity }) => ({
+    lines: draft.lines.map(({ code, name, description, unitPrice, quantity, imagePath }) => ({
       code,
       name,
       description,
       unitPrice,
       quantity,
+      imagePath,
     })),
     client: draft.client,
     validityDays: draft.validityDays,
     discountPercent: draft.discountPercent,
     shipping: draft.shipping,
+    includePhotos: draft.includePhotos,
   }
 }

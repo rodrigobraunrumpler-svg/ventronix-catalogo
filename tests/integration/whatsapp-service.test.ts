@@ -47,6 +47,7 @@ const proforma = (overrides: Partial<DocumentInput> = {}): DocumentInput => ({
       description: null,
       unitPrice: '2590.00',
       quantity: 1,
+      imagePath: null,
     },
   ],
   client: {
@@ -59,6 +60,7 @@ const proforma = (overrides: Partial<DocumentInput> = {}): DocumentInput => ({
   validityDays: '',
   discountPercent: '',
   shipping: '',
+  includePhotos: false,
   ...overrides,
 })
 

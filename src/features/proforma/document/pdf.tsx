@@ -153,6 +153,16 @@ function sheet(compact: boolean) {
     row: { flexDirection: 'row', borderBottomWidth: 0.75, borderBottomColor: color.line },
     td: { paddingVertical: pick(8.25, 3.5), paddingHorizontal: 7.5 },
     quantity: { width: 42 },
+    // Columna «FOTO» (spec de productos libres §4.5): unos 1,5 cm, con la foto entera, sin recortar.
+    photo: { width: pick(46, 34), paddingHorizontal: 4 },
+    photoImage: {
+      width: pick(38, 26),
+      height: pick(38, 26),
+      objectFit: 'contain',
+      backgroundColor: '#f1f3ee',
+      borderRadius: 3,
+    },
+    photoNote: { marginTop: pick(4, 2), fontSize: pick(8, 7), color: color.muted },
     code: { width: pick(64.5, 74) },
     mono: { fontFamily: 'JetBrainsMono', fontSize: pick(9, 7.5) },
     description: { flex: 1 },
@@ -267,6 +277,7 @@ const sheets = { normal: sheet(false), compact: sheet(true) }
 type Sheet = (typeof sheets)['normal']
 // Caracteres de JetBrains Mono (0,6 em) que caben en la columna CÓDIGO: (ancho − 15) / (letra × 0,6).
 const codeChars = (compact: boolean) => (compact ? 13 : 9)
+const NO_PHOTOS = new Map<string, Buffer>()
 
 type TextStyle = ComponentProps<typeof View>['style']
 const flow = { flexDirection: 'row', flexWrap: 'wrap' } as const
@@ -289,9 +300,10 @@ function Words({ children, style }: { children: string; style?: TextStyle }) {
   )
 }
 
-function TableHead({ s }: { s: Sheet }) {
+function TableHead({ s, photos }: { s: Sheet; photos: boolean }) {
   return (
     <View fixed style={s.thead}>
+      {photos ? <Text style={[s.th, s.photo]}>FOTO</Text> : null}
       <Text style={[s.th, s.quantity]}>CANT.</Text>
       <Text style={[s.th, s.code]}>CÓDIGO</Text>
       <Text style={[s.th, s.description]}>DESCRIPCIÓN</Text>
@@ -333,9 +345,12 @@ function Payments({ s, payments }: { s: Sheet; payments: string[] }) {
 // es la misma proforma apretada para que muchos productos quepan en una hoja.
 export function ProformaPdf({
   model,
+  images = NO_PHOTOS,
   compact = false,
 }: {
   model: DocumentModel
+  // Las fotos de la columna «FOTO», por ruta (loadPhotos).
+  images?: Map<string, Buffer>
   compact?: boolean
 }) {
   const s = compact ? sheets.compact : sheets.normal
@@ -381,31 +396,43 @@ export function ProformaPdf({
         </View>
 
         <View style={s.table}>
-          <TableHead s={s} />
-          {model.rows.map((row, index) => (
-            <View key={index} style={s.row} wrap={false}>
-              <Text style={[s.td, s.quantity]}>{row.quantity}</Text>
-              <Text style={[s.td, s.code, s.mono]}>{wrapCode(row.code, codeChars(compact))}</Text>
-              <View style={[s.td, s.description]}>
-                {compact ? (
-                  // Una línea por producto: nombre y descripción juntos, recortados si no caben.
-                  <Text style={s.oneLine}>
-                    <Text style={s.semibold}>{row.name}</Text>
-                    {row.description ? (
-                      <Text style={s.detail}>{`  ·  ${row.description}`}</Text>
+          <TableHead s={s} photos={model.photos} />
+          {model.rows.map((row, index) => {
+            const photo = row.photo ? images.get(row.photo) : undefined
+            return (
+              <View key={index} style={s.row} wrap={false}>
+                {model.photos ? (
+                  <View style={[s.td, s.photo]}>
+                    {photo ? (
+                      // eslint-disable-next-line jsx-a11y/alt-text -- Image de react-pdf, no es un <img>
+                      <Image src={{ data: photo, format: 'jpg' }} style={s.photoImage} />
                     ) : null}
-                  </Text>
-                ) : (
-                  <>
-                    <Words style={s.semibold}>{row.name}</Words>
-                    {row.description ? <Words style={s.detail}>{row.description}</Words> : null}
-                  </>
-                )}
+                  </View>
+                ) : null}
+                <Text style={[s.td, s.quantity]}>{row.quantity}</Text>
+                <Text style={[s.td, s.code, s.mono]}>{wrapCode(row.code, codeChars(compact))}</Text>
+                <View style={[s.td, s.description]}>
+                  {compact ? (
+                    // Una línea por producto: nombre y descripción juntos, recortados si no caben.
+                    <Text style={s.oneLine}>
+                      <Text style={s.semibold}>{row.name}</Text>
+                      {row.description ? (
+                        <Text style={s.detail}>{`  ·  ${row.description}`}</Text>
+                      ) : null}
+                    </Text>
+                  ) : (
+                    <>
+                      <Words style={s.semibold}>{row.name}</Words>
+                      {row.description ? <Words style={s.detail}>{row.description}</Words> : null}
+                    </>
+                  )}
+                </View>
+                <Text style={[s.td, s.unit]}>{row.unitPrice}</Text>
+                <Text style={[s.td, s.lineTotal, s.semibold]}>{row.total}</Text>
               </View>
-              <Text style={[s.td, s.unit]}>{row.unitPrice}</Text>
-              <Text style={[s.td, s.lineTotal, s.semibold]}>{row.total}</Text>
-            </View>
-          ))}
+            )
+          })}
+          {model.photos ? <Text style={s.photoNote}>Imágenes referenciales.</Text> : null}
         </View>
 
         <View style={s.totals} wrap={false}>
@@ -469,7 +496,9 @@ const pageCount = (pdf: Buffer) => pdf.toString('latin1').match(/\/Type\s*\/Page
 
 // Primero con el diseño de la pizarra; si no cabe en una hoja, compactada. Si aun así no cabe, se
 // reparte en varias páginas, con la cabecera de la tabla en cada una.
-export async function renderProformaPdf(model: DocumentModel) {
-  const pdf = await renderToBuffer(<ProformaPdf model={model} />)
-  return pageCount(pdf) === 1 ? pdf : renderToBuffer(<ProformaPdf model={model} compact />)
+export async function renderProformaPdf(model: DocumentModel, images = NO_PHOTOS) {
+  const pdf = await renderToBuffer(<ProformaPdf model={model} images={images} />)
+  return pageCount(pdf) === 1
+    ? pdf
+    : renderToBuffer(<ProformaPdf model={model} images={images} compact />)
 }

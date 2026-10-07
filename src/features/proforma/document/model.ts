@@ -24,6 +24,8 @@ export type DocumentModel = {
   company: Pair[]
   // Pesos de la pizarra: el cliente en negrita, su RUC o DNI seminegrita, lo demás normal.
   client: (Pair & { weight: 400 | 600 | 700 })[]
+  // Columna «FOTO» (spec de productos libres §4.5): con el interruptor y alguna línea con foto.
+  photos: boolean
   rows: {
     quantity: string
     code: string
@@ -31,6 +33,7 @@ export type DocumentModel = {
     description: string | null
     unitPrice: string
     total: string
+    photo: string | null // la ruta de la foto, si va en el PDF
   }[]
   adjustments: Pair[]
   total: string
@@ -92,6 +95,8 @@ export function buildDocumentModel(
     )
   }
 
+  const photos = input.includePhotos && input.lines.some((line) => line.imagePath !== null)
+
   return {
     draft: input.draft,
     title: numberLabel ? `Proforma ${numberLabel}` : 'Proforma (borrador)',
@@ -119,6 +124,7 @@ export function buildDocumentModel(
         { label: 'Tiempo de entrega', value: input.client.deliveryTime.trim(), weight: 400 },
       ] satisfies DocumentModel['client']
     ).filter((item) => item.value),
+    photos,
     rows: input.lines.map((line, index) => ({
       quantity: String(line.quantity),
       code: line.code || '—',
@@ -126,6 +132,7 @@ export function buildDocumentModel(
       description: line.description?.trim() || null,
       unitPrice: formatCents(parseCents(line.unitPrice) ?? ZERO),
       total: formatCents(totals.lineTotals[index]),
+      photo: photos ? line.imagePath : null,
     })),
     adjustments: [
       ...(hasDiscount || hasShipping

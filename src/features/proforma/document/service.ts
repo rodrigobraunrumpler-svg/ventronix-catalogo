@@ -8,6 +8,7 @@ import type { Database } from '@/lib/supabase/database.types'
 import type { DocumentInput, GeneratedDocument } from './input'
 import { buildDocumentModel, documentProblem, type DocumentModel } from './model'
 import { renderProformaPdf } from './pdf'
+import { loadPhotos } from './photos'
 import { saveProforma } from '../history/repository'
 
 // Genera el PDF con los datos de la empresa guardados. Una proforma que no es borrador queda en el
@@ -23,7 +24,11 @@ export async function renderProformaDocument(
   const problem = documentProblem(input, company)
   if (problem) return failure('VALIDATION', problem)
   const model = buildDocumentModel(input, company, now)
-  const pdf = await renderProformaPdf(model)
+  const images = await loadPhotos(
+    supabase,
+    model.rows.map((row) => row.photo),
+  )
+  const pdf = await renderProformaPdf(model, images)
   if (!input.draft) {
     const issuedAt = input.issuedAt ? new Date(input.issuedAt) : now
     const saved = await saveProforma(supabase, input, company, issuedAt)

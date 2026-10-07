@@ -34,6 +34,7 @@ const line = (index: number) => ({
   description: 'Diseño ligero · 16 GB RAM · SSD de 512 GB · garantía de un año con el fabricante',
   unitPrice: '2590.00',
   quantity: 1,
+  imagePath: null,
 })
 
 const input = (overrides: Partial<DocumentInput> = {}): DocumentInput => ({
@@ -51,6 +52,7 @@ const input = (overrides: Partial<DocumentInput> = {}): DocumentInput => ({
   validityDays: '',
   discountPercent: '',
   shipping: '',
+  includePhotos: false,
   ...overrides,
 })
 
@@ -83,6 +85,7 @@ describe('documento PDF de la proforma', () => {
       description: 'Core i5 · 16 GB RAM · SSD de 512 GB',
       unitPrice: '2590.00',
       quantity: 1,
+      imagePath: null,
     })
     const lines = (count: number) =>
       Array.from({ length: count }, (_, index) => demoLine(index + 1))
