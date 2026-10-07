@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { decimalText } from '@/lib/peru'
 import { cn } from '@/lib/utils'
 import { patchConditions, setIncludePhotos } from '../draft'
 import { formatCents, ZERO } from '../money'
@@ -53,7 +54,7 @@ export function ProformaSummary({ children }: { children: ReactNode }) {
                 aria-describedby={discountProblem ? 'proforma-discount-error' : undefined}
                 onChange={(event) =>
                   update((current) =>
-                    patchConditions(current, { discountPercent: event.target.value }),
+                    patchConditions(current, { discountPercent: decimalText(event.target.value) }),
                   )
                 }
                 className="w-11.5 bg-transparent px-1.5 text-right text-foreground tabular-nums outline-none"
@@ -91,7 +92,9 @@ export function ProformaSummary({ children }: { children: ReactNode }) {
               aria-invalid={shippingProblem ? true : undefined}
               aria-describedby={shippingProblem ? 'proforma-shipping-error' : undefined}
               onChange={(event) =>
-                update((current) => patchConditions(current, { shipping: event.target.value }))
+                update((current) =>
+                  patchConditions(current, { shipping: decimalText(event.target.value) }),
+                )
               }
               className="w-19.5 bg-transparent px-1.75 text-right text-foreground tabular-nums outline-none"
             />

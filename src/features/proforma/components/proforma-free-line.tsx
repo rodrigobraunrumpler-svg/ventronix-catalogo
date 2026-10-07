@@ -7,6 +7,8 @@ import { PhotoField } from '@/components/photo-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cleanField } from '@/lib/clean-field'
+import { decimalText, digitsOnly } from '@/lib/peru'
 import { thumbPath } from '@/lib/photos'
 import { discardPhotos, usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
@@ -140,7 +142,7 @@ export function FreeLineForm({
             {...a11y('code')}
             maxLength={64}
             autoComplete="off"
-            placeholder="Sin código"
+            placeholder="Ej.: SERV-01"
             className="bg-card font-mono"
             {...register('code')}
           />
@@ -159,7 +161,8 @@ export function FreeLineForm({
             maxLength={4}
             autoComplete="off"
             className="bg-card tabular-nums"
-            {...register('quantity')}
+            // Solo números: las letras no llegan a escribirse.
+            {...cleanField(register('quantity'), digitsOnly)}
           />
         </Field>
         <Field
@@ -174,7 +177,7 @@ export function FreeLineForm({
             autoComplete="off"
             placeholder="0.00"
             className="bg-card text-right tabular-nums"
-            {...register('unitPrice')}
+            {...cleanField(register('unitPrice'), decimalText)}
           />
         </Field>
         <div className="min-w-0 flex-1 basis-56">

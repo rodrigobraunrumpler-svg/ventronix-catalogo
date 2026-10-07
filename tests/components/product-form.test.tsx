@@ -129,6 +129,13 @@ describe('ProductForm', () => {
     expect(create).toBeEnabled()
   })
 
+  it('el precio no admite letras', async () => {
+    renderForm()
+    const user = userEvent.setup()
+    await user.type(field('Precio unitario'), 'abc12.5x')
+    expect(field('Precio unitario')).toHaveValue('12.5')
+  })
+
   it('acepta el precio con punto decimal', async () => {
     const { onSubmit, user } = renderForm()
     await fillValid(user)

@@ -302,6 +302,25 @@ describe('ProformaEditor', () => {
     })
   })
 
+  it('los montos, porcentajes y cantidades no admiten letras', async () => {
+    seedProforma({ lines: [line()] })
+    const { user } = renderEditor()
+    await user.clear(price('Laptop de 14 pulgadas'))
+    await user.type(price('Laptop de 14 pulgadas'), 'a2b4c0,5d')
+    expect(price('Laptop de 14 pulgadas')).toHaveValue('240,5')
+    await user.type(screen.getByLabelText('Descuento'), 'x1y0')
+    expect(screen.getByLabelText('Descuento')).toHaveValue('10')
+    await user.type(screen.getByLabelText('Envío'), 'S/ 2o')
+    expect(screen.getByLabelText('Envío')).toHaveValue('2')
+    await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
+    const form = within(screen.getByRole('form', { name: 'Añadir producto libre' }))
+    await user.clear(form.getByLabelText('Cantidad'))
+    await user.type(form.getByLabelText('Cantidad'), 'sa3sd')
+    expect(form.getByLabelText('Cantidad')).toHaveValue('3')
+    await user.type(form.getByLabelText('Precio con IGV (S/)'), 'asd35.5asd')
+    expect(form.getByLabelText('Precio con IGV (S/)')).toHaveValue('35.5')
+  })
+
   it('lista para generar, dice que quedará en el historial', () => {
     seedProforma({ lines: [line()], client: withClient })
     renderEditor()
@@ -622,6 +641,8 @@ describe('ProformaEditor', () => {
       expect(
         form.getByText('Para productos que no están en el catálogo. No se guardan en él.'),
       ).toBeVisible()
+      // El código es opcional; el ejemplo cabe en su campo.
+      expect(form.getByLabelText('Código')).toHaveAttribute('placeholder', 'Ej.: SERV-01')
       await user.type(form.getByLabelText('Descripción'), 'Instalación en sitio')
       await user.clear(form.getByLabelText('Cantidad'))
       await user.type(form.getByLabelText('Cantidad'), '2')

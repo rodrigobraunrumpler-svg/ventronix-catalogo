@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ActionResult } from '@/lib/action-result'
 import { clearDraft, readDraft, saveDraft } from '@/lib/drafts'
+import { cleanField } from '@/lib/clean-field'
+import { decimalText } from '@/lib/peru'
 import { thumbPath } from '@/lib/photos'
 import { discardPhotos, usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
@@ -334,7 +336,8 @@ export function ProductForm({
               autoComplete="off"
               placeholder="0.00"
               className="w-full min-w-0 bg-transparent px-3 text-base tabular-nums outline-none md:text-sm"
-              {...register('unit_price')}
+              // Solo números: las letras no llegan a escribirse.
+              {...cleanField(register('unit_price'), decimalText)}
             />
           </div>
           <FieldMessage

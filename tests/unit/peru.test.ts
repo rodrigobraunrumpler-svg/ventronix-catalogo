@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { digitsOnly, documentError, documentKind, isValidMobile, isValidRuc } from '@/lib/peru'
+import {
+  decimalText,
+  digitsOnly,
+  documentError,
+  documentKind,
+  isValidMobile,
+  isValidRuc,
+} from '@/lib/peru'
 
 describe('isValidRuc', () => {
   // 20000000010: el dígito calculado es 10 → 0. 20000000061: es 11 → 1.
@@ -35,6 +42,13 @@ describe('celular y dígitos', () => {
     expect(isValidMobile('887654321')).toBe(false)
     expect(isValidMobile('98765432')).toBe(false)
   })
+  it('decimalText deja solo dígitos, punto y coma: un monto no admite letras', () => {
+    expect(decimalText('S/ 1a2b3,5x0')).toBe('123,50')
+    expect(decimalText('12.5 %')).toBe('12.5')
+    // Los separadores se dejan tal cual: el formato lo valida quien lo lee (sin recortar el monto).
+    expect(decimalText('1,234.50')).toBe('1,234.50')
+  })
+
   it('digitsOnly quita espacios y signos', () => {
     expect(digitsOnly('987 654-321')).toBe('987654321')
   })

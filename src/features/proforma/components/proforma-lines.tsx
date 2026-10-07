@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/features/catalog/money'
+import { decimalText } from '@/lib/peru'
 import { thumbPath } from '@/lib/photos'
 import { usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
@@ -257,7 +258,7 @@ function LineRow({
             autoComplete="off"
             value={line.unitPrice}
             onChange={(event) =>
-              update((current) => setUnitPrice(current, line.id, event.target.value))
+              update((current) => setUnitPrice(current, line.id, decimalText(event.target.value)))
             }
             className="w-full min-w-0 bg-transparent px-2.25 text-foreground tabular-nums outline-none"
           />

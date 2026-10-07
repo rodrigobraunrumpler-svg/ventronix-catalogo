@@ -1,6 +1,10 @@
 // Documentos y teléfonos de Perú. Sin dependencias: se usa en el cliente y en el servidor.
 export const digitsOnly = (value: string) => value.replace(/\D/g, '')
 
+// Lo que se puede escribir en un monto o un porcentaje: dígitos, punto y coma. Las letras no entran;
+// el formato (un separador, hasta dos decimales) lo valida quien lo lee, sin recortar nada.
+export const decimalText = (value: string) => value.replace(/[^\d.,]/g, '')
+
 const RUC_WEIGHTS = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
 
 // RUC: prefijo de contribuyente (10, 15, 17 o 20), 11 dígitos y dígito verificador (módulo 11).
