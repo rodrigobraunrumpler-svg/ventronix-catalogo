@@ -1,6 +1,6 @@
 # Proformas: productos libres, historial, fotos y mensaje editable
 
-Fecha: 06-10-2026. Estado: **borrador para revisar** con el cliente.
+Fecha: 06-10-2026. Estado: **aprobada** (06-10-2026).
 
 Maqueta de las pantallas: [Proformas: maqueta de la nueva fase](https://claude.ai/artifact/EBXHNm17egfCJnVCJZJb5T).
 
@@ -267,4 +267,4 @@ Cada entrega del §2 se publica por separado.
 
 - **Confirmado:** completar los datos del cliente desde el historial al escribir su RUC o DNI (§4.3).
 - **Confirmado:** 20 proformas por página, con los filtros y las páginas resueltos en el servidor (§4.2).
-- **Por confirmar:** que «Corregir» actualice la misma proforma del historial, sin guardar versiones. «Corregir» es el botón que ya existe tras «Generar»: vuelve a la proforma y conserva su número.
+- **Confirmado:** «Corregir» (el botón que ya existe tras «Generar») conserva el número y actualiza la misma proforma del historial: un número, una proforma, siempre su última versión, sin guardar versiones anteriores.
