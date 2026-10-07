@@ -36,7 +36,8 @@ export async function lookupRuc(ruc: unknown): Promise<ActionResult<RucLookupRes
   })
 }
 
-// PDF de la proforma (spec del documento §3): la cuenta autorizada, datos validados y nada guardado.
+// PDF de la proforma (spec del documento §3): la cuenta autorizada y datos validados. Si no es la
+// vista previa, queda en el historial (spec de productos libres §6).
 export async function generateProformaDocument(
   input: unknown,
 ): Promise<ActionResult<GeneratedDocument>> {

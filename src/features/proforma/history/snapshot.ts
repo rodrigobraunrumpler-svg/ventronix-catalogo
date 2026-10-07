@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { storedCompanySchema } from '@/features/company/queries'
-import { documentInputSchema } from '../document/input'
+import { documentInputSchema, type GeneratedDocument } from '../document/input'
 
 // La copia que guarda cada proforma del historial (spec de productos libres §3): lo que se envió al
 // generarla y los datos de la empresa de ese día. Con ella se vuelve a armar el mismo PDF.
@@ -12,3 +12,6 @@ export const snapshotSchema = z.object({
 })
 
 export type ProformaSnapshot = z.infer<typeof snapshotSchema>
+
+// El PDF del historial y el mensaje con que se reenvía (plan, decisión 8).
+export type StoredDocument = GeneratedDocument & { message: string }

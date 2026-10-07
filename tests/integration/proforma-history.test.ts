@@ -4,9 +4,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { DocumentInput } from '@/features/proforma/document/input'
 import { sendProformaDocument } from '@/features/proforma/document/send'
 import { createProformaDocument } from '@/features/proforma/document/service'
-import type { WhatsAppProvider } from '@/features/whatsapp/provider'
+import { resendStoredProforma, storedProformaDocument } from '@/features/proforma/history/service'
+import type { SendDocumentInput, WhatsAppProvider } from '@/features/whatsapp/provider'
 import { stubWhatsAppProvider } from '@/features/whatsapp/stub-provider'
 import { ensureUser, signedInClient } from '../support/local-supabase'
+import { pdfText } from '../support/pdf-text'
 import { connect, fillCompanyProfile, resetCompanyProfile, resetProformas } from './db'
 
 const password = 'historial-guardar-123'
@@ -135,5 +137,80 @@ describe('historial al generar', () => {
     }
     expect(await sendProformaDocument(supabase, input(), provider)).toMatchObject({ ok: true })
     expect(await saved()).toHaveLength(1)
+  })
+})
+
+describe('desde el historial', () => {
+  const firstId = async () => (await saved())[0].id as string
+
+  it('vuelve a armar el mismo PDF aunque la empresa haya cambiado', async () => {
+    await generate(input())
+    await db.query("update public.company_profile set address = 'Otra dirección 999'")
+    const result = await storedProformaDocument(supabase, await firstId())
+    if (!result.ok) throw new Error(result.error.message)
+    const text = pdfText(Buffer.from(result.data.base64, 'base64'))
+    expect(text).toContain('Av. Prueba 123')
+    expect(text).not.toContain('Otra')
+    expect(result.data.fileName).toBe('Proforma-0001-Cliente-de-ejemplo-SAC.pdf')
+  })
+
+  it('el mensaje es el de Empresa de hoy, con los datos de la proforma', async () => {
+    await generate(input())
+    await db.query(
+      "update public.company_profile set whatsapp_message = 'Le reenvío la {numero} por {total}, válida hasta el {vence}.'",
+    )
+    expect(await storedProformaDocument(supabase, await firstId())).toMatchObject({
+      ok: true,
+      data: { message: 'Le reenvío la N° 0001 por S/ 2,590.00, válida hasta el 07/10/2026.' },
+    })
+  })
+
+  it('reenvía por WhatsApp el mismo PDF al celular que se indique', async () => {
+    await generate(input())
+    const sent: SendDocumentInput[] = []
+    const provider: WhatsAppProvider = {
+      ...stubWhatsAppProvider(supabase),
+      sendDocument: async (document) => {
+        sent.push(document)
+        return { ok: true }
+      },
+    }
+    expect(
+      await resendStoredProforma(supabase, { id: await firstId(), phone: '911 222 333' }, provider),
+    ).toEqual({ ok: true, data: { phone: '911 222 333' } })
+    expect(sent[0]).toMatchObject({
+      phone: '911222333',
+      fileName: 'Proforma-0001-Cliente-de-ejemplo-SAC.pdf',
+    })
+    expect(sent[0].document.subarray(0, 5).toString()).toBe('%PDF-')
+  })
+
+  it('sin celular válido, sin configurar o sin la proforma, lo dice', async () => {
+    await generate(input())
+    const id = await firstId()
+    const provider = stubWhatsAppProvider(supabase)
+    expect(await resendStoredProforma(supabase, { id, phone: '123' }, provider)).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    })
+    expect(await resendStoredProforma(supabase, { id, phone: '987654321' }, null)).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    })
+    expect(
+      await storedProformaDocument(supabase, '00000000-0000-4000-8000-000000000000'),
+    ).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } })
+  })
+
+  it('una copia que no se puede leer lo dice con claridad', async () => {
+    const { rows } = await db.query<{ id: string }>(
+      `insert into public.proformas
+         (number, issued_at, valid_until, client_name, item_count, total, document)
+       values (99, now(), current_date, 'Cliente', 1, 10, '{"input": {}}') returning id`,
+    )
+    expect(await storedProformaDocument(supabase, rows[0].id)).toMatchObject({
+      ok: false,
+      error: { message: 'No pudimos leer la copia guardada de esta proforma.' },
+    })
   })
 })
