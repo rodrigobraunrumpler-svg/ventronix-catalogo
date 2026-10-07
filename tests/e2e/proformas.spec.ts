@@ -454,3 +454,28 @@ test('la foto que se quita del producto libre se borra de Storage', async ({ pag
   await expect(panel.getByText(/La proforma está vacía/)).toBeVisible()
   await expect.poll(() => photosSince(since)).toBe(0)
 })
+
+test('en la proforma, cada línea deja sitio al nombre y nada se desborda', async ({ page }) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  await addFreeLine(page, {
+    name: 'Laptop ryzen 7 16GB RAM 512GB SSD',
+    code: 'TEST',
+    quantity: '12',
+    price: '12',
+  })
+  const name = panel.getByRole('button', {
+    name: 'Ver detalle de Laptop ryzen 7 16GB RAM 512GB SSD',
+  })
+  // El nombre tiene su ancho y la etiqueta, una sola línea.
+  expect((await name.boundingBox())!.width).toBeGreaterThan(150)
+  expect(
+    (await panel.getByText('Producto libre', { exact: true }).boundingBox())!.height,
+  ).toBeLessThan(24)
+  const list = panel.getByRole('list')
+  expect(await list.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0)
+})

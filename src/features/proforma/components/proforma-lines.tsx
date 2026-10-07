@@ -89,7 +89,7 @@ export function ProformaLines({
           libre.
         </p>
       ) : (
-        <ul className="grid rounded-xl border">
+        <ul className="@container grid rounded-xl border">
           {draft.lines.map((line) => (
             <LineRow
               key={line.id}
@@ -107,8 +107,8 @@ export function ProformaLines({
   )
 }
 
-// PC: nombre, cantidad, precio, total y quitar en una fila (prototipo). Móvil: el nombre arriba y
-// los controles debajo.
+// Si la lista tiene sitio, nombre, cantidad, precio, total y quitar en una fila (prototipo). Si no
+// (en el móvil o en la columna del diálogo), el nombre arriba y los controles debajo.
 function LineRow({
   line,
   currentPrice,
@@ -140,7 +140,7 @@ function LineRow({
   const change = (quantity: number) => update((current) => setQuantity(current, line.id, quantity))
 
   return (
-    <li className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 sm:grid-cols-[48px_minmax(0,1fr)_118px_132px_104px_36px]">
+    <li className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 @3xl:grid-cols-[48px_minmax(0,1fr)_118px_132px_104px_36px]">
       {/* Su foto, o «Sin foto» (spec de productos libres §4.3). */}
       <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-[10px] border border-dashed border-input bg-muted/40 text-[10px] text-muted-foreground">
         {photoUrl ? (
@@ -179,7 +179,7 @@ function LineRow({
             </span>
           ) : null}
           {line.productId === null ? (
-            <span className="rounded-full bg-[#eef7e2] px-2 text-[11px] font-bold text-[#3f7d0a]">
+            <span className="rounded-full bg-[#eef7e2] px-2 text-[11px] font-bold whitespace-nowrap text-[#3f7d0a]">
               Producto libre
             </span>
           ) : null}
@@ -198,7 +198,7 @@ function LineRow({
         </div>
       </div>
 
-      <div className="col-span-3 flex flex-wrap items-center gap-3 sm:contents">
+      <div className="col-span-3 flex flex-wrap items-center gap-3 @3xl:contents">
         <div
           className={cn(
             'inline-flex w-fit shrink-0 items-center overflow-hidden rounded-[10px] border border-input bg-card',
@@ -242,7 +242,7 @@ function LineRow({
         </div>
         <div
           className={cn(
-            'flex h-10 min-w-0 overflow-hidden rounded-[10px] border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 max-sm:w-33',
+            'flex h-10 min-w-0 overflow-hidden rounded-[10px] border border-input bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 @max-3xl:w-33',
             priceProblem && 'border-destructive ring-3 ring-destructive/20',
           )}
         >
@@ -263,7 +263,7 @@ function LineRow({
             className="w-full min-w-0 bg-transparent px-2.25 text-foreground tabular-nums outline-none"
           />
         </div>
-        <span className="ml-auto font-bold whitespace-nowrap text-foreground tabular-nums sm:ml-0 sm:text-right">
+        <span className="ml-auto font-bold whitespace-nowrap text-foreground tabular-nums @3xl:ml-0 @3xl:text-right">
           {total}
         </span>
       </div>
@@ -273,7 +273,7 @@ function LineRow({
         size="icon"
         aria-label={`Quitar ${line.name}`}
         title="Quitar"
-        className="col-start-3 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:col-start-auto sm:row-start-auto"
+        className="col-start-3 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive @3xl:col-start-auto @3xl:row-start-auto"
         onClick={() => removeLine(line.id)}
       >
         <X aria-hidden />
