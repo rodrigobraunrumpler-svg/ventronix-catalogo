@@ -65,6 +65,16 @@ export function FreeLineForm({
   const id = useId()
   const { update } = useProforma()
   const [added, setAdded] = useState<string | null>(null)
+  // Mientras sube la foto no se añade: la línea quedaría sin ella.
+  const [photoBusy, setPhotoBusy] = useState(false)
+  async function upload(file: File) {
+    setPhotoBusy(true)
+    try {
+      return await uploadPhoto(file)
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
   const {
     register,
     control,
@@ -163,7 +173,7 @@ export function FreeLineForm({
             value={imagePath}
             url={photoUrl}
             alt="Foto del producto libre"
-            upload={uploadPhoto}
+            upload={upload}
             onChange={(path) => setValue('imagePath', path)}
           />
         </div>
@@ -174,7 +184,7 @@ export function FreeLineForm({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || photoBusy}>
           Añadir a la proforma
         </Button>
         <Button type="button" variant="ghost" onClick={onClose}>

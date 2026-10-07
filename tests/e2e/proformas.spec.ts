@@ -294,3 +294,62 @@ test('la proforma generada aparece en el historial y «Corregir» la actualiza',
   await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
   await expect(history(page).getByText('S/ 700.00').filter({ visible: true }).first()).toBeVisible()
 })
+
+// Fotos de prueba: dos PNG de la marca. El navegador las reduce y las sube en JPEG. Son distintas:
+// el PDF incrusta una sola vez dos fotos idénticas.
+const PHOTO = 'public/brand/ventronix-mark.png'
+const OTHER_PHOTO = 'public/brand/ventronix-wordmark.png'
+
+test('sube fotos del producto y del producto libre y salen en el PDF', async ({ page }) => {
+  await seed()
+  const db = await connect()
+  try {
+    const { rows } = await db.query<{ id: string }>(
+      "insert into public.categories (name) values ('Laptops') returning id",
+    )
+    await db.query(
+      `insert into public.products (code, name, category_id, unit_price)
+       values ('LAP-001', 'Laptop de 14 pulgadas', $1, 2590)`,
+      [rows[0].id],
+    )
+  } finally {
+    await db.end()
+  }
+  await login(page)
+
+  // La foto del producto, desde su formulario.
+  const list = page.getByRole('region', { name: 'Lista de productos' })
+  await list.getByRole('button', { name: 'Editar Laptop de 14 pulgadas' }).click()
+  const form = page.getByRole('dialog', { name: 'Editar producto' })
+  await form.getByLabel('Foto').setInputFiles(PHOTO)
+  await expect(form.getByRole('img', { name: 'Foto de Laptop de 14 pulgadas' })).toBeVisible()
+  await form.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(page.getByText('Cambios guardados')).toBeVisible()
+  // La lista vuelve a pedirse: el producto ya trae su foto al añadirlo.
+  await page.reload()
+
+  await list.getByRole('button', { name: 'Añadir Laptop de 14 pulgadas a la proforma' }).click()
+  await page
+    .getByRole('region', { name: 'Proforma' })
+    .getByRole('button', { name: 'Completar proforma' })
+    .click()
+  const panel = dialog(page)
+  await expect(panel.getByRole('img', { name: 'Foto de Laptop de 14 pulgadas' })).toBeVisible()
+
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  const free = panel.getByRole('form', { name: 'Añadir producto libre' })
+  await free.getByLabel('Foto').setInputFiles(OTHER_PHOTO)
+  await expect(free.getByRole('img', { name: 'Foto del producto libre' })).toBeVisible()
+  await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
+  await expect(panel.getByRole('img', { name: 'Foto de Instalación en sitio' })).toBeVisible()
+  await expect(panel.getByRole('switch', { name: /Incluir fotos en el PDF/ })).toBeChecked()
+
+  await panel.getByLabel('Razón social o nombre').fill('Cliente de prueba')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  const download = page.waitForEvent('download')
+  await panel.getByRole('button', { name: 'Descargar PDF' }).click()
+  const pdf = readFileSync(await (await download).path())
+  // El logotipo, la franja de marcas y las dos fotos.
+  expect(pdf.toString('latin1').match(/\/Subtype\s*\/Image\b/g)).toHaveLength(4)
+  expect(pdfText(pdf)).toContain('Imágenes referenciales.')
+})

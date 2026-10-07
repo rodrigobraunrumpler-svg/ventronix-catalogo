@@ -99,6 +99,16 @@ export function ProductForm({
   uploadPhoto,
 }: ProductFormProps) {
   const [serverError, setServerError] = useState<string | null>(null)
+  // Mientras sube la foto no se guarda: se guardaría sin ella.
+  const [photoBusy, setPhotoBusy] = useState(false)
+  async function upload(file: File) {
+    setPhotoBusy(true)
+    try {
+      return await uploadPhoto(file)
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
   const draftKey = productDraftKey(product?.id)
   const base = product?.updated_at ?? null
   // Punto de partida sin borrador: los datos del producto o un alta vacía. «Descartar» vuelve aquí.
@@ -224,7 +234,7 @@ export function ProductForm({
             value={live.image_path ?? null}
             url={photoUrl}
             alt={`Foto de ${live.name?.trim() || 'tu producto'}`}
-            upload={uploadPhoto}
+            upload={upload}
             onChange={(path) => setValue('image_path', path, { shouldDirty: true })}
           />
           {errors.image_path ? (
@@ -382,11 +392,16 @@ export function ProductForm({
           Cancelar
         </Button>
         {product ? null : (
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={save(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting || photoBusy}
+            onClick={save(true)}
+          >
             Crear y añadir otro
           </Button>
         )}
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || photoBusy}>
           {product ? 'Guardar cambios' : 'Crear producto'}
         </Button>
       </div>

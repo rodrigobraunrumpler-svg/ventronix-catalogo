@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ProductForm } from '@/features/catalog/products/components/product-form'
@@ -98,6 +98,29 @@ describe('ProductForm', () => {
     await vi.waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ image_path: path })),
     )
+  })
+
+  it('mientras sube la foto no deja guardar, para no perderla', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:foto')
+    URL.revokeObjectURL = vi.fn()
+    let finish: (path: string) => void = () => {}
+    const uploadPhoto = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve
+        }),
+    )
+    const { user } = renderForm({ uploadPhoto })
+    await fillValid(user)
+    await user.upload(
+      screen.getByLabelText('Foto'),
+      new File(['foto'], 'laptop.png', { type: 'image/png' }),
+    )
+    const create = screen.getByRole('button', { name: 'Crear producto' })
+    expect(create).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Crear y añadir otro' })).toBeDisabled()
+    await act(async () => finish('products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'))
+    expect(create).toBeEnabled()
   })
 
   it('acepta el precio con punto decimal', async () => {

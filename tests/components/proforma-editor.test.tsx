@@ -104,6 +104,30 @@ describe('ProformaEditor', () => {
       open.mockRestore()
     })
 
+    it('mientras sube la foto del producto libre no deja añadirlo', async () => {
+      URL.createObjectURL = vi.fn(() => 'blob:foto')
+      URL.revokeObjectURL = vi.fn()
+      seedProforma({})
+      let finish: (path: string) => void = () => {}
+      const uploadPhoto = vi.fn(
+        () =>
+          new Promise<string>((resolve) => {
+            finish = resolve
+          }),
+      )
+      const { user } = renderEditor({ uploadPhoto })
+      await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
+      const form = within(screen.getByRole('form', { name: 'Añadir producto libre' }))
+      await user.upload(
+        form.getByLabelText('Foto'),
+        new File(['x'], 'cable.png', { type: 'image/png' }),
+      )
+      const add = form.getByRole('button', { name: 'Añadir a la proforma' })
+      expect(add).toBeDisabled()
+      await act(async () => finish('lines/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'))
+      expect(add).toBeEnabled()
+    })
+
     it('sin fotos no aparece el interruptor', () => {
       seedProforma({ lines: [line()] })
       renderEditor()
