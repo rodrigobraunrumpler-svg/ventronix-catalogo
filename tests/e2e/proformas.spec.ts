@@ -353,3 +353,28 @@ test('sube fotos del producto y del producto libre y salen en el PDF', async ({ 
   expect(pdf.toString('latin1').match(/\/Subtype\s*\/Image\b/g)).toHaveLength(4)
   expect(pdfText(pdf)).toContain('Imágenes referenciales.')
 })
+
+test('tras «Nueva proforma» en la proforma lista, el foco vuelve a «Nueva proforma»', async ({
+  page,
+}) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
+  await page.keyboard.press('Escape')
+  // Se vuelve a abrir desde la barra: al terminar, la barra (quien la abrió) ya no existe.
+  await page
+    .getByRole('region', { name: 'Proforma', exact: true })
+    .getByRole('button', { name: 'Completar proforma' })
+    .click()
+  await panel.getByLabel('Razón social o nombre').fill('Cliente de prueba')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
+  await panel.getByRole('button', { name: 'Nueva proforma' }).click()
+  await expect(panel).toHaveCount(0)
+  // El de la cabecera: el historial vacío, mientras se actualiza, tiene otro.
+  await expect(page.getByRole('button', { name: 'Nueva proforma' }).first()).toBeFocused()
+})

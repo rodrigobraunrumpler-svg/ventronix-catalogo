@@ -130,7 +130,7 @@ function ProformasContent() {
                   : null
             }
           />
-          <Button onClick={startNew}>
+          <Button id="new-proforma" onClick={startNew}>
             <Plus aria-hidden />
             Nueva proforma
           </Button>
@@ -188,7 +188,7 @@ function ProformasContent() {
       </section>
 
       <ProformaBar onComplete={() => setOpen(true)} />
-      <ProformaDialog open={open} onClose={() => setOpen(false)} />
+      <ProformaDialog open={open} onClose={() => setOpen(false)} returnFocusTo="new-proforma" />
       <ResendDialog
         row={resending}
         today={today}

@@ -31,12 +31,15 @@ export function ProformaDialog({
   onClose,
   onContinue,
   historyLink,
+  returnFocusTo = 'product-search',
 }: {
   open: boolean
   onClose: () => void
   onContinue?: () => void
   // Desde Productos: al generarla, enlaza al historial de Proformas.
   historyLink?: boolean
+  // A dónde vuelve el foco si quien la abrió ya no existe (la barra, tras «Nueva proforma»).
+  returnFocusTo?: string
 }) {
   const { draft } = useProforma()
   const queryClient = useQueryClient()
@@ -47,7 +50,7 @@ export function ProformaDialog({
   )
   const lookupRuc = useRucLookup()
   const findClient = useClientLookup()
-  const returnFocus = useReturnFocus(open, 'product-search')
+  const returnFocus = useReturnFocus(open, returnFocusTo)
   const whatsapp = useWhatsAppStatus(open)
   const { refresh } = useWhatsAppLink()
 
