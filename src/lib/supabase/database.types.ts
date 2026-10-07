@@ -136,6 +136,51 @@ export type Database = {
           },
         ]
       }
+      proformas: {
+        Row: {
+          client_document: string
+          client_name: string
+          client_phone: string
+          created_at: string
+          document: NonNullable<Json>
+          id: string
+          issued_at: string
+          item_count: number
+          number: number
+          total: number
+          updated_at: string
+          valid_until: string
+        }
+        Insert: {
+          client_document?: string
+          client_name: string
+          client_phone?: string
+          created_at?: string
+          document: NonNullable<Json>
+          id?: string
+          issued_at: string
+          item_count: number
+          number: number
+          total: number
+          updated_at?: string
+          valid_until: string
+        }
+        Update: {
+          client_document?: string
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          document?: NonNullable<Json>
+          id?: string
+          issued_at?: string
+          item_count?: number
+          number?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string
+        }
+        Relationships: []
+      }
       whatsapp_session: {
         Row: {
           id: boolean
@@ -181,6 +226,10 @@ export type Database = {
         }
         Returns: Json
       }
+      export_proformas: {
+        Args: { date_from?: string; date_to?: string; max_rows?: number; search?: string }
+        Returns: Json
+      }
       filter_products: {
         Args: {
           category?: string
@@ -201,6 +250,21 @@ export type Database = {
           sort_position: number
           unit_price: number
           updated_at: string
+        }[]
+      }
+      filter_proformas: {
+        Args: { date_from?: string; date_to?: string; search?: string }
+        Returns: {
+          client_document: string
+          client_name: string
+          client_phone: string
+          id: string
+          issued_at: string
+          item_count: number
+          number: number
+          sort_position: number
+          total: number
+          valid_until: string
         }[]
       }
       import_products: { Args: { columns: string[]; mode?: string; rows: Json }; Returns: Json }
@@ -239,6 +303,16 @@ export type Database = {
           page_size?: number
           search?: string
           sort?: string
+        }
+        Returns: Json
+      }
+      search_proformas: {
+        Args: {
+          date_from?: string
+          date_to?: string
+          page?: number
+          page_size?: number
+          search?: string
         }
         Returns: Json
       }

@@ -53,3 +53,8 @@ export async function resetWhatsAppSession(client: Client) {
     'update public.whatsapp_session set phone = null, state = null, linked_at = null, locked_until = null',
   )
 }
+
+// El historial de proformas vacío (spec de productos libres §5).
+export async function resetProformas(client: Client) {
+  await client.query('truncate public.proformas')
+}
