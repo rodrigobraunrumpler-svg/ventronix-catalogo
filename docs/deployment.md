@@ -88,6 +88,7 @@ Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplic
 - `202610020001_product_list_filters.sql`: fecha y orden de la lista, Excel e indicadores.
 - `202610030001_product_import.sql`: la carga masiva. Añade las funciones `product_import_plan`, `preview_product_import` e `import_products`, solo para cuentas con sesión.
 - `202610060001_whatsapp_message.sql`: el mensaje de WhatsApp editable en Empresa. Añade una columna. **Aplícala antes de publicar el código:** la app la lee al cargar Empresa y cada proforma, y sin ella esas pantallas fallan.
+- `202610060002_proforma_history.sql`: el historial de proformas. Añade la tabla `proformas` (sin borrado) y las funciones `filter_proformas`, `search_proformas` y `export_proformas`, solo para cuentas con sesión.
 
 Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba despliegue» y el producto `PRUEBA-001`, y bórralos al terminar.
 
@@ -99,6 +100,7 @@ Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba de
 - [ ] El botón «Excel» descarga el reporte completo y la lista de precios con lo filtrado.
 - [ ] **Carga masiva:** en `/products/import`, descarga la plantilla, complétala con `PRUEBA-001` en la categoría «Prueba despliegue» y súbela. La vista previa lo muestra como «Nuevo». Impórtalo, descarga el comprobante y comprueba que «Ver productos» lo muestra. Bórralo al terminar.
 - [ ] **Mensaje de WhatsApp:** en Empresa › Mensaje, cambia el texto, guarda y recarga: sigue ahí. «Volver al mensaje original» lo recupera.
+- [ ] **Proformas:** genera una proforma con un producto libre (código vacío) y ciérrala: aparece en Proformas con su total. «Corregir», cambiar la cantidad y generar otra vez actualiza esa misma fila. Busca al cliente, cambia de página, descarga el Excel y reenvía por WhatsApp. Usa «Cliente Prueba despliegue» para reconocerla: las proformas no se borran. El historial empieza con esta versión: las proformas anteriores no están.
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.

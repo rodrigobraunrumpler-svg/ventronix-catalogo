@@ -198,7 +198,8 @@ function RowButtons({
   )
 }
 
-// PC: ordenada por número, de la más reciente a la más antigua (spec §4.2).
+// PC: ordenada por número, de la más reciente a la más antigua (spec §4.2). Ocho columnas no caben
+// en menos de 1280 px: debajo van las tarjetas, y «Productos» aparece desde 1400 px.
 function HistoryTable({
   items,
   today,
@@ -207,7 +208,7 @@ function HistoryTable({
   const th =
     'h-11 border-b bg-background/60 px-3 text-xs font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase'
   return (
-    <table className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+    <table className="hidden w-full table-fixed border-collapse text-left text-sm xl:table">
       <caption className="sr-only">Proformas guardadas</caption>
       <thead>
         <tr>
@@ -223,7 +224,7 @@ function HistoryTable({
           <th scope="col" className={cn(th, 'w-32')}>
             RUC/DNI
           </th>
-          <th scope="col" className={cn(th, 'w-24 text-right')}>
+          <th scope="col" className={cn(th, 'hidden w-24 text-right min-[1400px]:table-cell')}>
             Productos
           </th>
           <th scope="col" className={cn(th, 'w-34 text-right')}>
@@ -232,7 +233,7 @@ function HistoryTable({
           <th scope="col" className={cn(th, 'w-26')}>
             Vence
           </th>
-          <th scope="col" className={cn(th, 'w-44 pr-5 text-right')}>
+          <th scope="col" className={cn(th, 'w-56 pr-5 text-right')}>
             Acciones
           </th>
         </tr>
@@ -246,7 +247,9 @@ function HistoryTable({
               <ClientButton row={row} onClient={actions.onClient} className="block" />
             </td>
             <td className="px-3 py-3 tabular-nums">{row.client_document || '—'}</td>
-            <td className="px-3 py-3 text-right tabular-nums">{row.item_count}</td>
+            <td className="hidden px-3 py-3 text-right tabular-nums min-[1400px]:table-cell">
+              {row.item_count}
+            </td>
             <td className="px-3 py-3 text-right font-bold whitespace-nowrap tabular-nums">
               S/ {formatPrice(row.total)}
             </td>
@@ -273,7 +276,7 @@ function HistoryCards({
   pendingId,
 }: RowActions & { items: ProformaRow[]; today: string }) {
   return (
-    <ul className="md:hidden">
+    <ul className="xl:hidden">
       {items.map((row) => (
         <li key={row.id} className="grid gap-2.5 border-t px-4 py-3.5 first:border-t-0">
           <div className="flex items-start justify-between gap-3">

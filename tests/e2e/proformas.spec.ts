@@ -104,3 +104,193 @@ test('«Nueva proforma» pregunta antes de borrar una proforma sin generar', asy
   await prompt.getByRole('button', { name: 'Empezar una nueva' }).click()
   await expect(panel.getByText(/La proforma está vacía/)).toBeVisible()
 })
+
+// 25 proformas guardadas con su copia, como las deja «Generar». La 7 es de José Pérez.
+async function seedHistory() {
+  const db = await connect()
+  try {
+    await resetProformas(db)
+    for (let number = 1; number <= 25; number++) {
+      const name = number === 7 ? 'José Pérez' : `Cliente ${number}`
+      const document = number === 7 ? '12345678' : ''
+      const issuedAt = new Date(Date.UTC(2026, 9, 1, 15) + number * 3_600_000).toISOString()
+      const snapshot = {
+        input: {
+          draft: false,
+          number,
+          issuedAt,
+          lines: [
+            {
+              code: 'LAP-001',
+              name: 'Laptop de 14 pulgadas',
+              description: null,
+              unitPrice: '100.00',
+              quantity: 1,
+            },
+          ],
+          client: { name, document, phone: '987654321', address: '', deliveryTime: '' },
+          validityDays: '',
+          discountPercent: '',
+          shipping: '',
+        },
+        company: {
+          legal_name: 'Empresa de Pruebas S.A.C.',
+          trade_name: null,
+          ruc: '20000000001',
+          address: 'Av. Prueba 123, Huamanga',
+          phones: ['066 312345'],
+          email: null,
+          payment_terms: null,
+          return_policy: null,
+          default_validity_days: 7,
+          bank_accounts: [],
+          wallets: [],
+          whatsapp_message: null,
+          updated_at: '2026-10-01T00:00:00Z',
+        },
+      }
+      await db.query(
+        `insert into public.proformas
+           (number, issued_at, valid_until, client_name, client_document, client_phone,
+            item_count, total, document)
+         values ($1, $2, '2026-10-08', $3, $4, '987654321', 1, 100, $5)`,
+        [number, issuedAt, name, document, snapshot],
+      )
+    }
+  } finally {
+    await db.end()
+  }
+}
+
+const history = (page: Page) => page.getByRole('region', { name: 'Historial de proformas' })
+const SEARCH = 'Buscar por cliente, RUC, DNI, celular o N° de proforma'
+
+test('encuentra, pagina, filtra, descarga y reenvía las proformas guardadas', async ({ page }) => {
+  await seed()
+  await seedHistory()
+  // wa.me responde con una página de prueba: las e2e nunca salen a WhatsApp.
+  await page
+    .context()
+    .route('https://wa.me/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<title>WhatsApp</title>' }),
+    )
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await expect(page.getByText(/^25 proformas · \d+ este mes$/)).toBeVisible()
+  await expect(history(page).getByText('Proformas 1–20 de 25')).toBeVisible()
+
+  await history(page).getByRole('button', { name: 'Página 2' }).click()
+  await expect(page).toHaveURL(/page=2/)
+  await expect(history(page).getByText('Proformas 21–25 de 25')).toBeVisible()
+
+  await history(page).getByLabel(SEARCH).fill('jose perez')
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
+  await expect(page).toHaveURL(/search=jose/)
+  await page.reload()
+  // La tabla (PC) y las tarjetas (móvil) están en la página; solo una se ve.
+  await expect(history(page).getByText('José Pérez').filter({ visible: true })).toBeVisible()
+
+  const excel = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Descargar Excel' }).click()
+  expect((await excel).suggestedFilename()).toMatch(
+    /^proformas-jose-perez-\d{4}-\d{2}-\d{2}\.xlsx$/,
+  )
+
+  // El N° también se busca, y el nombre del cliente muestra todas sus proformas.
+  await history(page).getByLabel(SEARCH).fill('0007')
+  await expect(page).toHaveURL(/search=0007/)
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
+  await history(page).getByRole('button', { name: 'Ver las proformas de José Pérez' }).click()
+  await expect(page).toHaveURL(/search=12345678/)
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
+
+  await history(page).getByRole('button', { name: 'Reenviar la proforma N° 0007' }).click()
+  const resend = page.getByRole('dialog', { name: 'Reenviar proforma N° 0007' })
+  await expect(
+    resend.getByText(/Hola, José Pérez\. Le envío la proforma N° 0007 por S\/ 100\.00/),
+  ).toBeVisible()
+  const chat = page.context().waitForEvent('page')
+  await resend.getByRole('button', { name: 'Enviar por WhatsApp' }).click()
+  expect((await chat).url()).toContain(
+    'https://wa.me/51987654321?text=Hola%2C%20Jos%C3%A9%20P%C3%A9rez',
+  )
+})
+
+// El proveedor de prueba (WHATSAPP_PROVIDER=stub) vincula al instante y nunca sale a WhatsApp.
+test('con el WhatsApp vinculado, «Reenviar» la envía sola', async ({ page }) => {
+  await seed()
+  await seedHistory()
+  await login(page)
+  await page.getByRole('link', { name: 'Empresa' }).click()
+  const card = page.getByRole('region', { name: 'WhatsApp' })
+  await card.getByRole('button', { name: 'Vincular WhatsApp' }).click()
+  const link = page.getByRole('dialog', { name: 'Vincular WhatsApp' })
+  await link.getByLabel('Celular de WhatsApp de la empresa').fill('987 654 321')
+  await link.getByRole('button', { name: 'Generar código' }).click()
+  await expect(page.getByText('WhatsApp vinculado.')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await history(page).getByRole('button', { name: 'Reenviar la proforma N° 0025' }).click()
+  const resend = page.getByRole('dialog', { name: 'Reenviar proforma N° 0025' })
+  await resend.getByLabel('Celular del cliente').fill('900 000 000')
+  await resend.getByRole('button', { name: 'Enviar por WhatsApp' }).click()
+  await expect(resend.getByText('Enviada por WhatsApp al 900 000 000.')).toBeVisible()
+})
+
+// Preferencia del usuario: las pantallas llenan el contenedor, nada se desborda y la acción
+// principal se ve sin bajar.
+test('Proformas llena el contenedor sin desbordarse y «Nueva proforma» está a la vista', async ({
+  page,
+}) => {
+  await seed()
+  await seedHistory()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await expect(history(page).getByText('Proformas 1–20 de 25')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Nueva proforma' }).first()).toBeInViewport()
+  const overflow = () =>
+    page.evaluate(() => {
+      const section = document.querySelector('[aria-label="Historial de proformas"]')!
+      return {
+        page: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+        section: Math.max(0, section.scrollWidth - section.clientWidth),
+      }
+    })
+  expect(await overflow()).toEqual({ page: 0, section: 0 })
+  // En PC, también en un laptop de 1280 px con el menú abierto: los botones no se cortan.
+  if (page.viewportSize()!.width >= 1280) {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    expect(await overflow()).toEqual({ page: 0, section: 0 })
+    await page.setViewportSize({ width: 1440, height: 900 })
+  }
+  const main = await page.locator('#main').boundingBox()
+  const list = await history(page).boundingBox()
+  // Solo el margen interior de la página: sin un ancho máximo que deje espacio vacío.
+  expect(list!.width).toBeGreaterThan(main!.width - 100)
+})
+
+test('la proforma generada aparece en el historial y «Corregir» la actualiza', async ({ page }) => {
+  await seed()
+  await login(page)
+  await page.getByRole('link', { name: 'Proformas' }).click()
+  await expect(page.getByText('Todavía no hay proformas guardadas')).toBeVisible()
+  // Sin proformas, «Descargar Excel» explica por qué no descarga nada. Con aria-disabled,
+  // Playwright no lo pulsa sin force; una persona sí puede pulsarlo.
+  await page.getByRole('button', { name: 'Descargar Excel' }).click({ force: true })
+  await expect(page.getByText('Todavía no hay proformas para descargar.')).toBeVisible()
+  await page.getByRole('button', { name: 'Nueva proforma' }).first().click()
+  const panel = dialog(page)
+  await panel.getByRole('button', { name: 'Añadir producto libre' }).click()
+  await addFreeLine(page, { name: 'Instalación en sitio', price: '350' })
+  await panel.getByLabel('Razón social o nombre').fill('Cliente de prueba')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await expect(panel.getByText('Proforma N° 0001 lista')).toBeVisible()
+  await panel.getByRole('button', { name: 'Corregir' }).click()
+  await panel.getByLabel('Cantidad de Instalación en sitio').fill('2')
+  await panel.getByRole('button', { name: 'Generar proforma' }).click()
+  await expect(panel.getByText('Cliente de prueba · Total S/ 700.00')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  await expect(history(page).getByText('Proformas 1–1 de 1')).toBeVisible()
+  await expect(history(page).getByText('S/ 700.00').filter({ visible: true }).first()).toBeVisible()
+})
