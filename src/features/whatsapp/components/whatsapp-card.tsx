@@ -1,7 +1,7 @@
 'use client'
 
 import { Loader2, MessageCircle } from 'lucide-react'
-import { useId, useState, type FormEvent } from 'react'
+import { useId, useState, type SubmitEvent } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -119,7 +119,7 @@ function LinkDialog({
   const [error, setError] = useState<string | null>(null)
   const waiting = code !== null && error === null
 
-  async function start(event?: FormEvent) {
+  async function start(event?: SubmitEvent<HTMLFormElement>) {
     event?.preventDefault()
     const digits = digitsOnly(phone)
     if (!isValidMobile(digits)) {
