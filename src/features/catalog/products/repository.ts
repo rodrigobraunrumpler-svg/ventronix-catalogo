@@ -1,6 +1,7 @@
 import 'server-only'
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import type { ActionResult } from '@/lib/action-result'
+import { PHOTO_BUCKET, thumbPath } from '@/lib/photos'
 import type { Database } from '@/lib/supabase/database.types'
 import { failure, unexpected } from '../action-errors'
 import type { Product, ProductInput } from '../types'
@@ -56,8 +57,16 @@ export async function updateProductRow(
 }
 
 export async function deleteProductRow(supabase: Client, id: string): Promise<ActionResult<null>> {
-  const { data, error } = await supabase.from('products').delete().eq('id', id).select('id')
+  const { data, error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id)
+    .select('id, image_path')
   if (error) return writeError(error)
   if (data.length === 0) return failure('NOT_FOUND', missing)
+  // Su foto ya no la usa el catálogo: se borra, salvo que la use una proforma guardada (la base no
+  // lo deja). Si no se puede, el producto igual queda eliminado.
+  const photo = data[0].image_path
+  if (photo) await supabase.storage.from(PHOTO_BUCKET).remove([photo, thumbPath(photo)])
   return { ok: true, data: null }
 }

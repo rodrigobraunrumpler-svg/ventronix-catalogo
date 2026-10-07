@@ -273,6 +273,7 @@ export type Database = {
       }
       import_products: { Args: { columns: string[]; mode?: string; rows: Json }; Returns: Json }
       next_proforma_number: { Args: Record<PropertyKey, never>; Returns: number }
+      photo_in_use: { Args: { path: string }; Returns: boolean }
       preview_product_import: { Args: { columns: string[]; rows: Json }; Returns: Json }
       product_import_plan: {
         Args: { columns: string[]; rows: Json }

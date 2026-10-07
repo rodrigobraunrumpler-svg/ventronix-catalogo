@@ -90,6 +90,7 @@ Antes de publicar esta versión, haz una copia de seguridad (sección 4) y aplic
 - `202610060001_whatsapp_message.sql`: el mensaje de WhatsApp editable en Empresa. Añade una columna. **Aplícala antes de publicar el código:** la app la lee al cargar Empresa y cada proforma, y sin ella esas pantallas fallan.
 - `202610060002_proforma_history.sql`: el historial de proformas. Añade la tabla `proformas` (sin borrado) y las funciones `filter_proformas`, `search_proformas` y `export_proformas`, solo para cuentas con sesión.
 - `202610060003_photos.sql`: las fotos. Crea el bucket privado `images` con sus políticas (solo la cuenta dueña lee y sube; nadie borra), añade `products.image_path` y vuelve a crear `filter_products` para devolver la foto.
+- `202610070001_photo_cleanup.sql`: borrar fotos que ya no se usan. Añade la función `photo_in_use` y una política que solo deja borrar una foto (y su miniatura) si ningún producto ni ninguna proforma guardada la usa.
 
 Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba despliegue» y el producto `PRUEBA-001`, y bórralos al terminar.
 
@@ -102,7 +103,7 @@ Usa datos de prueba fáciles de reconocer, por ejemplo la categoría «Prueba de
 - [ ] **Carga masiva:** en `/products/import`, descarga la plantilla, complétala con `PRUEBA-001` en la categoría «Prueba despliegue» y súbela. La vista previa lo muestra como «Nuevo». Impórtalo, descarga el comprobante y comprueba que «Ver productos» lo muestra. Bórralo al terminar.
 - [ ] **Mensaje de WhatsApp:** en Empresa › Mensaje, cambia el texto, guarda y recarga: sigue ahí. «Volver al mensaje original» lo recupera.
 - [ ] **Proformas:** genera una proforma con un producto libre (código vacío) y ciérrala: aparece en Proformas con su total. «Corregir», cambiar la cantidad y generar otra vez actualiza esa misma fila. Busca al cliente, cambia de página, descarga el Excel y reenvía por WhatsApp. Usa «Cliente Prueba despliegue» para reconocerla: las proformas no se borran. El historial empieza con esta versión: las proformas anteriores no están.
-- [ ] **Fotos:** edita `PRUEBA-001`, elige una foto y guarda: la ficha la muestra. Añádelo a una proforma con un producto libre con foto: las dos se ven en sus líneas y el PDF sale con la columna «FOTO» y «Imágenes referenciales.». Con «Incluir fotos en el PDF» apagado, sale como siempre. Cada foto ocupa unos 50 KB y su miniatura unos 12 KB (panel de Supabase › Storage).
+- [ ] **Fotos:** edita `PRUEBA-001`, elige una foto y guarda: la ficha la muestra. Añádelo a una proforma con un producto libre con foto: las dos se ven en sus líneas y el PDF sale con la columna «FOTO» y «Imágenes referenciales.». Con «Incluir fotos en el PDF» apagado, sale como siempre. Cada foto ocupa unos 50 KB y su miniatura unos 12 KB (panel de Supabase › Storage). **Borrado:** en «Añadir producto libre», elige una foto y pulsa «Quitar»: en Supabase › Storage › images › lines desaparecen la foto y su miniatura.
 - [ ] Cerrar sesión vuelve a `/login`, y el botón «atrás» no muestra el catálogo.
 - [ ] En «Empresa», los datos se guardan y la vista previa los muestra.
 - [ ] En Productos, «Añadir», «Completar proforma» y «Generar proforma» asignan el número siguiente, y un RUC real completa la razón social.
