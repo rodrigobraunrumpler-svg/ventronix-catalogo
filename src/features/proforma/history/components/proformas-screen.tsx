@@ -4,7 +4,6 @@ import { CircleAlert, Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
-import { limaDay } from '@/features/catalog/list-options'
 import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
 import { settle } from '@/lib/action-result'
 import { ProformaBar } from '../../components/proforma-bar'
@@ -17,6 +16,7 @@ import { resendProforma } from '../actions'
 import {
   fetchStoredDocument,
   useHistoryFilters,
+  useLimaToday,
   useProformaHistory,
   useStoredDocument,
 } from '../hooks'
@@ -60,8 +60,7 @@ function ProformasContent() {
           return result
         }
       : undefined
-  // Como «hoy» en la proforma: se fija al montar. Marca las vencidas.
-  const [today] = useState(() => limaDay(new Date()))
+  const today = useLimaToday()
   const listRef = useRef<HTMLElement>(null)
   const data = query.data
   const totalPages = data ? Math.max(1, Math.ceil(data.total / HISTORY_PAGE_SIZE)) : 1

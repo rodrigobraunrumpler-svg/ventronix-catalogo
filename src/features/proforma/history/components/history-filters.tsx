@@ -1,19 +1,17 @@
 'use client'
 
 import { Search, X } from 'lucide-react'
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DateFilterControl } from '@/features/catalog/products/components/date-filter'
-import { limaDay } from '@/features/catalog/list-options'
-import { useHistoryFilters } from '../hooks'
+import { useHistoryFilters, useLimaToday } from '../hooks'
 
 // Búsqueda por cliente, RUC, DNI, celular o N° y filtro de fecha (spec de productos libres §4.2).
 // Cambiar un filtro vuelve a la página 1.
 export function HistoryFilters() {
   const [filters, setFilters] = useHistoryFilters()
-  // Como en Productos: «hoy» se fija al montar (solo limita los calendarios).
-  const [today] = useState(() => limaDay(new Date()))
+  // Límite de los calendarios: también cambia a medianoche.
+  const today = useLimaToday()
   const hasFilters = filters.search !== '' || filters.date !== null
 
   return (

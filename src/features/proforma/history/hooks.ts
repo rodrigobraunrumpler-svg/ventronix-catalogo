@@ -2,9 +2,9 @@
 
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryStates } from 'nuqs'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { resolveDateRange } from '@/features/catalog/list-options'
+import { limaDay, resolveDateRange } from '@/features/catalog/list-options'
 import { useDebouncedValue } from '@/features/catalog/products/hooks'
 import { settle } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
@@ -118,4 +118,21 @@ export function useClientLookup() {
         staleTime: 0,
       })
       .catch(() => null)
+}
+
+// Hoy en Lima, al día: marca las vencidas. Se revisa cada minuto y al volver a la pestaña, así cambia
+// a medianoche aunque la pantalla quede abierta.
+// ponytail: revisar cada minuto es comparar un texto; React no vuelve a dibujar si no cambió.
+export function useLimaToday() {
+  const [today, setToday] = useState(() => limaDay(new Date()))
+  useEffect(() => {
+    const refresh = () => setToday(limaDay(new Date()))
+    const timer = setInterval(refresh, 60_000)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
+  return today
 }
