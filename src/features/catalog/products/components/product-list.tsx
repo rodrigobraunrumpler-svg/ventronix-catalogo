@@ -14,8 +14,10 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { EmptyState } from '@/components/empty-state'
+import { Pagination } from '@/components/pagination'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProformaControl } from '@/features/proforma/components/proforma-control'
@@ -27,7 +29,6 @@ import { useCategories } from '../../categories/hooks'
 import { categoryColor } from '../../categories/theme'
 import { describeDateFilter, relativeDay, rowDateField, type DateField } from '../../list-options'
 import { formatPrice } from '../../money'
-import { pageList } from '../../search-params'
 import type { ProductListItem } from '../../types'
 import { useCatalogFilters, useProducts } from '../hooks'
 import { PAGE_SIZE } from '../queries'
@@ -49,6 +50,7 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
   const addSingleResult = useAddSingleResult()
   const data = query.data
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
+  const page = Math.min(filters.page, totalPages)
 
   // Si un borrado vacía la última página, se muestra la anterior (plan, tarea 6).
   useEffect(() => {
@@ -101,11 +103,7 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
           <SortSelect value={filters.sort} onChange={(sort) => setFilters({ sort, page: null })} />
           <ExportMenu filters={filters} disabled={!data || data.total === 0} />
           {data && totalPages > 1 ? (
-            <PageStepper
-              page={Math.min(filters.page, totalPages)}
-              totalPages={totalPages}
-              onPage={goToPage}
-            />
+            <PageStepper page={page} totalPages={totalPages} onPage={goToPage} />
           ) : null}
         </div>
       </div>
@@ -186,10 +184,10 @@ export function ProductList({ onCreate, onView, onEdit, onDelete }: ProductListP
             onDelete={onDelete}
           />
           <Pagination
-            page={Math.min(filters.page, totalPages)}
+            page={page}
             totalPages={totalPages}
-            total={data.total}
-            shown={data.items.length}
+            label="Páginas de productos"
+            summary={`Mostrando ${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + data.items.length} de ${data.total} ${data.total === 1 ? 'producto' : 'productos'}`}
             onPage={goToPageFromBottom}
           />
         </>
@@ -488,69 +486,6 @@ function PageStepper({
   )
 }
 
-function Pagination({
-  page,
-  totalPages,
-  total,
-  shown,
-  onPage,
-}: {
-  page: number
-  totalPages: number
-  total: number
-  shown: number
-  onPage: (page: number) => void
-}) {
-  const from = (page - 1) * PAGE_SIZE + 1
-  const to = from + shown - 1
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:px-5">
-      <p className="text-[13px] text-muted-foreground">
-        Mostrando {from}–{to} de {total} {total === 1 ? 'producto' : 'productos'}
-      </p>
-      <nav aria-label="Páginas de productos" className="flex items-center gap-1.5">
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="Página anterior"
-          disabled={page <= 1}
-          onClick={() => onPage(page - 1)}
-        >
-          <ChevronLeft aria-hidden />
-        </Button>
-        {pageList(page, totalPages).map((item, index) =>
-          item === 'gap' ? (
-            <span key={`gap-${index}`} className="px-1 text-muted-foreground" aria-hidden>
-              …
-            </span>
-          ) : (
-            <Button
-              key={item}
-              variant={item === page ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              aria-label={`Página ${item}`}
-              aria-current={item === page ? 'page' : undefined}
-              className={cn(item === page && 'border border-input font-bold')}
-              onClick={() => onPage(item)}
-            >
-              {item}
-            </Button>
-          ),
-        )}
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="Página siguiente"
-          disabled={page >= totalPages}
-          onClick={() => onPage(page + 1)}
-        >
-          <ChevronRight aria-hidden />
-        </Button>
-      </nav>
-    </div>
-  )
-}
-
 function LoadingRows() {
   return (
     <div className="border-t">
@@ -565,40 +500,6 @@ function LoadingRows() {
           <Skeleton className="h-3.5 w-20 rounded-md" />
         </div>
       ))}
-    </div>
-  )
-}
-
-function EmptyState({
-  icon,
-  title,
-  text,
-  action,
-  tone = 'neutral',
-}: {
-  icon: ReactNode
-  title: string
-  text: string
-  action: ReactNode
-  tone?: 'neutral' | 'error'
-}) {
-  return (
-    <div className="grid justify-items-center gap-2 border-t px-6 py-16 text-center">
-      <span
-        className={cn(
-          'mb-2 grid size-13 place-items-center rounded-[14px]',
-          tone === 'error'
-            ? 'bg-destructive/10 text-destructive'
-            : 'bg-muted text-secondary-foreground',
-        )}
-      >
-        {icon}
-      </span>
-      <h3 className="text-[17px] font-bold" role={tone === 'error' ? 'alert' : undefined}>
-        {title}
-      </h3>
-      <p className="mb-3 max-w-[360px] text-sm text-muted-foreground">{text}</p>
-      {action}
     </div>
   )
 }

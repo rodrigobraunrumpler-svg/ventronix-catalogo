@@ -86,19 +86,27 @@ export const DATE_PRESET_LABELS: Record<Exclude<DatePreset, 'custom'>, string> =
 // «2026-09-15» → «15/09/2026»: el día se lee como medianoche de Lima.
 export const formatDay = (day: string) => formatDate(parseISO(day, { in: lima }))
 
-// «Registro: últimos 7 días», «Modificación: 01/09/2026 – 15/09/2026»; null si no filtra. Un rango al
+// «Últimos 7 días», «01/09/2026 – 15/09/2026», «Desde el 01/09/2026»; null si no filtra. Un rango al
 // revés no filtra (resolveDateRange), así que tampoco se describe.
-export function describeDateFilter(filter: DateFilter): string | null {
+export function describeDateRange(filter: Pick<DateFilter, 'date' | 'from' | 'to'>) {
   if (filter.date === null) return null
   if (filter.from && filter.to && filter.from > filter.to) return null
-  const field = DATE_FIELD_LABELS[filter.dateBy]
-  if (filter.date !== 'custom') return `${field}: ${DATE_PRESET_LABELS[filter.date].toLowerCase()}`
-  if (filter.from && filter.to)
-    return `${field}: ${formatDay(filter.from)} – ${formatDay(filter.to)}`
-  if (filter.from) return `${field}: desde el ${formatDay(filter.from)}`
-  if (filter.to) return `${field}: hasta el ${formatDay(filter.to)}`
+  if (filter.date !== 'custom') return DATE_PRESET_LABELS[filter.date]
+  if (filter.from && filter.to) return `${formatDay(filter.from)} – ${formatDay(filter.to)}`
+  if (filter.from) return `Desde el ${formatDay(filter.from)}`
+  if (filter.to) return `Hasta el ${formatDay(filter.to)}`
   return null
 }
+
+// «Fecha: este mes»: el rango detrás de su etiqueta; null si no filtra.
+export function labelDateRange(label: string, filter: Pick<DateFilter, 'date' | 'from' | 'to'>) {
+  const range = describeDateRange(filter)
+  return range ? `${label}: ${range[0].toLowerCase()}${range.slice(1)}` : null
+}
+
+// «Registro: últimos 7 días», «Modificación: 01/09/2026 – 15/09/2026»; null si no filtra.
+export const describeDateFilter = (filter: DateFilter) =>
+  labelDateRange(DATE_FIELD_LABELS[filter.dateBy], filter)
 
 export const SORT_LABELS: Record<ProductSort, string> = {
   name: 'Nombre A–Z',

@@ -7,6 +7,22 @@ const none = { dateBy: 'created', date: null, from: null, to: null } as const
 const today = '2026-10-02'
 
 describe('DateFilterControl', () => {
+  it('sin «qué fecha» (el historial) solo pide el rango', async () => {
+    const onChange = vi.fn()
+    render(
+      <DateFilterControl
+        value={{ date: 'month', from: null, to: null }}
+        today={today}
+        onChange={onChange}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Fecha: Este mes' }))
+    expect(screen.queryByText('¿Qué fecha?')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Hoy' }))
+    expect(onChange).toHaveBeenCalledWith({ date: 'today', from: null, to: null })
+  })
+
   it('sin filtro dice «Fecha»; un rango rápido se aplica al pulsarlo y cierra el panel', async () => {
     const onChange = vi.fn()
     render(<DateFilterControl value={none} today={today} onChange={onChange} />)

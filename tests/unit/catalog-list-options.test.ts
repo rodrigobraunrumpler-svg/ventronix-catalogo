@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   describeDateFilter,
+  describeDateRange,
   isIsoDay,
+  labelDateRange,
   limaDay,
   relativeDay,
   resolveDateRange,
@@ -137,5 +139,23 @@ describe('toProductQuery', () => {
       dateTo: '2026-10-01',
       sort: 'newest',
     })
+  })
+})
+
+describe('describeDateRange', () => {
+  it.each([
+    [{ date: '7d', from: null, to: null }, 'Últimos 7 días'],
+    [{ date: 'custom', from: '2026-09-01', to: '2026-09-15' }, '01/09/2026 – 15/09/2026'],
+    [{ date: 'custom', from: '2026-09-01', to: null }, 'Desde el 01/09/2026'],
+    [{ date: 'custom', from: null, to: '2026-09-15' }, 'Hasta el 15/09/2026'],
+    [{ date: 'custom', from: '2026-09-15', to: '2026-09-01' }, null],
+    [{ date: null, from: null, to: null }, null],
+  ] as const)('%o → %s', (filter, expected) => {
+    expect(describeDateRange(filter)).toBe(expected)
+  })
+
+  it('con su etiqueta, el rango va en minúscula', () => {
+    expect(labelDateRange('Fecha', { date: 'month', from: null, to: null })).toBe('Fecha: este mes')
+    expect(labelDateRange('Fecha', { date: null, from: null, to: null })).toBeNull()
   })
 })

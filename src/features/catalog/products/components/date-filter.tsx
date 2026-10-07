@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import {
   DATE_PRESET_LABELS,
   describeDateFilter,
+  describeDateRange,
   limaDay,
   type DateField,
   type DateFilter,
@@ -35,6 +36,9 @@ const RANGES: { key: 'any' | DatePreset; text: string }[] = [
 
 const dateInput = 'h-9 rounded-md border border-input bg-card px-2 text-sm'
 
+// Sin dateBy (el historial de proformas) no se elige qué fecha: hay una sola.
+type DateFilterValue = Pick<DateFilter, 'date' | 'from' | 'to'> & { dateBy?: DateField }
+
 // Filtro de fecha de la lista (spec del Excel §4.2): qué fecha y qué rango. Los rangos rápidos se
 // aplican al pulsarlos; el personalizado, con «Aplicar».
 export function DateFilterControl({
@@ -42,7 +46,7 @@ export function DateFilterControl({
   today,
   onChange,
 }: {
-  value: DateFilter
+  value: DateFilterValue
   today: string
   onChange: (change: DateFilterChange) => void
 }) {
@@ -52,7 +56,9 @@ export function DateFilterControl({
   const [from, setFrom] = useState(value.from ?? '')
   const [to, setTo] = useState(value.to ?? '')
   const [error, setError] = useState<string | null>(null)
-  const label = describeDateFilter(value)
+  const label = value.dateBy
+    ? describeDateFilter({ ...value, dateBy: value.dateBy })
+    : describeDateRange(value)
   const selected = custom ? 'custom' : (value.date ?? 'any')
   const help = FIELDS.find((field) => field.key === value.dateBy)?.help
 
@@ -99,39 +105,41 @@ export function DateFilterControl({
           sideOffset={8}
           className="z-50 grid max-h-(--radix-popover-content-available-height) w-[min(22rem,calc(100vw-2rem))] gap-4 overflow-y-auto rounded-xl border bg-popover p-4 text-sm shadow-lg"
         >
-          <fieldset className="grid gap-2">
-            <legend className="mb-1 font-semibold">¿Qué fecha?</legend>
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-              {FIELDS.map((field) => (
-                <label
-                  key={field.key}
-                  className={cn(
-                    'cursor-pointer rounded-md px-2 py-1.5 text-center text-[13px] font-medium has-focus-visible:ring-2 has-focus-visible:ring-ring',
-                    value.dateBy === field.key
-                      ? 'bg-card text-foreground shadow-xs'
-                      : 'text-muted-foreground',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name={`${id}-field`}
-                    checked={value.dateBy === field.key}
-                    onChange={() =>
-                      onChange({
-                        dateBy: field.key,
-                        date: value.date,
-                        from: value.from,
-                        to: value.to,
-                      })
-                    }
-                    className="sr-only"
-                  />
-                  {field.text}
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">{help}</p>
-          </fieldset>
+          {value.dateBy ? (
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 font-semibold">¿Qué fecha?</legend>
+              <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+                {FIELDS.map((field) => (
+                  <label
+                    key={field.key}
+                    className={cn(
+                      'cursor-pointer rounded-md px-2 py-1.5 text-center text-[13px] font-medium has-focus-visible:ring-2 has-focus-visible:ring-ring',
+                      value.dateBy === field.key
+                        ? 'bg-card text-foreground shadow-xs'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name={`${id}-field`}
+                      checked={value.dateBy === field.key}
+                      onChange={() =>
+                        onChange({
+                          dateBy: field.key,
+                          date: value.date,
+                          from: value.from,
+                          to: value.to,
+                        })
+                      }
+                      className="sr-only"
+                    />
+                    {field.text}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">{help}</p>
+            </fieldset>
+          ) : null}
 
           {/* Dos columnas: el panel entero cabe en un laptop de 640 px de alto. */}
           <fieldset className="grid grid-cols-2 gap-x-1 gap-y-0.5">
