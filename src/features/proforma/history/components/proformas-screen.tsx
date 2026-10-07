@@ -5,18 +5,27 @@ import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { limaDay } from '@/features/catalog/list-options'
+import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
+import { settle } from '@/lib/action-result'
 import { ProformaBar } from '../../components/proforma-bar'
 import { ProformaDialog } from '../../components/proforma-dialog'
 import { EMPTY_DRAFT } from '../../draft'
 import { formatCents } from '../../money'
 import { ProformaProvider, useProforma } from '../../store'
 import { totalsFromText } from '../../totals'
-import { useHistoryFilters, useProformaHistory, useStoredDocument } from '../hooks'
-import { HISTORY_PAGE_SIZE } from '../queries'
+import { resendProforma } from '../actions'
+import {
+  fetchStoredDocument,
+  useHistoryFilters,
+  useProformaHistory,
+  useStoredDocument,
+} from '../hooks'
+import { HISTORY_PAGE_SIZE, type ProformaRow } from '../queries'
 import { HistoryExcelButton } from './history-excel-button'
 import { HistoryFilters } from './history-filters'
 import { HistoryLoading, HistoryResults } from './history-results'
 import { NewProformaPrompt } from './new-proforma-prompt'
+import { ResendDialog } from './resend-dialog'
 
 // Proformas (spec de productos libres §4.2): el historial para buscar, descargar y reenviar, y
 // «Nueva proforma» sin pasar por el catálogo.
@@ -37,6 +46,20 @@ function ProformasContent() {
   const { filters, query } = useProformaHistory()
   const [, setFilters] = useHistoryFilters()
   const documents = useStoredDocument()
+  const [resending, setResending] = useState<ProformaRow | null>(null)
+  // Se pide al entrar: al abrir «Reenviar» ya se sabe si se envía sola o por el chat.
+  const whatsapp = useWhatsAppStatus()
+  const { refresh } = useWhatsAppLink()
+  // Con el WhatsApp de la empresa vinculado se reenvía sola. Si falla, el estado se vuelve a pedir:
+  // el teléfono pudo cerrar la sesión.
+  const resend =
+    whatsapp.data?.configured && whatsapp.data.phone
+      ? async (input: { id: string; phone: string }) => {
+          const result = await settle(resendProforma(input))
+          if (!result.ok) void refresh()
+          return result
+        }
+      : undefined
   // Como «hoy» en la proforma: se fija al montar. Marca las vencidas.
   const [today] = useState(() => limaDay(new Date()))
   const listRef = useRef<HTMLElement>(null)
@@ -160,12 +183,20 @@ function ProformasContent() {
             onView={(row) => void documents.view(row)}
             onDownload={(row) => void documents.download(row)}
             pendingId={documents.pending}
+            onResend={setResending}
           />
         )}
       </section>
 
       <ProformaBar onComplete={() => setOpen(true)} />
       <ProformaDialog open={open} onClose={() => setOpen(false)} />
+      <ResendDialog
+        row={resending}
+        today={today}
+        onClose={() => setResending(null)}
+        loadDocument={fetchStoredDocument}
+        resend={resend}
+      />
       <NewProformaPrompt
         open={asking}
         summary={`${products} ${products === 1 ? 'producto' : 'productos'} · S/ ${totals ? formatCents(totals.total) : '—'}`}

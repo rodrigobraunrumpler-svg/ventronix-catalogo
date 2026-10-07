@@ -36,6 +36,7 @@ function renderResults(data = page(), today = '2026-10-06', updating = false) {
     onView: vi.fn(),
     onDownload: vi.fn(),
     onClient: vi.fn(),
+    onResend: vi.fn(),
   }
   render(
     <HistoryResults
@@ -51,6 +52,13 @@ function renderResults(data = page(), today = '2026-10-06', updating = false) {
 }
 
 describe('HistoryResults', () => {
+  it('«Reenviar» abre la ventana de esa proforma', async () => {
+    const { onResend, user } = renderResults()
+    const table = within(screen.getByRole('table'))
+    await user.click(table.getByRole('button', { name: 'Reenviar la proforma N° 0042' }))
+    expect(onResend).toHaveBeenCalledWith(expect.objectContaining({ number: 42 }))
+  })
+
   it('muestra cada proforma, la suma del periodo y qué filas se ven', () => {
     renderResults()
     const table = within(screen.getByRole('table', { name: 'Proformas guardadas' }))

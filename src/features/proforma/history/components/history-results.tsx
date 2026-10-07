@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, Eye, FileText, Search } from 'lucide-react'
+import { Download, Eye, FileText, Search, Send } from 'lucide-react'
 import { EmptyState } from '@/components/empty-state'
 import { Pagination } from '@/components/pagination'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ export type RowActions = {
   onDownload: (row: ProformaRow) => void
   // Todas las proformas de ese cliente (plan, decisión 23).
   onClient: (row: ProformaRow) => void
+  onResend: (row: ProformaRow) => void
   // La fila cuyo PDF se está preparando.
   pendingId: string | null
 }
@@ -152,7 +153,13 @@ function ClientButton({
   )
 }
 
-function RowButtons({ row, onView, onDownload, pendingId }: RowActions & { row: ProformaRow }) {
+function RowButtons({
+  row,
+  onView,
+  onDownload,
+  onResend,
+  pendingId,
+}: RowActions & { row: ProformaRow }) {
   const label = formatProformaNumber(row.number)
   const busy = pendingId === row.id
   return (
@@ -176,6 +183,16 @@ function RowButtons({ row, onView, onDownload, pendingId }: RowActions & { row: 
         onClick={() => onDownload(row)}
       >
         <Download aria-hidden />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="ml-1"
+        aria-label={`Reenviar la proforma ${label}`}
+        onClick={() => onResend(row)}
+      >
+        <Send aria-hidden />
+        Reenviar
       </Button>
     </div>
   )
@@ -252,6 +269,7 @@ function HistoryCards({
   today,
   onDownload,
   onClient,
+  onResend,
   pendingId,
 }: RowActions & { items: ProformaRow[]; today: string }) {
   return (
@@ -287,6 +305,14 @@ function HistoryCards({
             >
               <Download aria-hidden />
               Descargar
+            </Button>
+            <Button
+              size="sm"
+              aria-label={`Reenviar la proforma ${formatProformaNumber(row.number)}`}
+              onClick={() => onResend(row)}
+            >
+              <Send aria-hidden />
+              Reenviar
             </Button>
           </div>
         </li>

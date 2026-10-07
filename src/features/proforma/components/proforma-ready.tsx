@@ -14,13 +14,14 @@ import {
   shareOnWhatsApp,
   TAB_BLOCKED,
 } from '../document/files'
-import { documentDates, whatsappLink, whatsappMessage } from '../document/format'
+import { documentDates, whatsappMessage } from '../document/format'
 import { documentInput, type DocumentInput, type GeneratedDocument } from '../document/input'
 import { formatCents, ZERO } from '../money'
 import { formatProformaNumber } from '../number'
 import type { CompanyStatus } from '../readiness'
 import { useProforma } from '../store'
 import { totalsFromText } from '../totals'
+import { toastChatBlocked } from './chat-blocked'
 
 type Outcome = { kind: 'ready'; file: File } | { kind: 'error'; message: string }
 const LOADING = { kind: 'loading' } as const
@@ -127,21 +128,9 @@ export function ProformaReady({
   }
 
   async function openChat(pdf: File) {
-    if (await shareOnWhatsApp(pdf, message, draft.client.phone)) return
-    // El navegador no dejó abrir la pestaña; un enlace sí se abre al pulsarlo.
-    toast('Tu navegador bloqueó la pestaña de WhatsApp.', {
-      duration: 10_000,
-      action: (
-        <a
-          href={whatsappLink(draft.client.phone, message)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`ml-auto shrink-0 ${inlineAction}`}
-        >
-          Abrir el chat
-        </a>
-      ),
-    })
+    if (!(await shareOnWhatsApp(pdf, message, draft.client.phone))) {
+      toastChatBlocked(draft.client.phone, message)
+    }
   }
 
   return (
