@@ -10,6 +10,7 @@ import {
 import type { ProductListItem } from '@/features/catalog/types'
 import type { DocumentInput, GeneratedDocument } from '@/features/proforma/document/input'
 import { EMPTY_DRAFT } from '@/features/proforma/draft'
+import type { ClientMatch } from '@/features/proforma/history/queries'
 import type { RucLookupResult } from '@/features/proforma/ruc'
 import { ProformaProvider } from '@/features/proforma/store'
 import type { ActionResult } from '@/lib/action-result'
@@ -24,6 +25,7 @@ function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
     company: { status: 'ready', profile: completeCompany },
     prices: undefined,
     lookupRuc: vi.fn<Lookup>(async () => ({ kind: 'not-found' })),
+    findClient: vi.fn<(document: string) => Promise<ClientMatch | null>>(async () => null),
     onContinue: vi.fn(),
     onGenerate: vi.fn(),
     generatePdf: vi.fn<Generate>(async () => ({
@@ -61,6 +63,80 @@ const found = (legalName: string, status = 'ACTIVO', condition = 'HABIDO'): RucL
 })
 
 describe('ProformaEditor', () => {
+  describe('cliente desde el historial', () => {
+    const known: ClientMatch = {
+      name: 'Inversiones Nuevo Sol S.A.C.',
+      phone: '987654321',
+      address: 'Av. Sol 456',
+      count: 6,
+    }
+
+    it('con un RUC conocido completa lo vacío desde su proforma más reciente', async () => {
+      seedProforma({
+        lines: [line()],
+        client: { ...EMPTY_DRAFT.client, phone: '911222333', deliveryTime: 'Inmediato' },
+      })
+      const findClient = vi.fn(async () => known)
+      const lookupRuc = vi.fn<Lookup>(async () => found('OTRO NOMBRE EN SUNAT S.A.C.'))
+      const { user } = renderEditor({ findClient, lookupRuc })
+      await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+      expect(await screen.findByText('Cliente con 6 proformas: datos completados')).toBeVisible()
+      expect(findClient).toHaveBeenCalledWith('20000000001')
+      expect(screen.getByLabelText('Razón social o nombre')).toHaveValue(known.name)
+      // Lo ya escrito no se pisa; el tiempo de entrega no se copia.
+      expect(screen.getByLabelText('Celular')).toHaveValue('911222333')
+      await vi.waitFor(() => expect(lookupRuc).toHaveBeenCalledTimes(1))
+      expect(screen.getByLabelText('Razón social o nombre')).toHaveValue(known.name)
+      await user.click(screen.getByRole('button', { name: /Más datos/ }))
+      expect(screen.getByLabelText('Dirección')).toHaveValue('Av. Sol 456')
+      expect(screen.getByLabelText('Tiempo de entrega')).toHaveValue('Inmediato')
+    })
+
+    it('si ya estaba todo escrito, solo dice cuántas proformas tiene', async () => {
+      seedProforma({
+        lines: [line()],
+        client: {
+          ...EMPTY_DRAFT.client,
+          name: 'Mi cliente',
+          phone: '911222333',
+          address: 'Calle 1',
+        },
+      })
+      const { user } = renderEditor({ findClient: vi.fn(async () => known) })
+      await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+      expect(await screen.findByText('Cliente con 6 proformas.')).toBeVisible()
+      expect(screen.getByLabelText('Razón social o nombre')).toHaveValue('Mi cliente')
+    })
+
+    it('con un DNI conocido también completa, sin consultar SUNAT', async () => {
+      seedProforma({ lines: [line()] })
+      const lookupRuc = vi.fn<Lookup>()
+      const { user } = renderEditor({
+        findClient: vi.fn(async () => ({ ...known, name: 'José Pérez', count: 1 })),
+        lookupRuc,
+      })
+      await user.type(screen.getByLabelText('RUC o DNI'), '12345678')
+      expect(await screen.findByText('Cliente con 1 proforma: datos completados')).toBeVisible()
+      expect(screen.getByLabelText('Razón social o nombre')).toHaveValue('José Pérez')
+      expect(lookupRuc).not.toHaveBeenCalled()
+    })
+
+    it('con historial, el aviso de SUNAT de baja o no habido se mantiene', async () => {
+      seedProforma({ lines: [line()] })
+      const { user } = renderEditor({
+        findClient: vi.fn(async () => known),
+        lookupRuc: vi.fn<Lookup>(async () =>
+          found('EMPRESA INACTIVA S.R.L.', 'BAJA DE OFICIO', 'NO HABIDO'),
+        ),
+      })
+      await user.type(screen.getByLabelText('RUC o DNI'), '20000000001')
+      expect(
+        await screen.findByText(/SUNAT lo registra como BAJA DE OFICIO · NO HABIDO/),
+      ).toBeVisible()
+      expect(screen.getByLabelText('Razón social o nombre')).toHaveValue(known.name)
+    })
+  })
+
   it('lista para generar, dice que quedará en el historial', () => {
     seedProforma({ lines: [line()], client: withClient })
     renderEditor()

@@ -12,6 +12,7 @@ import { generateBlocker, validityError, type CompanyStatus } from '../readiness
 import type { RucLookupResult } from '../ruc'
 import { useProforma } from '../store'
 import { totalsFromText } from '../totals'
+import type { ClientMatch } from '../history/queries'
 import { ProformaClient } from './proforma-client'
 import { ProformaLines } from './proforma-lines'
 import type { SearchProducts } from './proforma-product-search'
@@ -21,6 +22,8 @@ export type ProformaEditorProps = {
   company: CompanyStatus
   prices: Map<string, string> | undefined
   lookupRuc: (ruc: string) => Promise<RucLookupResult>
+  // El cliente según su proforma más reciente (spec de productos libres §4.3).
+  findClient: (document: string) => Promise<ClientMatch | null>
   // Solo desde Productos: en Proformas no hay lista a la que volver (plan, decisión 5).
   onContinue?: () => void
   onGenerate: () => void
@@ -37,6 +40,7 @@ export function ProformaEditor({
   company,
   prices,
   lookupRuc,
+  findClient,
   onContinue,
   onGenerate,
   generatePdf,
@@ -73,7 +77,11 @@ export function ProformaEditor({
     <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-5 pt-5 pb-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex min-w-0 flex-col gap-5">
         <ProformaLines prices={prices} onContinue={onContinue} searchProducts={searchProducts} />
-        <ProformaClient lookupRuc={lookupRuc} defaultValidityDays={defaultValidity} />
+        <ProformaClient
+          lookupRuc={lookupRuc}
+          findClient={findClient}
+          defaultValidityDays={defaultValidity}
+        />
       </div>
       <ProformaSummary>
         <Button

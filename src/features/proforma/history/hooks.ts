@@ -10,7 +10,13 @@ import { settle } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
 import { base64ToFile, downloadFile, newTab, openFile, TAB_BLOCKED } from '../document/files'
 import { getProformaDocument } from './actions'
-import { listProformas, type HistoryQuery, type ProformaRow } from './queries'
+import {
+  findClient,
+  listProformas,
+  type ClientMatch,
+  type HistoryQuery,
+  type ProformaRow,
+} from './queries'
 import { historyParsers } from './search-params'
 
 // Bajo «proformas»: generar una proforma refresca la lista, las cifras y los PDF (spec §6).
@@ -18,6 +24,7 @@ export const historyKeys = {
   all: ['proformas'] as const,
   list: (query: HistoryQuery) => ['proformas', 'list', query] as const,
   document: (id: string) => ['proformas', 'document', id] as const,
+  client: (document: string) => ['proformas', 'client', document] as const,
 }
 
 // El PDF de una proforma guardada vale un minuto: «Ver PDF», «Descargar PDF» y «Reenviar» lo
@@ -98,4 +105,17 @@ export function useStoredDocument() {
       if (file) downloadFile(file)
     },
   }
+}
+
+// Al completar un RUC o DNI (spec §4.3). Sin respuesta, la proforma sigue sin completar.
+export function useClientLookup() {
+  const queryClient = useQueryClient()
+  return (document: string): Promise<ClientMatch | null> =>
+    queryClient
+      .fetchQuery({
+        queryKey: historyKeys.client(document),
+        queryFn: () => findClient(createClient(), document),
+        staleTime: 0,
+      })
+      .catch(() => null)
 }

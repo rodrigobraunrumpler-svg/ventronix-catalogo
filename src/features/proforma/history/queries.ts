@@ -88,3 +88,34 @@ export async function exportProformaRows(
   if (error) throw error
   return z.array(rowSchema).parse(data)
 }
+
+export type ClientMatch = { name: string; phone: string; address: string; count: number }
+
+const clientSchema = z.object({
+  client_name: z.string(),
+  client_phone: z.string(),
+  address: z.string().nullable(),
+})
+
+// El cliente según su proforma más reciente (spec de productos libres §4.3): una consulta por el
+// índice del documento, que además cuenta cuántas tiene.
+export async function findClient(supabase: Client, document: string): Promise<ClientMatch | null> {
+  const { data, error, count } = await supabase
+    .from('proformas')
+    .select('client_name, client_phone, address:document->input->client->>address', {
+      count: 'exact',
+    })
+    .eq('client_document', document)
+    .order('number', { ascending: false })
+    .limit(1)
+  if (error) throw error
+  const [row] = z.array(clientSchema).parse(data)
+  return row
+    ? {
+        name: row.client_name,
+        phone: row.client_phone,
+        address: row.address ?? '',
+        count: count ?? 1,
+      }
+    : null
+}

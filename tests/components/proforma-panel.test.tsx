@@ -28,6 +28,7 @@ function renderPanel(overrides: Partial<ProformaPanelProps> = {}) {
       () => new Promise(() => {}),
     ),
     searchProducts: vi.fn(async () => []),
+    findClient: vi.fn(async () => null),
     ...overrides,
   }
   render(

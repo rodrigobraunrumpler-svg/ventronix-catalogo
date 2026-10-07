@@ -20,7 +20,7 @@ import type { DocumentInput } from '../document/input'
 import { useCurrentPrices, useRucLookup } from '../hooks'
 import { formatProformaNumber } from '../number'
 import { firstPendingField, type CompanyStatus } from '../readiness'
-import { historyKeys } from '../history/hooks'
+import { historyKeys, useClientLookup } from '../history/hooks'
 import { useProforma } from '../store'
 import { ProformaPanel } from './proforma-panel'
 
@@ -45,6 +45,7 @@ export function ProformaDialog({
     open,
   )
   const lookupRuc = useRucLookup()
+  const findClient = useClientLookup()
   const returnFocus = useReturnFocus(open, 'product-search')
   const whatsapp = useWhatsAppStatus(open)
   const { refresh } = useWhatsAppLink()
@@ -99,6 +100,7 @@ export function ProformaDialog({
           company={companyStatus}
           prices={prices.data}
           lookupRuc={lookupRuc}
+          findClient={findClient}
           reserveNumber={() => settle(reserveProformaNumber())}
           generatePdf={async (input) => {
             const result = await settle(generateProformaDocument(input))

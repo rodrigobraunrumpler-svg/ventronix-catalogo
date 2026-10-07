@@ -1,19 +1,38 @@
 'use client'
 
 import { addDays, format } from 'date-fns'
-import { Check, ChevronRight, LoaderCircle, TriangleAlert } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { Check, ChevronRight, History, LoaderCircle, TriangleAlert } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { lima } from '@/lib/dates'
 import { digitsOnly, documentKind, isValidRuc } from '@/lib/peru'
 import { cn } from '@/lib/utils'
 import { patchClient, patchConditions, type ProformaClient as Client } from '../draft'
+import type { ClientMatch } from '../history/queries'
 import { clientErrors, validityError } from '../readiness'
 import { isActiveTaxpayer, type RucLookupResult } from '../ruc'
 import { useProforma } from '../store'
 
-type Lookup = { ruc: string; result: RucLookupResult | 'loading' } | null
+// Lo que se sabe del documento escrito: su historial y, si es un RUC, lo que dice SUNAT.
+// Ocho dígitos también son el comienzo de un RUC: el DNI se busca cuando se deja de escribir.
+const DNI_PAUSE_MS = 400
+
+type Lookup = {
+  document: string
+  history: ClientMatch | null | 'loading'
+  // Si el historial completó algún campo: el aviso no dice «datos completados» si no lo hizo.
+  filled: boolean
+  sunat: RucLookupResult | 'loading' | null // null: un DNI, que no se consulta en SUNAT
+} | null
+
+// Del historial solo se completa lo vacío; el tiempo de entrega no se copia (spec §4.3).
+const fillEmpty = (client: Client, match: ClientMatch): Partial<Client> =>
+  Object.fromEntries(
+    (['name', 'phone', 'address'] as const)
+      .filter((key) => !client[key].trim() && match[key])
+      .map((key) => [key, match[key]]),
+  )
 
 const inlineAction =
   'font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-3'
@@ -65,9 +84,11 @@ function Hint({
 
 export function ProformaClient({
   lookupRuc,
+  findClient,
   defaultValidityDays,
 }: {
   lookupRuc: (ruc: string) => Promise<RucLookupResult>
+  findClient: (document: string) => Promise<ClientMatch | null>
   defaultValidityDays: number | null
 }) {
   const { draft, update } = useProforma()
@@ -93,15 +114,35 @@ export function ProformaClient({
     update((current) => patchClient(current, patch))
   }
 
-  // Se consulta al completar un RUC válido, no en cada tecla (spec §7). Si el documento cambió
-  // mientras tanto, la respuesta no pisa nada.
-  async function runLookup(ruc: string) {
-    setLookup({ ruc, result: 'loading' })
-    const result = await lookupRuc(ruc)
-    setLookup((current) => (current?.ruc === ruc ? { ruc, result } : current))
-    if (result.kind !== 'found') return
+  // Al completar un RUC o DNI válido, no en cada tecla (spec §7): el historial primero, que es
+  // inmediato, y SUNAT en paralelo para un RUC. Si el documento cambió mientras tanto, las
+  // respuestas no pisan nada.
+  async function runLookup(document: string) {
+    const isRuc = documentKind(document) === 'ruc'
+    setLookup({ document, history: 'loading', filled: false, sunat: isRuc ? 'loading' : null })
+    const sunatRequest = isRuc ? lookupRuc(document) : null
+    const history = await findClient(document)
+    let filled = false
+    if (history) {
+      update((current) => {
+        if (current.client.document !== document) return current
+        const patch = fillEmpty(current.client, history)
+        filled = Object.keys(patch).length > 0
+        return patchClient(current, patch)
+      })
+    }
+    setLookup((current) =>
+      current?.document === document ? { ...current, history, filled } : current,
+    )
+    if (!sunatRequest) return
+    const result = await sunatRequest
+    setLookup((current) =>
+      current?.document === document ? { ...current, sunat: result } : current,
+    )
+    // Los datos de SUNAT solo se usan sin historial; su aviso de baja o no habido, siempre.
+    if (history || result.kind !== 'found') return
     update((current) =>
-      current.client.document === ruc
+      current.client.document === document
         ? patchClient(current, {
             name: result.company.legalName,
             address: result.company.address ?? current.client.address,
@@ -110,10 +151,18 @@ export function ProformaClient({
     )
   }
 
+  const dniTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(dniTimer.current), [])
+
   function changeDocument(value: string) {
     const digits = digitsOnly(value).slice(0, 11)
     edit({ document: digits })
-    if (digits !== client.document && isValidRuc(digits)) void runLookup(digits)
+    clearTimeout(dniTimer.current)
+    if (digits === client.document) return
+    if (isValidRuc(digits)) void runLookup(digits)
+    else if (documentKind(digits) === 'dni') {
+      dniTimer.current = setTimeout(() => void runLookup(digits), DNI_PAUSE_MS)
+    }
   }
 
   const nameError = touched.name ? errors.name : null
@@ -186,8 +235,8 @@ export function ProformaClient({
         </Field>
       </div>
 
-      <RucStatus
-        lookup={lookup?.ruc === client.document ? lookup : null}
+      <LookupStatus
+        lookup={lookup?.document === client.document ? lookup : null}
         onRetry={() => void runLookup(client.document)}
       />
 
@@ -261,10 +310,43 @@ export function ProformaClient({
   )
 }
 
-// Estados de la consulta (spec §4.5): cargando, encontrado, no encontrado, sin servicio y aviso.
-function RucStatus({ lookup, onRetry }: { lookup: Lookup; onRetry: () => void }) {
+// Qué se completó y qué dice SUNAT (spec §4.3 y §4.5).
+function LookupStatus({ lookup, onRetry }: { lookup: Lookup; onRetry: () => void }) {
   if (!lookup) return null
-  const { result } = lookup
+  const known = lookup.history === 'loading' ? null : lookup.history
+  return (
+    <>
+      {known ? (
+        <p role="status" className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-ring">
+          <History className="size-3.5" aria-hidden />
+          Cliente con {known.count} {known.count === 1 ? 'proforma' : 'proformas'}
+          {lookup.filled ? ': datos completados' : '.'}
+        </p>
+      ) : null}
+      {lookup.sunat ? (
+        <RucStatus result={lookup.sunat} onlyWarning={known !== null} onRetry={onRetry} />
+      ) : null}
+    </>
+  )
+}
+
+// Estados de la consulta (spec §4.5): cargando, encontrado, no encontrado, sin servicio y aviso.
+// Con datos del historial, de SUNAT solo importa el aviso de baja o no habido.
+function RucStatus({
+  result,
+  onlyWarning,
+  onRetry,
+}: {
+  result: RucLookupResult | 'loading'
+  onlyWarning: boolean
+  onRetry: () => void
+}) {
+  if (
+    onlyWarning &&
+    (result === 'loading' || result.kind !== 'found' || isActiveTaxpayer(result.company))
+  ) {
+    return null
+  }
   const base = 'mt-2.5 text-xs text-muted-foreground'
   if (result === 'loading') {
     return (

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { listProformas } from '@/features/proforma/history/queries'
+import { findClient, listProformas } from '@/features/proforma/history/queries'
 import { ensureUser, publicClient, signedInClient } from '../support/local-supabase'
 import { connect, resetProformas, sqlState } from './db'
 
@@ -192,5 +192,30 @@ describe('listProformas', () => {
     expect(
       await listProformas(supabase, { search: '', page: 1, dateFrom: null, dateTo: null }),
     ).toMatchObject({ total: 1, sum: '7960.00', all: 1, items: [{ number: 1, total: '7960.00' }] })
+  })
+})
+
+describe('findClient', () => {
+  it('toma la proforma más reciente del documento y cuenta todas', async () => {
+    await insert({
+      number: 1,
+      client_name: 'Nombre anterior',
+      client_document: '20601234567',
+      document: { input: { client: { address: 'Av. Vieja 1' } } },
+    })
+    await insert({
+      number: 2,
+      client_name: 'Inversiones Nuevo Sol S.A.C.',
+      client_document: '20601234567',
+      client_phone: '987 654 321',
+      document: { input: { client: { address: 'Av. Sol 456' } } },
+    })
+    expect(await findClient(supabase, '20601234567')).toEqual({
+      name: 'Inversiones Nuevo Sol S.A.C.',
+      phone: '987 654 321',
+      address: 'Av. Sol 456',
+      count: 2,
+    })
+    expect(await findClient(supabase, '20000000001')).toBeNull()
   })
 })
