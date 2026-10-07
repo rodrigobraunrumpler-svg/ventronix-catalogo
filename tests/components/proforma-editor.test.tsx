@@ -26,6 +26,7 @@ function renderEditor(overrides: Partial<ProformaEditorProps> = {}) {
     prices: undefined,
     lookupRuc: vi.fn<Lookup>(async () => ({ kind: 'not-found' })),
     findClient: vi.fn<(document: string) => Promise<ClientMatch | null>>(async () => null),
+    uploadPhoto: vi.fn(async () => 'lines/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'),
     onContinue: vi.fn(),
     onGenerate: vi.fn(),
     generatePdf: vi.fn<Generate>(async () => ({
@@ -63,6 +64,53 @@ const found = (legalName: string, status = 'ACTIVO', condition = 'HABIDO'): RucL
 })
 
 describe('ProformaEditor', () => {
+  describe('fotos', () => {
+    const photo = 'products/8b3e4c9a-5d6f-4e7a-8b1c-2d3e4f5a6b7c.jpg'
+
+    it('el producto libre sube su foto; las líneas sin foto dicen «Sin foto»', async () => {
+      URL.createObjectURL = vi.fn(() => 'blob:foto')
+      URL.revokeObjectURL = vi.fn()
+      seedProforma({ lines: [line()], client: withClient })
+      const { uploadPhoto, user } = renderEditor()
+      await user.click(screen.getByRole('button', { name: 'Añadir producto libre' }))
+      const form = within(screen.getByRole('form', { name: 'Añadir producto libre' }))
+      await user.type(form.getByLabelText('Descripción'), 'Cable HDMI')
+      await user.type(form.getByLabelText('Precio con IGV (S/)'), '25')
+      await user.upload(
+        form.getByLabelText('Foto'),
+        new File(['x'], 'cable.png', { type: 'image/png' }),
+      )
+      await vi.waitFor(() => expect(uploadPhoto).toHaveBeenCalled())
+      await user.click(form.getByRole('button', { name: 'Añadir a la proforma' }))
+      expect(screen.getAllByText('Sin foto')).toHaveLength(1)
+      expect(screen.getByRole('switch', { name: /Incluir fotos en el PDF/ })).toBeChecked()
+    })
+
+    it('«Incluir fotos en el PDF» se puede apagar y viaja con la vista previa', async () => {
+      seedProforma({ lines: [line({ imagePath: photo })] })
+      URL.createObjectURL = vi.fn(() => 'blob:borrador')
+      URL.revokeObjectURL = vi.fn()
+      const tab = { location: { href: '' }, close: vi.fn() } as unknown as Window
+      const open = vi.spyOn(window, 'open').mockReturnValue(tab)
+      const { generatePdf, user } = renderEditor()
+      await user.click(screen.getByRole('switch', { name: /Incluir fotos en el PDF/ }))
+      await user.click(screen.getByRole('button', { name: 'Vista previa' }))
+      expect(generatePdf).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includePhotos: false,
+          lines: [expect.objectContaining({ imagePath: photo })],
+        }),
+      )
+      open.mockRestore()
+    })
+
+    it('sin fotos no aparece el interruptor', () => {
+      seedProforma({ lines: [line()] })
+      renderEditor()
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    })
+  })
+
   describe('cliente desde el historial', () => {
     const known: ClientMatch = {
       name: 'Inversiones Nuevo Sol S.A.C.',

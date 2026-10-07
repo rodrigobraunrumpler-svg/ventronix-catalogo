@@ -13,6 +13,7 @@ import { listProducts } from '@/features/catalog/products/queries'
 import { useCompanyProfile } from '@/features/company/hooks'
 import { settle } from '@/lib/action-result'
 import { createClient } from '@/lib/supabase/client'
+import { uploadPhoto } from '@/lib/use-photos'
 import { useReturnFocus } from '@/lib/use-return-focus'
 import { useWhatsAppLink, useWhatsAppStatus } from '@/features/whatsapp/hooks'
 import { generateProformaDocument, reserveProformaNumber, sendProformaByWhatsApp } from '../actions'
@@ -101,6 +102,7 @@ export function ProformaDialog({
           prices={prices.data}
           lookupRuc={lookupRuc}
           findClient={findClient}
+          uploadPhoto={(file) => uploadPhoto('lines', file)}
           reserveNumber={() => settle(reserveProformaNumber())}
           generatePdf={async (input) => {
             const result = await settle(generateProformaDocument(input))

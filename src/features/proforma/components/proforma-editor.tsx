@@ -16,7 +16,7 @@ import type { ClientMatch } from '../history/queries'
 import { ProformaClient } from './proforma-client'
 import { ProformaLines } from './proforma-lines'
 import type { SearchProducts } from './proforma-product-search'
-import { ProformaSummary } from './proforma-summary'
+import { PhotosSwitch, ProformaSummary } from './proforma-summary'
 
 export type ProformaEditorProps = {
   company: CompanyStatus
@@ -30,6 +30,8 @@ export type ProformaEditorProps = {
   generatePdf: (input: DocumentInput) => Promise<ActionResult<GeneratedDocument>>
   // Buscar en el catálogo para añadir sin salir de la proforma.
   searchProducts: SearchProducts
+  // Sube la foto de un producto libre y devuelve su ruta (spec de productos libres §4.3).
+  uploadPhoto: (file: File) => Promise<string>
   generating?: boolean
   error?: string | null
 }
@@ -45,6 +47,7 @@ export function ProformaEditor({
   onGenerate,
   generatePdf,
   searchProducts,
+  uploadPhoto,
   generating = false,
   error = null,
 }: ProformaEditorProps) {
@@ -76,7 +79,12 @@ export function ProformaEditor({
   return (
     <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-5 pt-5 pb-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex min-w-0 flex-col gap-5">
-        <ProformaLines prices={prices} onContinue={onContinue} searchProducts={searchProducts} />
+        <ProformaLines
+          prices={prices}
+          onContinue={onContinue}
+          searchProducts={searchProducts}
+          uploadPhoto={uploadPhoto}
+        />
         <ProformaClient
           lookupRuc={lookupRuc}
           findClient={findClient}
@@ -84,6 +92,7 @@ export function ProformaEditor({
         />
       </div>
       <ProformaSummary>
+        <PhotosSwitch />
         <Button
           id="generate-proforma"
           className="h-11.5 w-full text-[15px] font-bold"

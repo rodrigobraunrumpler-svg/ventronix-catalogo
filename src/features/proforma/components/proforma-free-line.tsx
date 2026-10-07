@@ -2,10 +2,13 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useId, useState, type ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
+import { PhotoField } from '@/components/photo-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { thumbPath } from '@/lib/photos'
+import { usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
 import { addFreeLine, freeLineSchema, type FreeLineValues } from '../draft'
 import { useProforma } from '../store'
@@ -51,17 +54,28 @@ function Field({
 
 // Productos que no están en el catálogo (spec de productos libres §4.3). Tras añadir uno, el
 // formulario queda vacío y abierto para el siguiente (plan, decisión 3).
-export function FreeLineForm({ onClose }: { onClose: () => void }) {
+export function FreeLineForm({
+  onClose,
+  uploadPhoto,
+}: {
+  onClose: () => void
+  // Sube la foto del producto libre y devuelve su ruta (spec de productos libres §4.3).
+  uploadPhoto: (file: File) => Promise<string>
+}) {
   const id = useId()
   const { update } = useProforma()
   const [added, setAdded] = useState<string | null>(null)
   const {
     register,
+    control,
+    setValue,
     handleSubmit,
     reset,
     setFocus,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(freeLineSchema), defaultValues: EMPTY })
+  const imagePath = useWatch({ control, name: 'imagePath' })
+  const photoUrl = usePhotoUrl(imagePath ? thumbPath(imagePath) : null)
 
   const add = handleSubmit((values) => {
     update((draft) => addFreeLine(draft, values))
@@ -143,6 +157,16 @@ export function FreeLineForm({ onClose }: { onClose: () => void }) {
             {...register('unitPrice')}
           />
         </Field>
+        <div className="min-w-0 flex-1 basis-56">
+          <PhotoField
+            compact
+            value={imagePath}
+            url={photoUrl}
+            alt="Foto del producto libre"
+            upload={uploadPhoto}
+            onChange={(path) => setValue('imagePath', path)}
+          />
+        </div>
       </div>
       {added ? (
         <p role="status" className="text-[13px] font-medium text-ring">

@@ -199,6 +199,11 @@ export const patchConditions = (
   ...patch,
 })
 
+export const setIncludePhotos = (draft: ProformaDraft, includePhotos: boolean): ProformaDraft => ({
+  ...draft,
+  includePhotos,
+})
+
 // El número y la fecha se fijan juntos al generar: «Corregir» conserva ambos (spec §6.3).
 export const setNumber = (
   draft: ProformaDraft,

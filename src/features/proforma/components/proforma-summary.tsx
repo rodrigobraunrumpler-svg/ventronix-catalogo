@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { patchConditions } from '../draft'
+import { patchConditions, setIncludePhotos } from '../draft'
 import { formatCents, ZERO } from '../money'
 import { discountError, shippingError } from '../readiness'
 import { useProforma } from '../store'
@@ -131,5 +131,33 @@ export function ProformaSummary({ children }: { children: ReactNode }) {
       ) : null}
       <div className="grid gap-2 px-4.5 pt-4 pb-4.5">{children}</div>
     </section>
+  )
+}
+
+// «Incluir fotos en el PDF» (spec de productos libres §4.3 y §4.5): solo si alguna línea tiene foto.
+export function PhotosSwitch() {
+  const { draft, update } = useProforma()
+  if (!draft.lines.some((line) => line.imagePath !== null)) return null
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border bg-card p-3">
+      <input
+        type="checkbox"
+        role="switch"
+        checked={draft.includePhotos}
+        aria-describedby="photos-switch-help"
+        onChange={(event) => update((current) => setIncludePhotos(current, event.target.checked))}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden
+        className="relative mt-0.5 h-6 w-10 shrink-0 rounded-full bg-input transition-colors peer-checked:bg-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 after:absolute after:top-0.75 after:left-0.75 after:size-4.5 after:rounded-full after:bg-white after:shadow-xs after:transition-transform peer-checked:after:translate-x-4 motion-reduce:transition-none motion-reduce:after:transition-none"
+      />
+      <span className="grid gap-0.5">
+        <span className="text-sm font-bold text-foreground">Incluir fotos en el PDF</span>
+        <span id="photos-switch-help" className="text-xs text-muted-foreground">
+          Con fotos entran unos 10 a 12 productos por hoja. Sin fotos, el PDF queda como hoy.
+        </span>
+      </span>
+    </label>
   )
 }

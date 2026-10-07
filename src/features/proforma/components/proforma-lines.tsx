@@ -1,9 +1,12 @@
 'use client'
 
 import { Minus, PencilLine, Plus, X } from 'lucide-react'
+import Image from 'next/image'
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/features/catalog/money'
+import { thumbPath } from '@/lib/photos'
+import { usePhotoUrl } from '@/lib/use-photos'
 import { cn } from '@/lib/utils'
 import {
   applyCatalogPrice,
@@ -26,10 +29,12 @@ export function ProformaLines({
   prices,
   onContinue,
   searchProducts,
+  uploadPhoto,
 }: {
   prices: Map<string, string> | undefined
   onContinue?: () => void
   searchProducts: SearchProducts
+  uploadPhoto: (file: File) => Promise<string>
 }) {
   const { draft } = useProforma()
   const [freeOpen, setFreeOpen] = useState(false)
@@ -70,6 +75,7 @@ export function ProformaLines({
       </div>
       {freeOpen ? (
         <FreeLineForm
+          uploadPhoto={uploadPhoto}
           onClose={() => {
             setFreeOpen(false)
             freeToggle.current?.focus()
@@ -116,6 +122,8 @@ function LineRow({
   const [open, setOpen] = useState(false)
   const { update } = useProforma()
   const removeLine = useRemoveLine()
+  // Su miniatura: una consulta por foto (plan, decisión 11).
+  const photoUrl = usePhotoUrl(line.imagePath ? thumbPath(line.imagePath) : null)
   const id = `line-${line.id}`
   const quantityProblem = quantityError(line.quantity)
   const priceProblem = priceError(line.unitPrice)
@@ -131,7 +139,22 @@ function LineRow({
   const change = (quantity: number) => update((current) => setQuantity(current, line.id, quantity))
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_118px_132px_104px_36px]">
+    <li className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-[#edf0e8] py-3 pr-3 pl-3.5 last:border-b-0 sm:grid-cols-[48px_minmax(0,1fr)_118px_132px_104px_36px]">
+      {/* Su foto, o «Sin foto» (spec de productos libres §4.3). */}
+      <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-[10px] border border-dashed border-input bg-muted/40 text-[10px] text-muted-foreground">
+        {photoUrl ? (
+          <Image
+            src={photoUrl}
+            alt={`Foto de ${line.name}`}
+            width={48}
+            height={48}
+            unoptimized
+            className="size-full object-contain"
+          />
+        ) : line.imagePath ? null : (
+          'Sin foto'
+        )}
+      </span>
       <div className="min-w-0">
         <button
           type="button"
@@ -174,7 +197,7 @@ function LineRow({
         </div>
       </div>
 
-      <div className="col-span-2 flex flex-wrap items-center gap-3 sm:contents">
+      <div className="col-span-3 flex flex-wrap items-center gap-3 sm:contents">
         <div
           className={cn(
             'inline-flex w-fit shrink-0 items-center overflow-hidden rounded-[10px] border border-input bg-card',
@@ -249,7 +272,7 @@ function LineRow({
         size="icon"
         aria-label={`Quitar ${line.name}`}
         title="Quitar"
-        className="col-start-2 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:col-start-auto sm:row-start-auto"
+        className="col-start-3 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:col-start-auto sm:row-start-auto"
         onClick={() => removeLine(line.id)}
       >
         <X aria-hidden />
