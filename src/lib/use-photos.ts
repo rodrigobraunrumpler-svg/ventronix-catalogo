@@ -35,24 +35,26 @@ function toJpeg(image: ImageBitmap, max: number) {
   )
 }
 
-// La foto se lee una vez y se sube en dos tamaños con la sesión de la cuenta (spec §8): 600 px
-// para verla y 200 px para el PDF y las listas. El original no se guarda. Cada foto es un archivo
-// nuevo: las proformas anteriores conservan la suya. Devuelve la ruta de la de 600 px.
+// La foto se lee una vez y se sube con la sesión de la cuenta (spec §8). La de un producto del
+// catálogo, en dos tamaños: 600 px para su ficha y 200 px para el PDF y las listas. La de un
+// producto libre, solo la de 200 px: es la única que se ve (su línea, el formulario y el PDF). El
+// original no se guarda. Cada foto es un archivo nuevo: las proformas anteriores conservan la suya.
+// Devuelve la ruta de la foto (la de 600 px); la miniatura vive a su lado.
 export async function uploadPhoto(folder: PhotoFolder, file: File) {
   const image = await createImageBitmap(file).catch(() => {
     throw new UnreadablePhotoError()
   })
-  const [full, thumb] = await Promise.all([
-    toJpeg(image, PHOTO_MAX_SIDE),
-    toJpeg(image, PHOTO_THUMB_SIDE),
-  ]).finally(() => image.close())
   const path = `${folder}/${crypto.randomUUID()}.jpg`
+  const sizes: [string, number][] = [[thumbPath(path), PHOTO_THUMB_SIDE]]
+  if (folder === 'products') sizes.push([path, PHOTO_MAX_SIDE])
+  const blobs = await Promise.all(sizes.map(([, side]) => toJpeg(image, side))).finally(() =>
+    image.close(),
+  )
   const storage = createClient().storage.from(PHOTO_BUCKET)
   const options = { contentType: 'image/jpeg' }
-  const results = await Promise.all([
-    storage.upload(path, full, options),
-    storage.upload(thumbPath(path), thumb, options),
-  ])
+  const results = await Promise.all(
+    sizes.map(([name], index) => storage.upload(name, blobs[index], options)),
+  )
   const failed = results.find((result) => result.error)
   if (failed?.error) throw failed.error
   return path
