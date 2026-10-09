@@ -437,7 +437,8 @@ test('la foto que se quita del producto libre se borra de Storage', async ({ pag
   const since = new Date(Date.now() - 1000)
   await form.getByLabel('Foto').setInputFiles(PHOTO)
   await expect(form.getByRole('button', { name: 'Quitar foto' })).toBeEnabled()
-  await expect.poll(() => photosSince(since)).toBe(2)
+  // Un producto libre solo guarda la miniatura: es la única que se ve.
+  await expect.poll(() => photosSince(since)).toBe(1)
   await form.getByRole('button', { name: 'Quitar foto' }).click()
   await expect.poll(() => photosSince(since)).toBe(0)
 
